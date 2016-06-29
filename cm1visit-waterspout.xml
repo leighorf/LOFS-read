@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+  <Plugin name="cm1visit" type="database" label="cm1visit plugin for VisIt reader" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="MTMD" haswriter="false" hasoptions="false" filePatternsStrict="false" opensWholeDirectory="false">
+    <CXXFLAGS>
+      -I/home/orf/build/visit-2.6.1/visit/hdf5/1.8.7/linux-x86_64_icc/include
+      -I./cm1tools-3.0
+    </CXXFLAGS>
+    <LDFLAGS>
+      -L/home/orf/build/visit-2.6.1/visit/hdf5/1.8.7/linux-x86_64_icc/lib
+      -L./cm1tools-3.0
+    </LDFLAGS>
+    <LIBS>
+       -lhdf5_hl -lhdf5 -lsz -lz -lm -lcm
+    </LIBS>
+    <FilePatterns>
+      *.cm1visit
+    </FilePatterns>
+    <Attribute name="" purpose="" persistent="true" keyframe="true" exportAPI="" exportInclude="">
+    </Attribute>
+  </Plugin>

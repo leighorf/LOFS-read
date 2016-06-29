@@ -1,0 +1,53 @@
+# v5d.c, binio.c are from the vis5d+ distribution
+#
+# You will need to set these appropriately for your system
+# Alternatively you could use h5cc as your compiler (if you have a full
+# hdf5 installation) and get rid of all references to HDF5_DIR
+
+
+NETCDF_DIR=/home/orf/netcdf/netcdf-4.2.1.1
+#HDF5_DIR=/u/staff/sisneros/visit/trunk/visit/hdf5/1.8.7/linux-x86_64_gcc-4.3
+#HDF5_DIR=/home/orf/build/visit/visit/hdf5/1.8.7/linux-x86_64_gcc-4.4
+HDF5_DIR=/home/orf/build/visit-2.6.1/visit/hdf5/1.8.7/linux-x86_64_icc
+
+NETCDFLIBS = -lnetcdf -lm -lhdf5_hl
+HDF5LIBS = -lhdf5
+CC = icc
+LN = icc
+AR = ar
+CFLAGS = -O3 -fPIC
+FFLAGS = -O3
+LARGE=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
+
+all: hdf2 hdf2d2nc libcm.a
+
+hdf2: hdf2.o parsedir.o hdfio.o readmult.o binio.o v5d.o
+	$(CC) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o binio.o v5d.o -L${HDF5_DIR}/lib -L${NETCDF_DIR}/lib ${NETCDFLIBS} ${HDF5LIBS}
+hdf2d2nc: hdf2d2nc.o hdfio.o
+	$(CC) $(CFLAGS) -o hdf2d2nc hdf2d2nc.o hdfio.o -L${NETCDF_DIR}/lib -L${HDF5_DIR}/lib ${NETCDFLIBS} ${HDF5LIBS}
+libcm.a: parsedir.o hdfio.o readmult.o
+	$(AR) cr libcm.a parsedir.o hdfio.o readmult.o
+readmult.o: readmult.c
+	$(CC) $(CFLAGS) -I$(HDF5_DIR)/include -c readmult.c
+hdfio.o: hdfio.c
+	$(CC) $(CFLAGS) -I$(HDF5_DIR)/include -c hdfio.c
+parsedir.o: parsedir.c
+	$(CC) $(CFLAGS) -I$(HDF5_DIR)/include -c parsedir.c
+hdf2.o: hdf2.c
+	$(CC) $(CFLAGS) -I$(HDF5_DIR)/include -I$(NETCDF_DIR)/include -c hdf2.c
+binio.o: binio.c
+	$(CC) $(LARGE) -c binio.c
+v5d.o: v5d.c
+	$(CC) $(LARGE) -c v5d.c
+hdf2d2nc.o: hdf2d2nc.c
+	$(CC) $(CFLAGS) -I${NETCDF_DIR}/include -I${HDF5_DIR}/include -c hdf2d2nc.c
+clean:
+	rm -rf *.o hdf2 hdf2d2nc libcm.a
+install: hdf2 hdf2d2nc libcm.a
+	install -m 0755 hdf2 $(HOME)/bin
+	install -m 0755 hdf2d2nc $(HOME)/bin
+	cd $(HOME)/bin && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin && ln -fs hdf2 hdf2v5d
+	cd $(HOME)/bin && ln -fs hdf2 makevisit
+
+.PHONY: install

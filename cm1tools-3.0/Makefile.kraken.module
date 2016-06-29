@@ -1,0 +1,38 @@
+CC = cc
+LN = cc
+AR = ar
+CFLAGS = -O3 -fPIC
+FFLAGS = -O3 
+LARGE=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
+
+all: hdf2 hdf2d2nc libcm.a
+
+hdf2: hdf2.o parsedir.o hdfio.o readmult.o binio.o v5d.o
+	$(CC) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o binio.o v5d.o
+hdf2d2nc: hdf2d2nc.o hdfio.o
+	$(CC) $(CFLAGS) -o hdf2d2nc hdf2d2nc.o hdfio.o
+readmult.o: readmult.c
+	$(CC) $(CFLAGS) -c readmult.c
+hdfio.o: hdfio.c
+	$(CC) $(CFLAGS) -c hdfio.c
+parsedir.o: parsedir.c
+	$(CC) $(CFLAGS) -c parsedir.c
+hdf2.o: hdf2.c
+	$(CC) $(CFLAGS) -c hdf2.c
+binio.o: binio.c
+	$(CC) $(LARGE) -c binio.c
+v5d.o: v5d.c
+	$(CC) $(LARGE) -c v5d.c
+hdf2d2nc.o: hdf2d2nc.c
+	$(CC) $(CFLAGS) -c hdf2d2nc.c
+libcm.a: parsedir.o hdfio.o readmult.o
+	$(AR) cr libcm.a parsedir.o hdfio.o readmult.o
+clean:
+	rm -rf *.o hdf2 hdf2d2nc makevisit libcm.a
+install: hdf2
+	install -m 0755 hdf2 hdf2d2nc $(HOME)/bin
+	cd $(HOME)/bin && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin && ln -fs hdf2 hdf2v5d
+	cd $(HOME)/bin && ln -fs hdf2 makevisit
+
+.PHONY: install
