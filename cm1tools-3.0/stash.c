@@ -370,6 +370,11 @@ void parse_cmdline(int argc, char *argv[],
 	 char *sounding_filename, int *got_sounding,char *hdf_filename, int *got_hdf,
 	 char *pbs_filename, int *got_pbs, char *stash_filename, int *got_stash)
 {
+	if(argc==1)
+	{
+		printf("Usage: stash --namelist [namelist_file] --sounding [sounding_file] --output [cm1out_file] --hdf [hdf5_file] --stash [opt_stash-file]\n");
+		exit(0);
+	}
 	while (1)
 	{
 		static struct option long_options[] = {
