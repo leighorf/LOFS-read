@@ -379,9 +379,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	int xfid,yfid,zfid;
 	int x_dimid,y_dimid,z_dimid;
 	int varnameid[MAXVARS];
-	int dims[3];
+	int dims[4];
 	int d2[2];
-	size_t start[3],edges[3];
+	size_t start[4],edges[4];
 	size_t s2[2],e2[2];
 	int ivar;
 	long int bufsize;
@@ -407,7 +407,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (i=0; i<nvar; i++)
 	{
 		strcpy(varname[i],argv[i+10]);
-		fprintf(stderr,"%s \n",varname[i]);
+		fprintf(stdout,"%s \n",varname[i]);
 	}
 	sprintf(ncfilename,"%s.%05i.nc",ncbase,t0);
 	
@@ -417,9 +417,11 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	start[0] = 0;
 	start[1] = 0;
 	start[2] = 0;
-	edges[0] = snz;
-	edges[1] = sny;
-	edges[2] = snx;
+	start[3] = 0;
+	edges[0] = 1;
+	edges[1] = snz;
+	edges[2] = sny;
+	edges[3] = snx;
 
 	s2[0]=0;
 	s2[1]=0;
@@ -428,7 +430,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
 	bufsize = (long) (snx+1) * (long) (sny+1) * (long) (snz+1) * (long) sizeof(float);
-	fprintf(stderr,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
+	fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ( (buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -495,7 +497,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	status = nc_def_dim (ncid, "xf", snx, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yf", sny, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zf", snz, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "time", 1, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 // Define Cartesian arrays
 	//TRAJ2014
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -505,7 +507,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	status = nc_def_var (ncid, "xf", NC_FLOAT, 1, &nxf_dimid, &xfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yf", NC_FLOAT, 1, &nyf_dimid, &yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	status = nc_def_var (ncid, "time", NC_FLOAT, 1, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "time", NC_FLOAT, 0, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 
 
 	//TRAJ2014
@@ -528,46 +530,46 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 //	status = nc_def_var (ncid, "time", NC_FLOAT, 0, dims, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 
 
-#define FUCKTHIS
 // This was in the ifdefs, don't know why
 	d2[0] = nyh_dimid;
 	d2[1] = nxh_dimid;
 	// COMMENTED OUT TEMPORARILY since not saving it always
 //	status = nc_def_var (ncid, "thpertsfc", NC_FLOAT, 2, d2, &thsfcid);
 
-#ifndef FUCKTHIS
-
-#endif
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		//TRAJ2014
 		if(!strcmp(varname[ivar],"u"))
 		{
-			dims[0] = nzh_dimid;
-			dims[1] = nyh_dimid;
-			dims[2] = nxf_dimid;
+			dims[0] = time_dimid;
+			dims[1] = nzh_dimid;
+			dims[2] = nyh_dimid;
+			dims[3] = nxf_dimid;
 		}
 		else if (!strcmp(varname[ivar],"v"))
 		{
-			dims[0] = nzh_dimid;
-			dims[1] = nyf_dimid;
-			dims[2] = nxh_dimid;
+			dims[0] = time_dimid;
+			dims[1] = nzh_dimid;
+			dims[2] = nyf_dimid;
+			dims[3] = nxh_dimid;
 		}
 		else if (!strcmp(varname[ivar],"w"))
 		{
-			dims[0] = nzf_dimid;
-			dims[1] = nyh_dimid;
-			dims[2] = nxh_dimid;
+			dims[0] = time_dimid;
+			dims[1] = nzf_dimid;
+			dims[2] = nyh_dimid;
+			dims[3] = nxh_dimid;
 		}
 		else
 		{
-			dims[0] = nzh_dimid;
-			dims[1] = nyh_dimid;
-			dims[2] = nxh_dimid;
+			dims[0] = time_dimid;
+			dims[1] = nzh_dimid;
+			dims[2] = nyh_dimid;
+			dims[3] = nxh_dimid;
 		}
 
-		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 3, dims, &(varnameid[ivar]));
+		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
 		if (status != NC_NOERR) 
 		{
 			printf ("Cannot nc_def_var for var #%i %s\n", ivar, varname[ivar]);
@@ -578,6 +580,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 //	            if (status != NC_NOERR) printf ("Cannot nc_def_var_deflate for var #%i %s\n", ivar, varname[ivar]);
 	}
 	status = nc_enddef (ncid);
+
+//	this is our 4d write:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, buffer);
+
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
 
 	// For surface theta (Vapor wants 2D vars)
@@ -585,14 +590,17 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 // COMMENTED OUT TEMPORARILY since not saving it always
 //	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 //	status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
-#ifndef FUCKTHIS
 	// Temporary: Read u, v, w, xvort,yvort,zvort up front
 	// ORF 2016-03-07 ugh, we stored u v w for 20 meter runs
 	/*
+	*/
+#ifdef READAHEAD
+
+#ifndef UVW
 	read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	*/
+#else
 	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	for(k=0; k<snz; k++)
 	{
@@ -626,6 +634,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 			}
 		}
 	}
+#endif
 	read_hdf_mult_md(  xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	read_hdf_mult_md(  yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	read_hdf_mult_md(  zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -649,7 +658,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
-#ifndef FUCKTHIS
+#ifdef READAHEAD
 		if     (!strncmp(varname[ivar],"uinterp",(size_t)(7))) buffer = ubuffer;
 		else if(!strncmp(varname[ivar],"vinterp",(size_t)(7))) buffer = vbuffer;
 		else if(!strncmp(varname[ivar],"winterp",(size_t)(7))) buffer = wbuffer;
@@ -661,8 +670,10 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		if(!strncmp(varname[ivar],"hwin_sr",(size_t)(7)))
 		{
 			float usr,vsr;
+#ifndef READAHEAD
 			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				usr = ubuffer[i];
@@ -672,14 +683,45 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		}
 		else if(!strncmp(varname[ivar],"hwin_gr",(size_t)(7)))
 		{
-			float umove = 12.0; float vmove = 14.0; /* ORF: KLUDGE: should save these in history files */
+			float umove = 15.1719; float vmove = 10.0781; /* ORF: KLUDGE: should save these in history files */
 			float ugr, vgr;
+#ifndef READAHEAD
 			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				ugr = ubuffer[i]+umove;
 				vgr = vbuffer[i]+vmove;
+				buffer[i] = sqrt(ugr*ugr+vgr*vgr);
+			}
+		}
+		else if(!strncmp(varname[ivar],"hwin_sr_uv",(size_t)(10)))
+		{
+			float usr,vsr;
+			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(k=0; k<snz; k++)
+			for(j=0; j<sny; j++)
+			for(i=0; i<snx; i++)
+			{
+				usr = (i!=snx-1)?ubuffer[P3(i+1,j,k,snx,sny)]+ubuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
+				vsr = (i!=sny-1)?vbuffer[P3(i,j+1,k,snx,sny)]+vbuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
+				buffer[i] = sqrt(usr*usr+vsr*vsr);
+			}
+		}
+		else if(!strncmp(varname[ivar],"hwin_gr_uv",(size_t)(10)))
+		{
+			float umove = 15.1719; float vmove = 10.0781; /* ORF: KLUDGE: should save these in history files */
+			float ugr, vgr;
+			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<snx*sny*snz; i++)
+			{
+				ugr = (i!=snx-1)?ubuffer[P3(i+1,j,k,snx,sny)]+ubuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
+				vgr = (i!=sny-1)?vbuffer[P3(i,j+1,k,snx,sny)]+vbuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
+				ugr += umove;
+				vgr += vmove;
 				buffer[i] = sqrt(ugr*ugr+vgr*vgr);
 			}
 		}
@@ -697,9 +739,11 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 // ORF because I'm saving a variable called vortmag!
 		else if(!strncmp(varname[ivar],"vortmag",(size_t)(7)))
 		{
+#ifndef READAHEAD
 			read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
@@ -830,10 +874,10 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		buffer = buf0; /* I will never learn my lesson with pointers........ */
 		if (status != NC_NOERR) 
 		{
-			fprintf(stderr,"Could not write variable %s at time %i to %s\n", varname[ivar],t0,ncfilename);
+			fprintf(stdout,"Could not write variable %s at time %i to %s\n", varname[ivar],t0,ncfilename);
 			ERROR_STOP("Write to netcdf file failed");
 		}
-		fprintf(stderr,")\n");
+		fprintf(stdout,")\n");
 	}
 	status = nc_close(ncid); if (status != NC_NOERR) ERROR_STOP("Could not close netcdf file (nc_close)");
 	// Write command line option into file for future reference
