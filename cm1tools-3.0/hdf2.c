@@ -4,6 +4,9 @@
  * Big rewrite June 2011. All top-level conversion code in one file, makes
  * maintenance easier. Symlinks to binary determine what is run.
  *
+ * Major cleanup 11/23/2016, cleared out all unused variables and got
+ * gcc to mostly shut up. Getting this code stable before converting to
+ * new cm1hdf5 (subsecond) format.
  */
 
 #include <math.h>
@@ -13,7 +16,8 @@
 
 #define TRUE 1
 #define FALSE 0
-#define MAXVARIABLES 100
+#define MAXVARIABLES (100)
+#define MAXSTR (512)
 
 #define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
 
@@ -25,8 +29,8 @@ char **nodedir;
 int *dirtimes;
 int ntimedirs;
 int nx,ny,nz,nodex,nodey;
-char firstfilename[512];
-char base[100];
+char firstfilename[MAXSTR];
+char base[MAXSTR];
 int nnodedirs;
 int *alltimes;
 int ntottimes;
@@ -42,8 +46,8 @@ void lflush (FILE * fp);
 int main(int argc, char *argv[])
 {
 	char *cptr;
-	char progname[512];
-	char histpath[512];
+	char progname[MAXSTR];
+	char histpath[MAXSTR];
 	int we_are_hdf2nc = FALSE;
 	int we_are_hdf2v5d = FALSE;
 	int we_are_makevisit = FALSE;
@@ -118,7 +122,7 @@ int main(int argc, char *argv[])
 	{
 	  int snx0, snx1, sny0, sny1;
 	  int idir,inode;
-	  char dirname[512];
+	  char dirname[MAXSTR];
 	  //adding subdomain
 	  snx0 = sny0 = 0;
 	  snx1 = nx-1; sny1 = ny-1;
@@ -196,9 +200,9 @@ int main(int argc, char *argv[])
 		hid_t f_id,g_id,strtype;
 		H5G_info_t group_info;
 		hsize_t dims[1];
-		char dirbase[200];
-		char visitfile[220];
-		char groupname[220];
+		char dirbase[MAXSTR];
+		char visitfile[MAXSTR];
+		char groupname[MAXSTR];
 		char varname[MAXVARIABLES][40]; //Yeah I know also hardcoded in avtcm1visitFileFormat.h
 
 		float *xhfull,*yhfull,*zh;
@@ -237,7 +241,6 @@ int main(int argc, char *argv[])
 		get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 		get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 		get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
-//		printf("Succesfully got mesh arrays\n");
 // varnames
 		sprintf(groupname,"%05i/3d",dirtimes[ntimedirs-1]); //is now last since we no longer have get_first_hdf_file_name routine;
 		// first file name is the last "fist file name" from
@@ -255,7 +258,6 @@ int main(int argc, char *argv[])
 		}
 		H5Gclose(g_id);
 		H5Fclose(f_id);
-//		printf("Succesfully got variable names\n");
 
 		for (i = 0; i < nvars; i++) printf("%s ",varname[i]);printf("\n");
 
@@ -268,9 +270,6 @@ int main(int argc, char *argv[])
 		}
 
 		// Try the lite interface
-
-//		rank=1;dims[0]=1; strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,strlen(topdir));
-//		H5LTmake_dataset     (f_id, "/topdir",    rank, dims, strtype, topdir);
 		H5LTmake_dataset_string(f_id,"/topdir",topdir);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/ntimedirs", rank, dims, &ntimedirs);
 		strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,H5T_VARIABLE); rank=1;dims[0]=ntimedirs;
@@ -318,7 +317,7 @@ void grok_cm1hdf5_file_structure()
 	if (ntimedirs == 0) ERROR_STOP("No cm1 hdf5 files found");
 
 	timedir = (char **)malloc(ntimedirs * sizeof(char *));
-	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(256 * sizeof(char)));
+	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dirtimes = (int *)malloc(ntimedirs * sizeof(int));
 
 //cached code done
@@ -348,8 +347,6 @@ void grok_cm1hdf5_file_structure()
 
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, int t0)
 {
-
-
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
 	float *qvar1,*qvar2,*qvar3;
 	float *thpert,*qvpert,*qtot;
@@ -359,19 +356,17 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 	int i,ix,iy,iz,nvar;
 	int j=0,k=0,ii;
-	char varname[MAXVARIABLES][50];
-	char ncfilename[512];
+	char varname[MAXVARIABLES][MAXSTR];
+	char ncfilename[MAXSTR];
 
 	int snx,sny,snz;
 	hid_t f_id;
 
 	int status;
-	//TRAJ2014
 	int ncid;
 	int nxh_dimid,nyh_dimid,nzh_dimid;
 	int nxf_dimid,nyf_dimid,nzf_dimid,time_dimid,timeid;
 	int x0id,y0id,z0id,x1id,y1id,z1id;
-	//TRAJ2014
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
 	int varnameid[MAXVARIABLES];
@@ -382,7 +377,6 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	long int bufsize;
 	float *xhfull,*yhfull,*zh,*zf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
-	//TRAJ2014
 	FILE *fp;
 	char cmdfilename[512];
 	
@@ -421,7 +415,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
 	bufsize = (long) (snx+1) * (long) (sny+1) * (long) (snz+1) * (long) sizeof(float);
 	fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
-	if ( (buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
+	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -444,19 +438,14 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
-	//TRAJ2014
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
-//	ORF 2016-01-06  commenting these out temporarily, not in old juice12 file
-//	GODDAMMIT FUCK DONT DO THAT DUDE
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
 	get1dfloat (f_id,(char *)"basestate/th0",th0,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 
-//	printf("Succesfully got mesh arrays\n");
 	xhout = (float *)malloc(snx * sizeof(float));
 	yhout = (float *)malloc(sny * sizeof(float));
 	zhout = (float *)malloc(snz * sizeof(float));
-	//TRAJ2014
 	xfout = (float *)malloc(snx * sizeof(float));
 	yfout = (float *)malloc(sny * sizeof(float));
 	zfout = (float *)malloc(snz * sizeof(float));
@@ -464,23 +453,14 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
-
-	//ORF KLUDGE - WE NEED TO SAVE XFFULL YFFULL for u and v!!
-	//TRAJ2014
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];
-	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00);
-	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00);
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00); //ORF STUPID FIX
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00); //ORF STUPID FIX
 
 
-// ORF 1/25/13 put coordinate dimension in x y and z finally after all these years
-
-	// netcdf v3
-// Below results in failure (too big var) for elreno2013 full domain
 //	status = nc_create (ncfilename, NC_CLOBBER|NC_64BIT_OFFSET, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
-	// netcdf v3
 //	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4|NC_CLASSIC_MODEL, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
-	//TRAJ2014
 	status = nc_def_dim (ncid, "xh", snx, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", sny, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", snz, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
@@ -488,19 +468,14 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	status = nc_def_dim (ncid, "yf", sny, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zf", snz, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-// Define Cartesian arrays
-	//TRAJ2014
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yh", NC_FLOAT, 1, &nyh_dimid, &yhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zh", NC_FLOAT, 1, &nzh_dimid, &zhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-
 	status = nc_def_var (ncid, "xf", NC_FLOAT, 1, &nxf_dimid, &xfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yf", NC_FLOAT, 1, &nyf_dimid, &yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "time", NC_FLOAT, 0, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 
-
-	//TRAJ2014
 	status = nc_put_att_text(ncid, xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -517,19 +492,14 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	status = nc_def_var (ncid, "Z0", NC_INT, 0, dims, &z0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Z1", NC_INT, 0, dims, &z1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 
-//	status = nc_def_var (ncid, "time", NC_FLOAT, 0, dims, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-
-
 // This was in the ifdefs, don't know why
 //	d2[0] = nyh_dimid;
 //	d2[1] = nxh_dimid;
 // COMMENTED OUT TEMPORARILY since not saving it always
 //	status = nc_def_var (ncid, "thpertsfc", NC_FLOAT, 2, d2, &thsfcid);
 
-
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
-		//TRAJ2014
 		if(!strcmp(varname[ivar],"u"))
 		{
 			dims[0] = time_dimid;
@@ -632,7 +602,6 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,zhid,zhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	//TRAJ2014
       status = nc_put_var_float (ncid,xfid,xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yfid,yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,zfid,zfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -875,10 +844,11 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	}
 	status = nc_close(ncid); if (status != NC_NOERR)
 	{
-		printf("status = %i\n",status);
-		printf("ncid = %i\n",ncid);
+//		printf("ncid = %i\n",ncid);
 	    fprintf(stderr, "%s\n", nc_strerror(status));
-		ERROR_STOP("Could not close netcdf file (nc_close)");
+		printf("status = %i\n",status);
+		fprintf(stderr, "Warning: netcdf is throwing an hdf error but our file seems to be fine...\n");
+//		ERROR_STOP("Could not close netcdf file (nc_close)");
 	}
 
 	// Write command line option into file for future reference
@@ -936,14 +906,14 @@ void hdf2v5d(int argc, char *argv[])
 		ERROR_STOP(errorbuf);
 	}
 
-	if ((iret=fscanf (fp_data, "%s", topdir))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%s", v5dfilename))==EOF)exit(0); lflush (fp_data);
-    if ((iret=fscanf (fp_data, "%d%d", &xoff, &yoff))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d%d%d%d%d%d", &X0, &Y0, &X1, &Y1, &Z0, &Z1))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%i", &dt))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d%d", &t0, &t1))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d", &compression))==EOF)exit(0); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d %f %f", &sbox, &umove, &vmove))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%s", topdir))==EOF)ERROR_STOP("fscanf failed");; lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%s", v5dfilename))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+    if ((iret=fscanf (fp_data, "%d%d", &xoff, &yoff))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d%d%d%d%d%d", &X0, &Y0, &X1, &Y1, &Z0, &Z1))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%i", &dt))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d%d", &t0, &t1))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d", &compression))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d %f %f", &sbox, &umove, &vmove))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
 	ivar=0;
 	while ((fscanf (fp_data, "%s", &(varname[ivar][0]))) != EOF)
 	{
@@ -974,8 +944,8 @@ void hdf2v5d(int argc, char *argv[])
       Y1+=yoff;
 
 	/* make backup dat file for future reference */
-	if ((iret=sprintf (cpcmd, "cp %s hdf2v5d.dat.%s",datafile,v5dfilename))<0)exit(0);
-	if ((iret=system (cpcmd))==-1)exit(0);
+	if ((iret=sprintf (cpcmd, "cp %s hdf2v5d.dat.%s",datafile,v5dfilename))<0)ERROR_STOP("sprintf failed");
+	if ((iret=system (cpcmd))==-1)ERROR_STOP("system copy command failed");
 
 	snx = X1 - X0 + 1;
 	sny = Y1 - Y0 + 1;
