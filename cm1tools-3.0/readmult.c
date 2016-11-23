@@ -1,19 +1,5 @@
 /*
     This file is part of cm1tools, written by Leigh Orf (http://orf5.com)
-
-    cm1tools is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cm1tools is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cm1tools.  If not, see <http://www.gnu.org/licenses/>.
-
 */
 
 
@@ -88,46 +74,14 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 	int maxfilelength = 512;
 	char **nodefile;
 	char *linkname,*subtopdir;
-	char metafile[100];
-	char datasetname[100];
-	int idum,numhdf;
-	char ctime[6];
+	int numhdf;
 
 	int retval;
-	hsize_t count[3], dims[3];
-	hsize_t offset_in[3],offset_out[3];
-	hid_t file_id,dataset_id,dataspace_id,memoryspace_id;
-	int status;
-	float time;
 	int numi, numj;
-	int ix, iy, iz;
 	int ihdf;
 
-	int gnx, gny, gnz;
-	int fx0, fxf, fy0, fyf;	/* file indices */
-	int sx0, sxf, sy0, syf;
-	int ax0, axf, ay0, ayf;
-	int ax, ay, az;
-	int snx, sny, snz, dxleft, dxright, dybot, dytop, ixnode, iynode, k, nxnode, nynode;
-	short int *bufi, *bufi0;
-	float *buff, *buff0;
-	float val;
-	int rank;
-	int ir=0,jr;
- // filetimes is the actual times stored in the hdf5 file dirtimes
- // contains the list of times contained in the directory names, which
- // corresponds to the first time in the hdf files.
-	int *filetimes;
-	int time_is_in_file;
-
- // Some silly output - letter is proportional to fraction of 2D
- // horizontal extent of file read; z means you read the whole
- // horizontal space in the file, a means you read a tiny subset.
-
-	char *alph="abcdefghijklmnopqrstuvwxyz";
-	int letter;
-
-	char q_varname[100];
+	int fx0=0, fxf=0, fy0=0, fyf=0;	/* file indices */
+	int k,ixnode,iynode,nxnode;
 
 	typedef struct hdfstruct
 	{
@@ -138,9 +92,6 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 	} HDFstruct;
 
 	HDFstruct **hdf;
-
-	gnx = gxf - gx0 + 1;
-	gny = gyf - gy0 + 1;
 
 	numhdf = nodex * nodey;
 
@@ -163,7 +114,6 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 	if (ntimedirs == 1) tb = 0;
 	for (i = 0; i < numhdf; i++)
 	{
-		int fooi;
 		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
 		sprintf (nodefile[i], "%s/%s/%06i/%s_%06i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
 	}
@@ -207,14 +157,14 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 		}
 	}
 
-	snx = numi;
-	sny = numj;
-	dxleft = gx0 % snx;
-	dxright = gxf % snx;
-	dybot = gy0 % sny;
-	dytop = gyf % sny;
+//	snx = numi;
+//	sny = numj;
+//	dxleft = gx0 % snx;
+//	dxright = gxf % snx;
+//	dybot = gy0 % sny;
+//	dytop = gyf % sny;
 	nxnode = nodex;
-	nynode = nodey;
+//	nynode = nodey;
 // ORF AMS2014 help determine subdomain node numbers
 	printf("fx0 fy0 fxf fyf: %i %i %i %i\n",fx0,fy0,fxf,fyf);
 
@@ -266,38 +216,28 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		int nx, int ny, int nz, int nodex, int nodey)
 {
 	int dbg = 0;
-	int i, j, tb;
+	int i, tb;
 	int maxfilelength = 512;
 	char **nodefile;
-	char metafile[100];
 	char datasetname[100];
-	int idum,numhdf;
-	char ctime[6];
+	int numhdf;
 
-	hsize_t count[3], dims[3];
+	hsize_t count[3];
 	hsize_t offset_in[3],offset_out[3];
 	hid_t file_id,dataset_id,dataspace_id,memoryspace_id;
 	int status;
-	float time;
 	int numi, numj;
-	int ix, iy, iz;
 	int ihdf;
 
 	int gnx, gny, gnz;
-	int fx0, fxf, fy0, fyf;	/* file indices */
+	int fx0=0, fxf=0, fy0=0, fyf=0;	/* file indices */
 	int sx0, sxf, sy0, syf;
 	int ax0, axf, ay0, ayf;
-	int ax, ay, az;
-	int snx, sny, snz, dxleft, dxright, dybot, dytop, ixnode, iynode, k, nxnode, nynode;
-	short int *bufi, *bufi0;
-	float *buff, *buff0;
-	float val;
+	int snx, sny, snz, dxleft, dxright, dybot, dytop, ixnode, iynode, k, nxnode;
 	int rank;
-	int ir=0,jr;
  // filetimes is the actual times stored in the hdf5 file dirtimes
  // contains the list of times contained in the directory names, which
  // corresponds to the first time in the hdf files.
-	int *filetimes;
 	int time_is_in_file;
 
  // Some silly output - letter is proportional to fraction of 2D
@@ -308,7 +248,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	int letter;
 	int retval;
 
-	char q_varname[100];
 
 	typedef struct hdfstruct
 	{
@@ -358,7 +297,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 // it - do we really need this?
 	for (i = 0; i < numhdf; i++)
 	{
-		int fooi;
 		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
 		sprintf (nodefile[i], "%s/%s/%06i/%s_%06i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
 	}
@@ -452,7 +390,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	dybot = gy0 % sny;
 	dytop = gyf % sny;
 	nxnode = nodex;
-	nynode = nodey;
 
 	/*
 

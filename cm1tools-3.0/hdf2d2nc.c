@@ -4,7 +4,6 @@
 #include "hdforf.h"
 #include <netcdf.h>
 
-#define MAXVARS 20
 #define FALSE 0
 
 #define P2(x,y,mx) ((y)*(mx)+(x))
@@ -56,42 +55,28 @@ herr_t second_pass(hid_t loc_id, const char *name, void *opdata)
 
 
 
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
 	/* hdf vars */
 
-	char hdf5filename[100], *ncfilename, *tmpfilename, ncbase[100];
-	float dx, dy, dz;
-	float *dzc, *dze, *zcntr, *ubar, *vbar;
+	char hdf5filename[100], *ncfilename, *tmpfilename;
+	float dx, dy;
 	float *twodvar;
-	float ubox, vbox;
-	float dxkm, dykm;
-	float dl1,dl2,sl1,sl2,angle;
-	int dt, t0, t1;
-	int ivar = 0;
-	int i, ix, iy, iz, count, ib, nblocks, status;
-	int nx,ny,nz,nodex,nodey;
+	int status;
+	int nx,ny,nz;
 
 	// Should nuke most of these don't need them after iterate //
 	
 
 	char fullvarname[100];
 
-	float *xh,*yh,*zh,*xf,*yf,*zf,*th0,*pi0,*qv0,*u0,*v0;
-	float time;
-	int xh_id,yh_id,zh_id,th0_id,pi0_id,qv0_id,u0_id,v0_id;
-	int xf_id,yf_id,zf_id;
+	float *xh,*yh,*xf,*yf,*th0,*pi0,*qv0,*u0,*v0;
+	int xh_id,yh_id,th0_id,pi0_id,qv0_id,u0_id,v0_id;
+	int xf_id,yf_id;
 	int dx_id, dy_id;
-	int angle_id,sl1_id,sl2_id,dl1_id,dl2_id;
 
-	int time_id;
-
-	int arsize,nvar;
-	int firsthdf;
-	hid_t group_id;
-	char name[100];
 	hid_t file_id;
-	int ncid,nxid,nyid,nzid,x0id,y0id,z0id,x1id,y1id,z1id;
+	int ncid,nxid,nyid,nzid;
 	int unxid,vnyid,wnzid;
 	size_t start[3],edges[3];
 	int dims[3];
@@ -130,10 +115,10 @@ main (int argc, char *argv[])
 //	printf("dl1 = %f dl2 = %f sl1 = %f sl2 = %f time = %f\n",dl1,dl2,sl1,sl2,time);
 
 	twodvar = (float *) malloc (nx * ny * sizeof(float));
-	zh = (float *) malloc (nz * sizeof(float));
+//	zh = (float *) malloc (nz * sizeof(float));
 	yh = (float *) malloc (ny * sizeof(float));
 	xh = (float *) malloc (nx * sizeof(float));
-	zf = (float *) malloc ((nz+1) * sizeof(float));
+//	zf = (float *) malloc ((nz+1) * sizeof(float));
 	yf = (float *) malloc ((ny+1) * sizeof(float));
 	xf = (float *) malloc ((nx+1) * sizeof(float));
 	th0 = (float *) malloc (nz * sizeof(float));

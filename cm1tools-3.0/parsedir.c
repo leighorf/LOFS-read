@@ -4,13 +4,16 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <limits.h>
+#include "hdforf.h"
 #include "errorf.h"
 
 
 int
 isNumeric (const char *s)
 {
-	char *p;
 	int i;
 
 	if (s == NULL || *s == '\0')
@@ -51,7 +54,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i,j, ns;
+	int i,j,iret,ns;
 	char tmpstr[256];
 	char timedir_full[512];
 
@@ -104,11 +107,11 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 	{
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) != NULL)
 		{
-			fscanf(fp,"%i\n",dn);
-			fscanf(fp,"%i",&nnodedirs);
+			if((iret=fscanf(fp,"%i\n",dn))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i",&nnodedirs))==EOF)exit(0);
 			for (i=0; i<nnodedirs;i++)
 			{
-				fscanf(fp,"%s",nodedir[i]);
+				if((iret=fscanf(fp,"%s",nodedir[i]))==EOF)exit(0);
 			}
 			fclose(fp);
 			printf("Read cached nodedir\n");
@@ -121,7 +124,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, int *times, int ntimedirs, 
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, k, ns, itime;
+	int i, j, k, ns, itime, iret;
 	char tmpstr[256], firstbase[256], base[256];
 	char nstr[6];
 	char sd;
@@ -234,8 +237,8 @@ get_sorted_time_dirs (char *basedir, char **timedir, int *times, int ntimedirs, 
 	{
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
 		{
-			fscanf(fp,"%i\n",&ntimedirs);
-			for (i = 0; i < ntimedirs; i++) fscanf(fp,"%s %i\n",timedir[i],&(times[i]));
+			if((iret=fscanf(fp,"%i\n",&ntimedirs))==EOF)exit(0);
+			for (i = 0; i < ntimedirs; i++) if((iret=fscanf(fp,"%s %i\n",timedir[i],&(times[i])))==EOF)exit(0);
 			fclose(fp);
 			printf("Read cached sorted time dirs\n");
 //			for (i = 0; i < ntimedirs; i++) printf("%s %i\n",timedir[i],times[i]);
@@ -248,7 +251,7 @@ get_num_time_dirs (char *basedir)
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, ns, itime;
+	int i, j, ns, itime,iret;
 	char tmpstr[256], firstbase[256], base[256];
 	char nstr[6];
 	char sd;
@@ -279,6 +282,7 @@ get_num_time_dirs (char *basedir)
 				if (isNumeric (nstr))
 				{
 					itime = strtol (nstr, NULL, 10);
+					if (itime==LONG_MIN||itime==LONG_MAX) exit(0);
 					i = 0;
 					sd = 'a';
 					while (sd != '.')
@@ -328,7 +332,7 @@ get_num_time_dirs (char *basedir)
 	{
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) != NULL)
 		{
-			fscanf(fp,"%i",&j);
+			if((iret=fscanf(fp,"%i",&j))==EOF)exit(0);
 			fclose(fp);
 			printf("Read cached num_time_dirs of %i\n",j);
 		}
@@ -342,7 +346,7 @@ get_num_node_dirs (char *topdir, char *timedir)
 {
 	DIR *dip;
 	struct dirent *dit;
-	int j, ns;
+	int j, ns,iret;
 	char timedir_full[512];
 	char tmpstr[256];
 
@@ -382,7 +386,7 @@ get_num_node_dirs (char *topdir, char *timedir)
 	{
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) != NULL)
 		{
-			fscanf(fp,"%i",&j);
+			if((iret=fscanf(fp,"%i",&j))==EOF)exit(0);
 			fclose(fp);
 			printf("Read cached num node dirs\n");
 		}
@@ -402,10 +406,7 @@ get_first_hdf_file_name (char *topdir, char *timedir, char *nodedir, char *filen
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, ns, itime;
 	char basedir_full[512], tmpstr[256];
-	char nstr[6];
-	char sd;
 
 	sprintf (basedir_full, "%s/%s/%s", topdir, timedir, nodedir);
 
@@ -430,21 +431,17 @@ get_first_hdf_file_name (char *topdir, char *timedir, char *nodedir, char *filen
 	sprintf (filename, "%s/%s", basedir_full, tmpstr);
 }
 
-#include <hdf5.h>
 int *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex)
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, k, ns, itime;
+	int i, j, k,iret;
 	char basedir_full[512], tmpstr[512];
 	hid_t file_id,dataset_id,dataspace_id;
 	hsize_t dims[1],maxdims[1];
-	char nstr[6];
-	char sd;
 	int *filetimes;
 	int *alltimes;
-	int spn;
 	char *foochar="a";//set to anything
 
 	FILE *fp;
@@ -453,9 +450,9 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 //
 //
 
+	alltimes = (int *)malloc(sizeof(int)); //to keep compiler from complaining
 	if ((fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
 	{
-
 		*ntottimes = 0;
 		k = 0;
 		for (i = 0; i < ntimedirs; i++)
@@ -520,7 +517,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			
 			(*ntottimes) += dims[0];
 
-			alltimes = (k==0)?(int *)malloc(dims[0] * sizeof(int)):(int *)realloc (alltimes,(*ntottimes) * sizeof(int));
+			alltimes = (k==0)?(int *)malloc(dims[0]*sizeof(int)):(int *)realloc(alltimes,(*ntottimes)*sizeof(int));
 
 			for (j=0; j<dims[0];j++)alltimes[j+k] = filetimes[j];
 			k = *ntottimes;
@@ -549,12 +546,12 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 	{
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
-			fscanf(fp,"%s",firstfilename);
-			fscanf(fp,"%i",ntottimes);
+			if((iret=fscanf(fp,"%s",firstfilename))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i",ntottimes))==EOF)exit(0);
 			alltimes = (int *)malloc(*ntottimes * sizeof(int));
 			for (i=0; i<*ntottimes; i++)
 			{
-				fscanf(fp,"%i",&(alltimes[i]));
+				if((iret=fscanf(fp,"%i",&(alltimes[i])))==EOF)exit(0);
 			}
 			printf("Read cached firstfilename and all times\n");
 		}

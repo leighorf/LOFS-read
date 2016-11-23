@@ -1,19 +1,5 @@
 /*
-    This file is part of cm1tools, written by Leigh Orf (http://orf5.com)
-
-    cm1tools is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    cm1tools is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with cm1tools.  If not, see <http://www.gnu.org/licenses/>.
-
+    This file is part of cm1tools, written by Leigh Orf (http://orf.media)
 */
 
 #include <stdio.h>
@@ -24,10 +10,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <math.h>
-#define EATSHIT
-#ifdef EATSHIT
 #include <hdf5.h> 
-#endif
+#include <hdf5_hl.h>
+#include "v5d.h"
 void get_hdf_metadata(char *base, int node, int itime, int *nx, int *ny, int *nz, int *nodex, int *nodey);
 void read_hdf_mult_md(float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
     int *dirtimes, int *alltimes, int ntottimes, int itime, char *varname,
@@ -42,12 +27,13 @@ void get0dint(hid_t sd_id, char *varname, int *var);
 void get0dfloat(hid_t sd_id, char *varname, float *var);
 void get1dint(hid_t sd_id, char *varname, int *var, int p0, int np);
 void get1dfloat(hid_t sd_id, char *varname, float *var, int p0, int np);
+void get2dfloat (hid_t file_id, char *varname, float *var, int y0, int ny, int x0, int nx);
 void put0dint(hid_t sd_id, char *varname, int *var);
 void put0dfloat(hid_t sd_id, char *varname, float *var);
 void put1dfloat(hid_t sd_id, char *varname, float *var, int p0, int np);
 
 int isNumeric (const char * s);
-static int cmpstringp(const void *p1, const void *p2);
+//static int cmpstringp(const void *p1, const void *p2);
 void sortarray(char **strarray,int nel,int csize);
 void get_sorted_node_dirs(char *topdir, char *timedir,char **nodedir, int *dn, int nnodedirs);
 void get_sorted_time_dirs(char *topdir, char **timedir, int *times, int ntimedirs, char *base);

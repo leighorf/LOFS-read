@@ -6,20 +6,19 @@
  *
  */
 
-#include <stdio.h>
 #include <math.h>
-#include <string.h>
 #include "hdforf.h"
+#include <netcdf.h>
 #include "errorf.h"
 
 #define TRUE 1
 #define FALSE 0
-#define MAXVARS 100
+#define MAXVARIABLES 100
 
 #define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
 
 /* These vars are global, everyone uses them. Or I am lazy. */
-char topdir[512];
+char topdir[PATH_MAX+1];
 int dn;
 char **timedir; 
 char **nodedir;
@@ -42,18 +41,18 @@ void lflush (FILE * fp);
 
 int main(int argc, char *argv[])
 {
-	char nstr[6];
-	char ctime[6];
+	char *cptr;
 	char progname[512];
+	char histpath[512];
 	int we_are_hdf2nc = FALSE;
 	int we_are_hdf2v5d = FALSE;
 	int we_are_makevisit = FALSE;
 	int we_are_linkfiles = FALSE;
 
-	int time;
 	int idum=0;
 
 	strcpy(progname,argv[0]);
+	strcpy(histpath,argv[1]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
 	else if (strspn("hdf2v5d",progname) == 7) we_are_hdf2v5d = TRUE;
 	else if (strspn("makevisit",progname) == 9) we_are_makevisit = TRUE;
@@ -98,8 +97,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
-	realpath(argv[1],topdir); // Need absolute path of 3D directory
+	cptr=realpath(histpath,topdir);
 
 	grok_cm1hdf5_file_structure();
 //	get_first_hdf_file_name(topdir,timedir[0],nodedir[0],firstfilename); printf("First filename = %s\n",firstfilename);
@@ -195,13 +193,13 @@ int main(int argc, char *argv[])
  * */
 
 		int i,rank,nvars;
-		hid_t f_id,g_id,dset_id,dspace_id,strtype;
+		hid_t f_id,g_id,strtype;
 		H5G_info_t group_info;
 		hsize_t dims[1];
 		char dirbase[200];
 		char visitfile[220];
 		char groupname[220];
-		char varname[MAXVARS][40]; //Yeah I know also hardcoded in avtcm1visitFileFormat.h
+		char varname[MAXVARIABLES][40]; //Yeah I know also hardcoded in avtcm1visitFileFormat.h
 
 		float *xhfull,*yhfull,*zh;
 
@@ -302,13 +300,14 @@ int main(int argc, char *argv[])
 		rank=1;dims[0]=ny; H5LTmake_dataset_float (f_id, "/yhfull", rank, dims, yhfull);
 		rank=1;dims[0]=nz; H5LTmake_dataset_float (f_id, "/zh", rank, dims, zh);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nvars", rank, dims, &nvars);
-		//char varname[MAXVARS][40]; Making these fixed makes H5Lget_name_by_idx above easier
+		//char varname[MAXVARIABLES][40]; Making these fixed makes H5Lget_name_by_idx above easier
 		strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,40); rank=1;dims[0]=nvars;
 		H5LTmake_dataset (f_id, "/varname", rank, dims, strtype, varname[0]);
 		if (H5Fclose(f_id) < 0) ERROR_STOP("Cannot close visit metadata hdf5 file");
 		printf("Succesfully wrote %s which can now be read by VisIt using the cm1visit plugin.\n",visitfile);
 	}
 
+	exit(0);
 }
 
 void grok_cm1hdf5_file_structure()
@@ -350,18 +349,17 @@ void grok_cm1hdf5_file_structure()
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, int t0)
 {
 
-#include <netcdf.h>
 
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
 	float *qvar1,*qvar2,*qvar3;
-	float *thpert,*qvpert,*qtot,*ql;
+	float *thpert,*qvpert,*qtot;
 	float reps;
 	float *th0,*qv0;
 	float time_f;
 
 	int i,ix,iy,iz,nvar;
-	int j,k,ii;
-	char varname[MAXVARS][50];
+	int j=0,k=0,ii;
+	char varname[MAXVARIABLES][50];
 	char ncfilename[512];
 
 	int snx,sny,snz;
@@ -373,19 +371,16 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	int nxh_dimid,nyh_dimid,nzh_dimid;
 	int nxf_dimid,nyf_dimid,nzf_dimid,time_dimid,timeid;
 	int x0id,y0id,z0id,x1id,y1id,z1id;
-	int thsfcid,uid,vid,wid,xvortid,yvortid,zvortid;
 	//TRAJ2014
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
-	int x_dimid,y_dimid,z_dimid;
-	int varnameid[MAXVARS];
+	int varnameid[MAXVARIABLES];
 	int dims[4];
-	int d2[2];
+//	int d2[2];
 	size_t start[4],edges[4];
-	size_t s2[2],e2[2];
 	int ivar;
 	long int bufsize;
-	float *xhfull,*yhfull,*zh,*xffull,*yffull,*zf;
+	float *xhfull,*yhfull,*zh,*zf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
 	//TRAJ2014
 	FILE *fp;
@@ -422,11 +417,6 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	edges[1] = snz;
 	edges[2] = sny;
 	edges[3] = snx;
-
-	s2[0]=0;
-	s2[1]=0;
-	e2[0]=sny;
-	e2[1]=snx;
 
 	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
 	bufsize = (long) (snx+1) * (long) (sny+1) * (long) (snz+1) * (long) sizeof(float);
@@ -531,9 +521,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 
 // This was in the ifdefs, don't know why
-	d2[0] = nyh_dimid;
-	d2[1] = nxh_dimid;
-	// COMMENTED OUT TEMPORARILY since not saving it always
+//	d2[0] = nyh_dimid;
+//	d2[1] = nxh_dimid;
+// COMMENTED OUT TEMPORARILY since not saving it always
 //	status = nc_def_var (ncid, "thpertsfc", NC_FLOAT, 2, d2, &thsfcid);
 
 
@@ -828,6 +818,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		}
 		else if(!strncmp(varname[ivar],"thrhopert2",(size_t)(10)))
 		{
+			if ((qvar1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar1");
+			if ((qvar2 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
+			if ((qvar3 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
 			reps = 461.5 / 287.04; //from constants.incl in cm1
 			read_hdf_mult_md(qvar1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -865,6 +858,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 					}
 				}
 			}
+			free(qvar1); free(qvar2); free(qvar3);
 		}
 		else
 		{
@@ -879,9 +873,15 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		}
 		fprintf(stdout,")\n");
 	}
-	status = nc_close(ncid); if (status != NC_NOERR) ERROR_STOP("Could not close netcdf file (nc_close)");
+	status = nc_close(ncid); if (status != NC_NOERR)
+	{
+		printf("status = %i\n",status);
+		printf("ncid = %i\n",ncid);
+	    fprintf(stderr, "%s\n", nc_strerror(status));
+		ERROR_STOP("Could not close netcdf file (nc_close)");
+	}
+
 	// Write command line option into file for future reference
-	
 
 	sprintf(cmdfilename,"%s%s",ncfilename,".cmd");
 	if ((fp = fopen(cmdfilename,"w")) != NULL)
@@ -911,8 +911,9 @@ void hdf2v5d(int argc, char *argv[])
 	int ivar,nv5dvars,ib,iz;
 	float *buffer,*ubuffer,*vbuffer,*wbuffer,*xh,*yh,*zh,*xyslice;
 	float dx,dy;
-	char v5dvarname[MAXVARS][10];
-	char varname[MAXVARS][10];
+	char v5dvarname[MAXVARIABLES][10];
+	char varname[MAXVARIABLES][10];
+	int iret;
 
 	float dxkm,dykm;
 
@@ -921,7 +922,7 @@ void hdf2v5d(int argc, char *argv[])
 	float proj_args[4]; // Projection arguments for our grid 
 	int *nla;
 
-	hid_t file_id,sd_id;
+	hid_t file_id;
 
 
 	if (argc == 3)	strcpy(datafile,argv[2]);
@@ -935,14 +936,14 @@ void hdf2v5d(int argc, char *argv[])
 		ERROR_STOP(errorbuf);
 	}
 
-	fscanf (fp_data, "%s", topdir); lflush (fp_data);
-	fscanf (fp_data, "%s", v5dfilename); lflush (fp_data);
-      fscanf (fp_data, "%d%d", &xoff, &yoff); lflush (fp_data);
-	fscanf (fp_data, "%d%d%d%d%d%d", &X0, &Y0, &X1, &Y1, &Z0, &Z1); lflush (fp_data);
-	fscanf (fp_data, "%i", &dt); lflush (fp_data);
-	fscanf (fp_data, "%d%d", &t0, &t1); lflush (fp_data);
-	fscanf (fp_data, "%d", &compression); lflush (fp_data);
-	fscanf (fp_data, "%d %f %f", &sbox, &umove, &vmove); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%s", topdir))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%s", v5dfilename))==EOF)exit(0); lflush (fp_data);
+    if ((iret=fscanf (fp_data, "%d%d", &xoff, &yoff))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d%d%d%d%d%d", &X0, &Y0, &X1, &Y1, &Z0, &Z1))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%i", &dt))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d%d", &t0, &t1))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d", &compression))==EOF)exit(0); lflush (fp_data);
+	if ((iret=fscanf (fp_data, "%d %f %f", &sbox, &umove, &vmove))==EOF)exit(0); lflush (fp_data);
 	ivar=0;
 	while ((fscanf (fp_data, "%s", &(varname[ivar][0]))) != EOF)
 	{
@@ -973,7 +974,8 @@ void hdf2v5d(int argc, char *argv[])
       Y1+=yoff;
 
 	/* make backup dat file for future reference */
-	sprintf (cpcmd, "cp %s hdf2v5d.dat.%s",datafile,v5dfilename); system (cpcmd);
+	if ((iret=sprintf (cpcmd, "cp %s hdf2v5d.dat.%s",datafile,v5dfilename))<0)exit(0);
+	if ((iret=system (cpcmd))==-1)exit(0);
 
 	snx = X1 - X0 + 1;
 	sny = Y1 - Y0 + 1;
@@ -1048,7 +1050,7 @@ void hdf2v5d(int argc, char *argv[])
 	}
 
 	strcat(v5dfilename,".v5d");
-	v5dCreate (v5dfilename, nblocks, nv5dvars, sny, snx, nla, v5dvarname, timestamp, datestamp, compression, projection, proj_args, vertical, zh);
+	v5dCreate (v5dfilename, nblocks, nv5dvars, sny, snx, nla, (const char (*)[10]) v5dvarname, timestamp, datestamp, compression, projection, proj_args, vertical, zh);
 
 	for (ib = 1; ib <= nblocks; ib++)
 	{

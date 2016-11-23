@@ -47,15 +47,10 @@ void close_cm1_hdf_file (int32 sd_id)
 void
 get0dint (hid_t file_id, char *varname, int *var)
 {
-	hid_t rank, dims[3], start[3], stride[3];
 	hid_t dataset_id;
 	int status;
 
 	/* shouldn't need these any more */
-	rank = 1;
-	dims[0] = 1;
-	start[0] = 0;
-	stride[0] = 1;
 	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_INT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
@@ -69,15 +64,9 @@ void get0dint_(hid_t *file_id,char *varname, int *var)
 void
 get0dfloat (hid_t file_id, char *varname, float *var)
 {
-	hid_t rank, dims[1], start[1], stride[1];
 	hid_t dataset_id;
 	int status;
 
-	/* shouldn't need these any more */
-	rank = 1;
-	dims[0] = 1;
-	start[0] = 0;
-	stride[0] = 1;
 	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_FLOAT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
