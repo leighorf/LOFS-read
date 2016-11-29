@@ -13,9 +13,9 @@
 #include <hdf5.h> 
 #include <hdf5_hl.h>
 #include "v5d.h"
-void get_hdf_metadata(char *base, int node, int itime, int *nx, int *ny, int *nz, int *nodex, int *nodey);
+void get_hdf_metadata(char *base, int *nx, int *ny, int *nz, int *nodex, int *nodey);
 void read_hdf_mult_md(float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
-    int *dirtimes, int *alltimes, int ntottimes, int itime, char *varname,
+    double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
     int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
     int nx, int ny, int nz, int nodex, int nodey);
 void link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn, int *dirtimes, int *alltimes, int ntottimes,
@@ -36,8 +36,8 @@ int isNumeric (const char * s);
 //static int cmpstringp(const void *p1, const void *p2);
 void sortarray(char **strarray,int nel,int csize);
 void get_sorted_node_dirs(char *topdir, char *timedir,char **nodedir, int *dn, int nnodedirs);
-void get_sorted_time_dirs(char *topdir, char **timedir, int *times, int ntimedirs, char *base);
+void get_sorted_time_dirs(char *topdir, char **timedir, double *times, int ntimedirs, char *base);
 int get_num_time_dirs(char *topdir);
 int get_num_node_dirs(char *topdir, char *timedir);
 void get_first_hdf_file_name(char *topdir, char *timedir, char *nodedir, char *filename);
-int * get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes,char *firstfilename, int *firsttimedirindex);
+double * get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes,char *firstfilename, int *firsttimedirindex);

@@ -10,6 +10,7 @@
 #include "hdforf.h"
 #include "errorf.h"
 
+#define MAXSTR (512)
 
 int
 isNumeric (const char *s)
@@ -37,16 +38,52 @@ cmpintp (const void *p1, const void *p2)
 	return *(int *) p1 - *(int *) p2;
 }
 
+static int
+cmpfloatp (const void *p1, const void *p2)
+{
+	static int retval;
+	float fdiff;
+	fdiff = *(float *) p1 - *(float *) p2;
+	if (fdiff < 0.0) retval= -1;
+	if (fdiff > 0.0) retval= 1;
+	if (fdiff == 0.0) retval= 0;
+	return retval;
+}
+
+static int
+cmpdoublep (const void *p1, const void *p2)
+{
+	double fdiff;
+	static int retval;
+	fdiff = *(double *) p1 - *(double *) p2;
+	if (fdiff < 0.0) retval= -1;
+	if (fdiff > 0.0) retval= 1;
+	if (fdiff == 0.0) retval= 0;
+	return retval;
+}
+
 void
-sortchararray (char **strarray, int nel, int csize)
+sortchararray (char **strarray, int nel)
 {
 	qsort (strarray, nel, sizeof (char *), cmpstringp);
 }
 
 void
-sortintarray (int *intarray, int nel, int csize)
+sortintarray (int *intarray, int nel)
 {
 	qsort (intarray, nel, sizeof (int), cmpintp);
+}
+
+void
+sortfloatarray (float *floatarray, int nel)
+{
+	qsort (floatarray, nel, sizeof (float), cmpfloatp);
+}
+
+void
+sortdoublearray (double *floatarray, int nel)
+{
+	qsort (floatarray, nel, sizeof (double), cmpdoublep);
 }
 
 void
@@ -55,8 +92,8 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 	DIR *dip;
 	struct dirent *dit;
 	int i,j,iret,ns;
-	char tmpstr[256];
-	char timedir_full[512];
+	char tmpstr[256]; //size of dit->d_name
+	char timedir_full[MAXSTR];
 
 	FILE *fp;
 
@@ -76,7 +113,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 		{
 			strcpy (tmpstr, dit->d_name);
 			ns = strlen (tmpstr);
-			if (ns == 6 && isNumeric (tmpstr))
+			if (ns == 7 && isNumeric (tmpstr))
 			{
 				strcpy (nodedir[j++], tmpstr);
 			}
@@ -87,7 +124,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 			perror ("closedir");
 			ERROR_STOP ("Can't close directory");
 		}
-		sortchararray (nodedir, nnodedirs, 7);
+		sortchararray (nodedir, nnodedirs);
 		*dn = (j != 1) ? (atoi (nodedir[1]) - atoi (nodedir[0])) : -1;
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
@@ -107,11 +144,11 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 	{
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%i\n",dn))==EOF)exit(0);
-			if((iret=fscanf(fp,"%i",&nnodedirs))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i\n",dn))==EOF)ERROR_STOP("fscanf failed");
+			if((iret=fscanf(fp,"%i",&nnodedirs))==EOF)ERROR_STOP("fscanf failed");
 			for (i=0; i<nnodedirs;i++)
 			{
-				if((iret=fscanf(fp,"%s",nodedir[i]))==EOF)exit(0);
+				if((iret=fscanf(fp,"%s",nodedir[i]))==EOF)ERROR_STOP("fscanf failed");
 			}
 			fclose(fp);
 			printf("Read cached nodedir\n");
@@ -120,14 +157,15 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 }
 
 void
-get_sorted_time_dirs (char *basedir, char **timedir, int *times, int ntimedirs, char *filebase)
+get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, char *filebase)
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, k, ns, itime, iret;
-	char tmpstr[256], firstbase[256], base[256];
-	char nstr[6];
-	char sd;
+	int i, j, k, ns, iret;
+	char tmpstr[256]; // size of dit->d_name
+	char firstbase[MAXSTR], base[MAXSTR],dstring[MAXSTR];
+	char rhsstr[8];
+	char lhsstr[6];
 
 	FILE *fp;
 
@@ -140,96 +178,94 @@ get_sorted_time_dirs (char *basedir, char **timedir, int *times, int ntimedirs, 
 			fprintf (stderr, "Directory = %s\n", basedir);
 			ERROR_STOP ("Can't open directory");
 		}
-		while ((dit = readdir (dip)) != NULL)
+		while ((dit = readdir (dip)) != NULL) //ORF the problem was times was passed as int * so we are past the "hang" problem at least
 		{
+			printf("doing strcpy to tmpstr...");
 			strcpy (tmpstr, dit->d_name);
+			printf("...done\n");
+			printf("Working on %s\n",tmpstr);
 			ns = strlen (tmpstr);
-			if (ns > 5)
+			printf("ns = %i\n",ns);
+			if (ns > 15)
 			{
-				for (i = 0; i < 5; i++)
-					nstr[i] = tmpstr[ns - 5 + i];
-				nstr[5] = '\0';
-				if (isNumeric (nstr))
+				for (i = 0; i < 7; i++)
+					rhsstr[i] = tmpstr[ns - 7 + i];
+				rhsstr[7] = '\0';
+				if (isNumeric (rhsstr))
 				{
-					itime = strtol (nstr, NULL, 10);
-					times[j] = itime;
-					i = ns - 1;
-					sd = 'a';
-	// Sicne we sometimes use . in the base, we will work backwards and
-	// choose the stuff *before* the second dot *from the right*
-					while (sd != '.')
-					{
-						sd = tmpstr[i];
-						if (j == 0)
-							firstbase[i] = sd;
-						else
-							base[i] = sd;
-						i--;
-					}
-					while (sd != '.')
-					{
-						sd = tmpstr[i];
-						if (j == 0)
-							firstbase[i] = sd;
-						else
-							base[i] = sd;
-						i--;
-					}
-					for (k = 0; k < i + 1; k++)
-					{
-						if (j == 0)
-						{
-							firstbase[k] = tmpstr[k];
-							firstbase[k + 1] = '\0';
-						}
-						else
-						{
-							base[k] = tmpstr[k];
-							base[k + 1] = '\0';
-						}
-					}
-
-					if (j > 0)
-					{
-						if (strcmp (firstbase, base) != 0)
-						{
-							printf ("ACK: we have more than one base!\n");
-							printf ("firstbase = %s, base = %s\n", firstbase, base);
-							ERROR_STOP ("Only one basename allowed per directory");
-						}
-					}
-					if (j == 0)
-					{
-						printf ("firstbase = %s\n", firstbase);
-						strcpy(filebase,firstbase);
-					}
-
-					strcpy (timedir[j], dit->d_name);
-					j++;
-
-	// ORF 8/10/11 if we want to reduce the number of opendir/readdirs we could
-	// allocate our timedir array here incrementally. There is a lot of
-	// redundancy between get_num_time_dirs (which I use only to figure how
-	// many time directory entries there are in order to malloc the array of
-	// chars).
-
-	// ORF 2/5/13 Above is no longer as much a concern, can just adopt the
-	// same approach as VisIt if this becomes an issue (it hasn't yet!)
-
+					for (i = 0; i < 5; i++)
+						lhsstr[i] = tmpstr[ns - 13 + i]; // 13 = 7+5+1
+					lhsstr[5] = '\0';
 				}
+				else
+				{
+					ERROR_STOP("Something is wrong with our timedir format");
+				}
+				if (isNumeric (lhsstr))
+				{
+					sprintf(dstring,"%s.%s",lhsstr,rhsstr);
+					printf("dstring = %s\n",dstring);
+					times[j] = atof(dstring); //ding
+					printf("j = %i times = %lf\n",j,times[j]);
+				}
+				else
+				{
+					ERROR_STOP("Something is wrong with our timedir format");
+				}
+// Sicne we sometimes use . in the base, we will work backwards and
+// choose the stuff *before* the second dot *from the right*
+				i = ns - 1;
+				while (tmpstr[i--]!='.');
+				while (tmpstr[i--]!='.');
+				i++;
+				printf("i = %i, j = %i\n",i,j);
+				for (k = 0; k < i; k++)
+				{
+					if (j == 0) firstbase[k] = tmpstr[k];
+					else             base[k] = tmpstr[k];
+				}
+				firstbase[k] = '\0';
+				base[k] = '\0';
+
+				if (j > 0)
+				{
+					printf("base = %s\n",base);
+					if (strcmp (firstbase, base) != 0)
+					{
+						printf ("ACK: we have more than one base!\n");
+						printf ("firstbase = %s, base = %s\n", firstbase, base);
+						ERROR_STOP ("Only one basename allowed per directory");
+					}
+				}
+				if (j == 0)
+				{
+					printf ("firstbase = %s\n", firstbase);
+					strcpy(filebase,firstbase);
+				}
+
+				printf("Doing strcpy...");
+				strcpy (timedir[j], dit->d_name);
+				printf("...done\n");
+				j++;
 			}
+			else if( !strcmp(tmpstr,".") || !strcmp(tmpstr,".."))
+			{
+				// do nothing; we have happened upon '.' or '..'
+			}
+			else ERROR_STOP("Something wrong with file names in timedir");
+			printf("Made it to end of while dit loop\n");
 		}
 		if (closedir (dip) == -1)
 		{
 			perror ("closedir");
 			ERROR_STOP ("Can't close directory");
 		}
-		sortchararray (timedir, ntimedirs, 256);
-		sortintarray (times, ntimedirs, 4);
+		sortchararray (timedir, ntimedirs);
+		sortdoublearray (times, ntimedirs);
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","w")) != NULL) 
 		{
 			fprintf(fp,"%i\n",ntimedirs);
-			for (i = 0; i < ntimedirs; i++) fprintf(fp,"%s %i\n",timedir[i],times[i]);
+			for (i = 0; i < ntimedirs; i++) fprintf(fp,"%s %lf\n",timedir[i],times[i]);
 			fclose(fp);
 		}
 	}
@@ -237,11 +273,11 @@ get_sorted_time_dirs (char *basedir, char **timedir, int *times, int ntimedirs, 
 	{
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
 		{
-			if((iret=fscanf(fp,"%i\n",&ntimedirs))==EOF)exit(0);
-			for (i = 0; i < ntimedirs; i++) if((iret=fscanf(fp,"%s %i\n",timedir[i],&(times[i])))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i\n",&ntimedirs))==EOF)ERROR_STOP("fscanf failed");
+			for (i = 0; i < ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",timedir[i],&(times[i])))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
 			printf("Read cached sorted time dirs\n");
-//			for (i = 0; i < ntimedirs; i++) printf("%s %i\n",timedir[i],times[i]);
+//			for (i = 0; i < ntimedirs; i++) printf("FART: %s %lf\n",timedir[i],times[i]);
 		}
 	}
 }
@@ -251,9 +287,11 @@ get_num_time_dirs (char *basedir)
 {
 	DIR *dip;
 	struct dirent *dit;
-	int i, j, ns, itime,iret;
-	char tmpstr[256], firstbase[256], base[256];
-	char nstr[6];
+	int i, j, ns, iret;
+	char tmpstr[256]; // size of dit->d_name
+	char firstbase[MAXSTR], base[MAXSTR];
+	char rhsstr[8]; // 7 digits to right hand side of . in time which is SSSSS.FFFFFFF (plus null termination char)
+	char lhsstr[6]; // 5 digits to left hand side of . in time (plus null termination char)
 	char sd;
 	
 	FILE *fp;
@@ -273,45 +311,59 @@ get_num_time_dirs (char *basedir)
 			strcpy (tmpstr, dit->d_name);
 	//printf("ORF: debug: tmpstr = %s\n",tmpstr);
 			ns = strlen (tmpstr);
-			if (ns > 5)
+			printf("ns = %i\n",ns);
+			if (ns > 15 )
 			{
-				for (i = 0; i < 5; i++)
-					nstr[i] = tmpstr[ns - 5 + i];
-				nstr[5] = '\0';
-	//printf("ORF: debug: nstr = %s\n",nstr);
-				if (isNumeric (nstr))
+				for (i = 0; i < 7; i++) rhsstr[i] = tmpstr[ns - 7 + i];
+				rhsstr[7] = '\0';
+	//printf("ORF: debug: rhsstr = %s\n",rhsstr);
+				if (isNumeric (rhsstr))
 				{
-					itime = strtol (nstr, NULL, 10);
-					if (itime==LONG_MIN||itime==LONG_MAX) exit(0);
-					i = 0;
-					sd = 'a';
-					while (sd != '.')
+					for (i = 0; i < 5; i++) lhsstr[i] = tmpstr[ns - 13 + i]; // 13 = 7+5+1
+					lhsstr[5] = '\0';
+
+					if (isNumeric (lhsstr))
 					{
-						sd = tmpstr[i];
-						if (j == 0)
-							firstbase[i] = sd;
-						else
-							base[i] = sd;
-						i++;
-	//printf("ORF: debug: firstbase = %s\n",firstbase);
-	//printf("ORF: debug: base = %s\n",base);
-					}
-					if (j == 0)
-						firstbase[i - 1] = '\0';
-					else
-						base[i - 1] = '\0';
-					if (j > 0)
-					{
-						if (strcmp (firstbase, base) != 0)
+//						itime = strtol (rhsstr, NULL, 10); if (itime==LONG_MIN||itime==LONG_MAX) ERROR_STOP("strtol failed"); //does nothing
+						i = 0;
+						sd = 'a';
+						while (sd != '.')
 						{
-							printf ("ACK: we have more than one base!\n");
-							printf ("firstbase = %s, base = %s\n", firstbase, base);
-							ERROR_STOP ("Only one basename allowed per directory");
+							sd = tmpstr[i];
+							if (j == 0)
+								firstbase[i] = sd;
+							else
+								base[i] = sd;
+							i++;
+		//printf("ORF: debug: firstbase = %s\n",firstbase);
+		//printf("ORF: debug: base = %s\n",base);
+						}
+						if (j == 0)
+							firstbase[i - 1] = '\0';
+						else
+							base[i - 1] = '\0';
+						if (j > 0)
+						{
+							if (strcmp (firstbase, base) != 0)
+							{
+								printf ("ACK: we have more than one base!\n");
+								printf ("firstbase = %s, base = %s\n", firstbase, base);
+								ERROR_STOP ("Only one basename allowed per directory");
+							}
 						}
 					}
-					j++;
 				}
+				else
+				{
+					ERROR_STOP("Something wrong with file names in timedir");
+				}
+				j++;
 			}
+			else if( !strncmp(tmpstr,".",1) || !strncmp(tmpstr,"..",2))
+			{
+				// do nothing; we have happened upon '.' or '..'
+			}
+			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		if (closedir (dip) == -1)
 		{
@@ -332,7 +384,7 @@ get_num_time_dirs (char *basedir)
 	{
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%i",&j))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
 			printf("Read cached num_time_dirs of %i\n",j);
 		}
@@ -347,8 +399,8 @@ get_num_node_dirs (char *topdir, char *timedir)
 	DIR *dip;
 	struct dirent *dit;
 	int j, ns,iret;
-	char timedir_full[512];
-	char tmpstr[256];
+	char timedir_full[MAXSTR];
+	char tmpstr[256]; // size of dit->d_name
 
 	FILE *fp;
 
@@ -368,7 +420,7 @@ get_num_node_dirs (char *topdir, char *timedir)
 		{
 			strcpy (tmpstr, dit->d_name);
 			ns = strlen (tmpstr);
-			if (ns == 6 && isNumeric (tmpstr))
+			if (ns == 7 && isNumeric (tmpstr))
 				j++;
 		}
 		if (closedir (dip) == -1)
@@ -386,7 +438,7 @@ get_num_node_dirs (char *topdir, char *timedir)
 	{
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%i",&j))==EOF)exit(0);
+			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
 			printf("Read cached num node dirs\n");
 		}
@@ -406,7 +458,7 @@ get_first_hdf_file_name (char *topdir, char *timedir, char *nodedir, char *filen
 {
 	DIR *dip;
 	struct dirent *dit;
-	char basedir_full[512], tmpstr[256];
+	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
 
 	sprintf (basedir_full, "%s/%s/%s", topdir, timedir, nodedir);
 
@@ -431,17 +483,17 @@ get_first_hdf_file_name (char *topdir, char *timedir, char *nodedir, char *filen
 	sprintf (filename, "%s/%s", basedir_full, tmpstr);
 }
 
-int *
+double *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex)
 {
 	DIR *dip;
 	struct dirent *dit;
 	int i, j, k,iret;
-	char basedir_full[512], tmpstr[512];
+	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
 	hid_t file_id,dataset_id,dataspace_id;
 	hsize_t dims[1],maxdims[1];
-	int *filetimes;
-	int *alltimes;
+	double *filetimes;
+	double *alltimes;
 	char *foochar="a";//set to anything
 
 	FILE *fp;
@@ -450,7 +502,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 //
 //
 
-	alltimes = (int *)malloc(sizeof(int)); //to keep compiler from complaining
+	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
 	if ((fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
 	{
 		*ntottimes = 0;
@@ -463,7 +515,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				//just choose 'nodedir[0]' to find my first hdf5 file.
 			{
 				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
-	//			printf("topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
+				printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
 
 				if ((dip = opendir (basedir_full)) == NULL)
 				{
@@ -475,9 +527,9 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
-	//				printf("%s\n",basedir_full);
-	//				if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("NULL\n");
-	//				printf("get_all_available_times: tmpstr = %s\n",tmpstr);
+					printf("get_all_available_times: %s\n",basedir_full);
+					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("NULL\n");
+					printf("get_all_available_times: tmpstr = %s\n",tmpstr);
 					if (foochar != NULL) break;	// Got one
 				}	
 				if (foochar != NULL) break;	// Got one
@@ -491,7 +543,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			}
 
 			sprintf(firstfilename,"%s/%s",basedir_full,tmpstr);
-	//		printf("firstfilename = %s\n",firstfilename);
+			printf("get_all_available_times: firstfilename = %s\n",firstfilename);
 
 			if ((file_id = H5Fopen (firstfilename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
@@ -512,12 +564,12 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			if ((dataset_id = H5Dopen(file_id,"times",H5P_DEFAULT)) < 0) ERROR_STOP("Cannot H5Dopen");
 			if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Cannot H5Dget_space");
 			if ((H5Sget_simple_extent_dims(dataspace_id,dims,maxdims)) < 0) ERROR_STOP("Cannot H5Sget_simple_extent_dims"); //dims[0] will equal number of time levels in file
-			if ((filetimes = (int *)malloc(dims[0]*sizeof(int)))==NULL) ERROR_STOP("Cannot malloc filetimes array");
-			get1dint(file_id,"times",filetimes,0,dims[0]);
+			if ((filetimes = (double *)malloc(dims[0]*sizeof(double)))==NULL) ERROR_STOP("Cannot malloc filetimes array");
+			get1ddouble(file_id,"times",filetimes,0,dims[0]);
 			
 			(*ntottimes) += dims[0];
 
-			alltimes = (k==0)?(int *)malloc(dims[0]*sizeof(int)):(int *)realloc(alltimes,(*ntottimes)*sizeof(int));
+			alltimes = (k==0)?(double *)malloc(dims[0]*sizeof(double)):(double *)realloc(alltimes,(*ntottimes)*sizeof(double));
 
 			for (j=0; j<dims[0];j++)alltimes[j+k] = filetimes[j];
 			k = *ntottimes;
@@ -537,7 +589,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			fprintf(fp,"%i\n",*ntottimes);
 			for (i=0; i<*ntottimes; i++)
 			{
-				fprintf(fp,"%i\n",alltimes[i]);
+				fprintf(fp,"%lf\n",alltimes[i]);
 			}
 			fclose(fp);
 		}
@@ -546,18 +598,18 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 	{
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%s",firstfilename))==EOF)exit(0);
-			if((iret=fscanf(fp,"%i",ntottimes))==EOF)exit(0);
-			alltimes = (int *)malloc(*ntottimes * sizeof(int));
+			if((iret=fscanf(fp,"%s",firstfilename))==EOF)ERROR_STOP("fscanf failed");
+			if((iret=fscanf(fp,"%i",ntottimes))==EOF)ERROR_STOP("fscanf failed");
+			alltimes = (double *)malloc(*ntottimes * sizeof(double));
 			for (i=0; i<*ntottimes; i++)
 			{
-				if((iret=fscanf(fp,"%i",&(alltimes[i])))==EOF)exit(0);
+				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf failed");
+				printf("Reading from cached file: alltimes = %f\n",alltimes[i]);
 			}
 			printf("Read cached firstfilename and all times\n");
 		}
 	}
 
 //	free (firstfilename);
-
 	return(alltimes);
 }

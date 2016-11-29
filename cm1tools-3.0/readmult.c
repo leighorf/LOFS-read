@@ -25,22 +25,30 @@ Geroge Bryan's CM1 v16 model (email leigh.orf@cmich.edu for I/O code).
 
 /* is between or lies on actually */
 int
-is_between (int x, int y, int z)
+is_between_int (int x, int y, int z)
 {
 	int retval = 0;
 	if (z >= x && z <= y) retval = 1;
 	return retval;
 }
 int
-is_between_l (int x, int y, int z)
+is_between (double x, double y, double z)
 {
 	int retval = 0;
+	if (z >= x && z <= y) retval = 1;
+	return retval;
+}
+int
+is_between_l (double x, double y, double z)
+{
+	int retval = 0;
+//	printf("is_between_l: %lf %lf %lf\n",x,y,z);
 	if (z >= x && z < y) retval = 1;
 	return retval;
 }
 
 int
-is_not_between (int x, int y, int z)
+is_not_between_int (int x, int y, int z)
 {
 	int retval = 0;
 	if (z < x || z > y) retval = 1;
@@ -135,11 +143,11 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 
 	/* first check if our requested subcube lies within our data */
 
-	if (is_not_between (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
 
-	if (is_not_between (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
@@ -211,7 +219,7 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 }
 
 void
-read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn, int *dirtimes, int *alltimes, int ntottimes, int itime, char *varname,
+read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn, double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
 		int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
 		int nx, int ny, int nz, int nodex, int nodey)
 {
@@ -235,6 +243,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	int ax0, axf, ay0, ayf;
 	int snx, sny, snz, dxleft, dxright, dybot, dytop, ixnode, iynode, k, nxnode;
 	int rank;
+	double eps;
  // filetimes is the actual times stored in the hdf5 file dirtimes
  // contains the list of times contained in the directory names, which
  // corresponds to the first time in the hdf files.
@@ -259,6 +268,10 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	HDFstruct **hdf;
 
+
+//ORF TEST
+	for (i=0; i< ntottimes; i++)printf("DEBUG: alltimes[%i] = %lf\n",i,alltimes[i]);
+
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;
 	gnz = gzf - gz0 + 1;
@@ -281,15 +294,19 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	// ORF 11/17/12 Wait, we already have 'alltimes' array with all
 	// available times! Just use that!
 
-	if (itime < alltimes[0] || itime > alltimes[ntottimes-1])
+	if (dtime < alltimes[0] || dtime > alltimes[ntottimes-1])
 	{
-		fprintf(stderr,"Out of range: %i must be within the range %i to %i\n",itime,alltimes[0],alltimes[ntottimes-1]);
+		fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",dtime,alltimes[0],alltimes[ntottimes-1]);
 		ERROR_STOP("Requested time not within range\n");
 	}
 
 	for (i=0; i < ntimedirs-1; i++)
+		printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
+
+	for (i=0; i < ntimedirs-1; i++)
 	{
-		if (is_between_l(dirtimes[i],dirtimes[i+1],itime)) break;
+		printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
+		if (is_between_l(dirtimes[i],dirtimes[i+1],dtime)) break;
 	}
 	tb = i;
 	if (ntimedirs == 1) tb = 0;
@@ -298,7 +315,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	for (i = 0; i < numhdf; i++)
 	{
 		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
-		sprintf (nodefile[i], "%s/%s/%06i/%s_%06i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
+		sprintf (nodefile[i], "%s/%s/%07i/%s_%07i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
 	}
 
 // ORF 7/12/11 Check if requested time actually exists in the files
@@ -313,10 +330,13 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 // .cm1visit files on the fly and have hdf2nc and hdf2v5d just go from
 // those, that way all checks are done only once.
 
+//ORF need to do floating point shit here
+
+	eps = 1.0e-7;
 	time_is_in_file = FALSE;
 	for (i=0; i<ntottimes; i++)
 	{
-		if (itime == alltimes[i])
+		if (fabs(dtime-alltimes[i])<eps)
 		{
 			time_is_in_file = TRUE;
 			break;
@@ -325,11 +345,11 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	if (time_is_in_file == FALSE)
 	{
-		fprintf(stderr,"Requested time %i was not saved\n",itime);
+		fprintf(stderr,"Requested time %lf was not saved\n",dtime);
 		fprintf(stderr,"Available times follow:");
 		for (i=0; i<ntottimes; i++)
 		{
-			fprintf(stderr," %i",alltimes[i]);
+			fprintf(stderr," %f",alltimes[i]);
 		}
 		fprintf(stderr,"\n");
 	}
@@ -359,23 +379,23 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	/* first check if our requested subcube lies within our data */
 
-	if (is_not_between (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between (0, nz - 1, gz0)) ERROR_STOP("Chosen z data out of range");
+	if (is_not_between_int (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, nz - 1, gz0)) ERROR_STOP("Chosen z data out of range");
 
-	if (is_not_between (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between (0, nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
+	if (is_not_between_int (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
-		if (is_between (hdf[i]->x0, hdf[i]->xf, gx0) && is_between (hdf[i]->y0, hdf[i]->yf, gy0))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gx0) && is_between_int (hdf[i]->y0, hdf[i]->yf, gy0))
 		{
 			fx0 = hdf[i]->myi;
 			fy0 = hdf[i]->myj;
 			if (dbg) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
 		}
-		if (is_between (hdf[i]->x0, hdf[i]->xf, gxf) && is_between (hdf[i]->y0, hdf[i]->yf, gyf))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gxf) && is_between_int (hdf[i]->y0, hdf[i]->yf, gyf))
 		{
 			fxf = hdf[i]->myi;
 			fyf = hdf[i]->myj;
@@ -528,7 +548,7 @@ as unrolled 1D array which must be reassembled by user */
 			}
 			if (dbg) printf("Varname = %s\n",varname);
 
-			sprintf(datasetname,"%05i/3d/%s",itime,varname);
+			sprintf(datasetname,"/%0.7f/3D/%s",dtime,varname);
 			if ((dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
 			{
 					fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);

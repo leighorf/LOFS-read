@@ -78,6 +78,38 @@ void get0dfloat_(hid_t *file_id,char *varname, float *var)
 	get0dfloat(*file_id,varname,var);
 }
 
+void
+get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
+{
+	int rank;
+	hsize_t count[1], dims[1];
+	hsize_t offset_in[1],offset_out[1];
+	hid_t dataset_id,dataspace_id,memoryspace_id;
+	herr_t status;
+//	int i;
+
+	rank = 1;
+	offset_in[0] = p0;
+	offset_out[0] = 0; //Always
+	count[0] = np;
+	dims[0] = np;
+
+//	fprintf(stderr,"get1dfloat %i to %i points, %s\n",p0,np,varname);
+
+	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
+	if ((memoryspace_id = H5Screate_simple(rank,dims,NULL)) < 0) ERROR_STOP("Could not H5Screate_simple");
+	if ((status = H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in,NULL,count,NULL)) < 0) ERROR_STOP("Could not H5Sselect_hyperslab");
+	if ((status = H5Sselect_hyperslab (memoryspace_id,H5S_SELECT_SET,offset_out,NULL,count,NULL)) < 0) ERROR_STOP ("Could not H5Sselect_hyperslab");
+	if ((status = H5Dread (dataset_id, H5T_NATIVE_DOUBLE,memoryspace_id,dataspace_id,H5P_DEFAULT,var)) < 0) ERROR_STOP ("Could not H5Dread");
+	if ((status = H5Sclose(memoryspace_id)) < 0) ERROR_STOP("Could not H5Sclose");
+	if ((status = H5Sclose(dataspace_id)) < 0) ERROR_STOP("Could not H5Sclose");
+	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
+
+//	for (i=0; i<np; i++) printf("get1ddouble: %lf\n",var[i]);
+
+//	fprintf(stderr,"Got %s!\n",varname);
+}
 
 void
 get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
@@ -251,7 +283,7 @@ void first_hdf_index_(char *base, int *itime, int *index)
  * doesn't have to get them every time. nx,ny,nodex,nodey are all that
  * are required to recreate the entire domain decomposition. */
 
-void get_hdf_metadata(char *hdffilename, int node, int itime, int *nx, int *ny, int *nz, int *nodex, int *nodey)
+void get_hdf_metadata(char *hdffilename, int *nx, int *ny, int *nz, int *nodex, int *nodey)
 {
     hid_t file_id;
     int status;

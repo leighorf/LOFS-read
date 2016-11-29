@@ -26,18 +26,18 @@ char topdir[PATH_MAX+1];
 int dn;
 char **timedir; 
 char **nodedir;
-int *dirtimes;
+double *dirtimes;
 int ntimedirs;
 int nx,ny,nz,nodex,nodey;
 char firstfilename[MAXSTR];
 char base[MAXSTR];
 int nnodedirs;
-int *alltimes;
+double *alltimes;
 int ntottimes;
 int firsttimedirindex;
 
 void grok_cm1hdf5_file_structure();
-void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, int t0);
+void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
 int hhmmss (int time);
 void hdf2v5d();
 void fix_fubar_v5d_coord (float *c, float *s,int snx, int sny, int snz);
@@ -101,16 +101,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	cptr=realpath(histpath,topdir);
+	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 
 	grok_cm1hdf5_file_structure();
 //	get_first_hdf_file_name(topdir,timedir[0],nodedir[0],firstfilename); printf("First filename = %s\n",firstfilename);
-	get_hdf_metadata(firstfilename,idum,idum,&nx,&ny,&nz,&nodex,&nodey); //printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
+	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
 	if (we_are_hdf2nc)
 	{
-		int X0,Y0,X1,Y1,Z0,Z1,t0;
-		X0=Y0=X1=Y1=Z0=Z1=t0=0;//shut up compiler
+		int X0,Y0,X1,Y1,Z0,Z1;
+		double t0;
+		X0=Y0=X1=Y1=Z0=Z1=0;//shut up compiler
+		t0=0.0;
 		char ncbase[512];
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,t0);
 	}
@@ -318,7 +320,7 @@ void grok_cm1hdf5_file_structure()
 
 	timedir = (char **)malloc(ntimedirs * sizeof(char *));
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
-	dirtimes = (int *)malloc(ntimedirs * sizeof(int));
+	dirtimes = (double *)malloc(ntimedirs * sizeof(double)); // ORF NO LONGER INT, RIGHT???
 
 //cached code done
 	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base);
@@ -328,7 +330,7 @@ void grok_cm1hdf5_file_structure()
 //cached code done
 	nnodedirs =  get_num_node_dirs(topdir,timedir[0]);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
-	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(7 * sizeof(char)));
+	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
 //cached code done
 	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs);
@@ -339,13 +341,13 @@ void grok_cm1hdf5_file_structure()
 //cached code done - this one was kicking our ass due to all the hdf5
 //file interrogation
 	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex);
-//	printf("Times: ");
-//	for (i=0; i<ntottimes; i++)printf("%i ",alltimes[i]);
-//	printf("\n");
+	printf("Times: ");
+	for (i=0; i<ntottimes; i++)printf("%lf ",alltimes[i]);
+	printf("\n");
 
 }
 
-void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, int t0)
+void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
 	float *qvar1,*qvar2,*qvar3;
@@ -387,9 +389,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	Y1 = atoi(argv[6]);
 	Z0 = atoi(argv[7]);
 	Z1 = atoi(argv[8]);
-	t0 = atoi(argv[9]);
+	t0 = atof(argv[9]);
 
-	time_f = (float) t0;
+//	time_f = (float) t0;
 
 	nvar = argc-10;
 
@@ -398,7 +400,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		strcpy(varname[i],argv[i+10]);
 		fprintf(stdout,"%s \n",varname[i]);
 	}
-	sprintf(ncfilename,"%s.%05i.nc",ncbase,t0);
+	sprintf(ncfilename,"%s.%012.6f.nc",ncbase,t0);
 	
 	snx = X1 - X0 + 1;
 	sny = Y1 - Y0 + 1;
@@ -612,7 +614,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
       status = nc_put_var_int (ncid,y1id,&Y1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,z0id,&Z0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,z1id,&Z1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
-      status = nc_put_var_float (ncid,timeid,&time_f); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
+      status = nc_put_var_float (ncid,timeid,&t0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
