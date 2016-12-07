@@ -524,6 +524,10 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 					ERROR_STOP ("Can't open directory");
 				}
 				while ((dit = readdir (dip)) != NULL)
+					/* Because an empty directory always contains at
+					 * least itself ('.') this loop will always be
+					 * executed once, and hence foochar will be set to
+					 * NULL (strstr) if there are no files in the directory */
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");

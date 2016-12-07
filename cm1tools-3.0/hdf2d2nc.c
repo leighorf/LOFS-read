@@ -171,7 +171,7 @@ int main (int argc, char *argv[])
 	dims[0] = nzid; status = nc_def_var (ncid, "v0", NC_FLOAT, 1, dims, &v0_id);
 
 	n2d=0;
-	H5Giterate(file_id, "/2dfull",NULL,first_pass,NULL);
+	H5Giterate(file_id, "/2Dfull",NULL,first_pass,NULL);
 
 	varname = (const char **)malloc(n2d*sizeof(char *));
 	varid =   (int **)       malloc(n2d*sizeof(int  *));
@@ -183,7 +183,7 @@ int main (int argc, char *argv[])
 	}
 
 	i2d=0;
-	H5Giterate(file_id, "/2dfull",NULL,second_pass,NULL);
+	H5Giterate(file_id, "/2Dfull",NULL,second_pass,NULL);
 
 	dims[0] = nyid; dims[1] = nxid;
 	for (i2d=0; i2d<n2d; i2d++)
@@ -232,7 +232,7 @@ int main (int argc, char *argv[])
 	// Loop over 2d vars, read & write
 	for (i2d=0; i2d<n2d; i2d++)
 	{
-		strcpy(fullvarname,"/2dfull/");
+		strcpy(fullvarname,"/2Dfull/");
 		strcat(fullvarname,varname[i2d]);
 		get2dfloat(file_id,fullvarname,twodvar,0,ny,0,nx); // ORF FIX BUG
 		status = nc_put_vara_float (ncid, *(varid[i2d]),start,edges,twodvar);
