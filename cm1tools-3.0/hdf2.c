@@ -7,22 +7,26 @@
  * Major cleanup 11/23/2016, cleared out all unused variables and got
  * gcc to mostly shut up. Getting this code stable before converting to
  * new cm1hdf5 (subsecond) format.
- */
-
-/* UGH MUST DO THE FOLLOWING FOR HDF2NC MOTHERFUCKERS:
  *
- * 1. Add command line parsing (like stash.c). From this we should set
- * booleans for every variable requested, and, from that, determine what
- * to "read ahead" so that we always read exactly what we need and no
- * more than that. From there we can do our mallocs and do our
- * calculations.
+ * Spring '17: Switched over to floating point format for times in LOFS
+ *
+ * Adding command line parsing 7/17
  */
 
 #include <math.h>
 #include "hdforf.h"
 #include <netcdf.h>
 #include "errorf.h"
-
+#include <getopt.h>
+void parse_cmdline_hdf2nc(int argc, char *argv[],
+		char *histpath, int *got_histpath, char *ncbase, int *got_ncbase,
+		double *time, int *got_time,
+		int *X0, int *got_X0,
+		int *Y0, int *got_Y0,
+		int *X1, int *got_X1,
+		int *Y1, int *got_Y1,
+		int *Z0, int *got_Z0,
+		int *Z1, int *got_Z1 );
 #define TRUE 1
 #define FALSE 0
 #define MAXVARIABLES (100)
@@ -75,14 +79,27 @@ int main(int argc, char *argv[])
 		ERROR_STOP("Must call program as either hdf2nc, hdf2v5d, makevisit, or linkfiles and should be symbolically linked");
 	}
 
-
 	if (we_are_hdf2nc) 
 	{
-		if (argc < 10)
-		{
-			fprintf(stderr,"Usage: %s [topdir] [ncbase] [X0] [Y0] [X1] [Y1] [Z0] [Z1] [time] [varname1 ... varnameX] \n",progname);
-			ERROR_STOP("Insufficient arguments to hdf2nc");
-		}
+		int X0,Y0,X1,Y1,Z0,Z1;
+		double time;
+		int got_histpath,got_ncbase,got_time;
+		int got_X0,got_Y0,got_X1,got_Y1,got_Z0,got_Z1;
+
+		got_X0=got_Y0=got_X1=got_Y1=got_Z0=got_Z1=0;
+		X0=Y0=X1=Y1=Z0=Z1=0;
+		time=0.0;
+		char ncbase[MAXSTR];
+
+		parse_cmdline_hdf2nc(argc, argv, histpath, &got_histpath, ncbase, &got_ncbase,
+			&time, &got_time, &X0, &got_X0, &Y0, &got_Y0, &X1, &got_X1, &Y1, &got_Y1,
+			&Z0, &got_Z0, &Z1, &got_Z1);
+
+		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
+		grok_cm1hdf5_file_structure();
+		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
+	
+		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
 	}
 	else if (we_are_hdf2v5d)
 	{
@@ -109,21 +126,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	strcpy(histpath,argv[1]);
-	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-
-	grok_cm1hdf5_file_structure();
-//	get_first_hdf_file_name(topdir,timedir[0],nodedir[0],firstfilename); printf("First filename = %s\n",firstfilename);
-	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
 	if (we_are_hdf2nc)
 	{
+		/*
 		int X0,Y0,X1,Y1,Z0,Z1;
 		double t0;
-		X0=Y0=X1=Y1=Z0=Z1=0;//shut up compiler
+		X0=Y0=X1=Y1=Z0=Z1=0;
 		t0=0.0;
 		char ncbase[512];
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,t0);
+		*/
+		exit(0); /* ORF we moved it all up */
 	}
 	else if (we_are_hdf2v5d)
 	{
@@ -403,7 +417,11 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	//ORF for writing single time in unlimited time dimension/variable
 	const size_t timestart = 0;
 	const size_t timecount = 1;
+	int n_cmdline_args=19;
 	
+	/* Taken care of in parse_cmdline_hdf2nc now, and associated with a descriptive name*/
+
+	/*
 	strcpy(ncbase,argv[2]);
 	X0 = atoi(argv[3]);
 	Y0 = atoi(argv[4]);
@@ -412,16 +430,20 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	Z0 = atoi(argv[7]);
 	Z1 = atoi(argv[8]);
 	t0 = atof(argv[9]);
+	*/
 
 	timearray[0] = t0;
 
-//	time_f = (float) t0;
+	/* This is kind of ugly but it works. All command line arguments
+	 * to hdf2nc are mandatory, and we have 18 items before the list
+	 * of variable names that brings up the rear of all the command
+	 * line arguments (add one for the executable name!) */
 
-	nvar = argc-10;
+	nvar = argc-n_cmdline_args;
 
 	for (i=0; i<nvar; i++)
 	{
-		strcpy(varname[i],argv[i+10]);
+		strcpy(varname[i],argv[i+n_cmdline_args]);
 		fprintf(stdout,"%s \n",varname[i]);
 	}
 	sprintf(ncfilename,"%s.%012.6f.nc",ncbase,t0);
@@ -489,8 +511,8 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];
-	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00); //ORF STUPID FIX
-	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00); //ORF STUPID FIX
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00); //ORF STUPID FIX BUG BUG BUG
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00); //ORF STUPID FIX BUG BUG BUG
 
 
 	H5Z_zfp_initialize();
@@ -1259,4 +1281,109 @@ void fix_fubar_v5d_coord (float *c, float *s,int snx, int sny, int snz)
 void lflush (FILE * fp)
 {
 	while (fgetc (fp) != '\n');
+}
+
+void	parse_cmdline_hdf2nc(int argc, char *argv[],
+	char *histpath, int *got_histpath, char *ncbase, int *got_ncbase,
+	double *time, int *got_time,
+	int *X0, int *got_X0,
+	int *Y0, int *got_Y0,
+	int *X1, int *got_X1,
+	int *Y1, int *got_Y1,
+	int *Z0, int *got_Z0,
+	int *Z1, int *got_Z1)
+{
+	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1 };
+	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
+
+	int bail = 0;
+
+	if (argc == 1)
+	{
+		fprintf(stderr,
+		"Usage: %s -histpath [histpath] -ncbase [ncbase] -x0 [X0] -y0 [Y0] -x1 [X1] -y1 [Y1] -z0 [Z0] -z1 [Z1] -time [time] [varname1 ... varnameX] \n",argv[0]);
+		exit(0);
+	}
+
+
+	while (1)
+	{
+		static struct option long_options[] =
+		{
+			{"histpath", required_argument, 0, OPT_HISTPATH},
+			{"ncbase",   required_argument, 0, OPT_NCBASE},
+			{"time",     required_argument, 0, OPT_TIME},
+			{"x0",       required_argument, 0, OPT_X0},
+			{"y0",       required_argument, 0, OPT_Y0},
+			{"x1",       required_argument, 0, OPT_X1},
+			{"y1",       required_argument, 0, OPT_Y1},
+			{"z0",       required_argument, 0, OPT_Z0},
+			{"z1",       required_argument, 0, OPT_Z1}
+		};
+
+		int r;
+		int option_index = 0;
+		r = getopt_long_only (argc, argv,"",long_options,&option_index);
+		if (r == -1) break;
+
+		switch(r)
+		{
+			case OPT_HISTPATH:
+				strcpy(histpath,optarg);
+				*got_histpath=1;
+				printf("histpath = %s\n",histpath);
+				break;
+			case OPT_NCBASE:
+				strcpy(ncbase,optarg);
+				*got_ncbase=1;
+				printf("ncbase = %s\n",ncbase);
+				break;
+			case OPT_TIME:
+				*time = atof(optarg);
+				*got_time=1;
+				printf("time = %f\n",*time);
+				break;
+			case OPT_X0:
+				*X0 = atoi(optarg);
+				*got_X0=1;
+				printf("X0 = %i\n",*X0);
+				break;
+			case OPT_Y0:
+				*Y0 = atoi(optarg);
+				*got_Y0=1;
+				printf("Y0 = %i\n",*Y0);
+				break;
+			case OPT_X1:
+				*X1 = atoi(optarg);
+				*got_X1=1;
+				printf("X1 = %i\n",*X1);
+				break;
+			case OPT_Y1:
+				*Y1 = atoi(optarg);
+				*got_Y1=1;
+				printf("Y1 = %i\n",*Y1);
+				break;
+			case OPT_Z0:
+				*Z0 = atoi(optarg);
+				*got_Z0=1;
+				printf("Z0 = %i\n",*Z0);
+				break;
+			case OPT_Z1:
+				*Z1 = atoi(optarg);
+				*got_Z1=1;
+				printf("Z1 = %i\n",*Z1);
+				break;
+		}
+	}
+
+		if (*got_histpath==0) { fprintf(stderr,"-histpath not specified\n"); bail = 1; }
+		if (*got_ncbase==0)   { fprintf(stderr,"-ncbase not specified\n"); bail = 1; }
+		if (*got_time==0)   { fprintf(stderr,"-time not specified\n"); bail = 1; }
+		if (*got_X0==0)     { fprintf(stderr,"-x0 not specified\n"); bail = 1; }
+		if (*got_Y0==0)     { fprintf(stderr,"-y0 not specified\n"); bail = 1; }
+		if (*got_X1==0)     { fprintf(stderr,"-x1 not specified\n"); bail = 1; }
+		if (*got_Y1==0)     { fprintf(stderr,"-y1 not specified\n"); bail = 1; }
+		if (*got_Z0==0)     { fprintf(stderr,"-z0 not specified\n"); bail = 1; }
+		if (*got_Z1==0)     { fprintf(stderr,"-z1 not specified\n"); bail = 1; }
+		if (bail)           { fprintf(stderr,"Insufficient arguments to %s\n, exiting.\n",argv[0]); exit(-1); }
 }
