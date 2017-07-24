@@ -141,7 +141,7 @@ int main (int argc, char *argv[])
 	get1dfloat(file_id, "/basestate/th0",th0,0,nz);
 	get1dfloat(file_id, "/basestate/qv0",qv0,0,nz);
 
-	status = nc_create (ncfilename, NC_CLOBBER | NC_64BIT_OFFSET, &ncid); if (status != NC_NOERR) printf ("ERROR: nc_create\n");
+	status = nc_create (ncfilename, NC_CLOBBER|NC_64BIT_OFFSET , &ncid); if (status != NC_NOERR) printf ("ERROR: nc_create\n");
 	status = nc_def_dim (ncid, "nx", nx, &nxid); if (status != NC_NOERR) printf ("ERROR: nc_def_dim 1\n");
 	status = nc_def_dim (ncid, "nxu", nx+1, &unxid); if (status != NC_NOERR) printf ("ERROR: nc_def_dim 1\n");
 	status = nc_def_dim (ncid, "ny", ny, &nyid); if (status != NC_NOERR) printf ("ERROR: nc_def_dim 2\n");
@@ -171,7 +171,11 @@ int main (int argc, char *argv[])
 	dims[0] = nzid; status = nc_def_var (ncid, "v0", NC_FLOAT, 1, dims, &v0_id);
 
 	n2d=0;
+#ifdef OLD_FORMAT
+	H5Giterate(file_id, "/2dfull",NULL,first_pass,NULL);
+#else
 	H5Giterate(file_id, "/2Dfull",NULL,first_pass,NULL);
+#endif
 
 	varname = (const char **)malloc(n2d*sizeof(char *));
 	varid =   (int **)       malloc(n2d*sizeof(int  *));
@@ -183,8 +187,11 @@ int main (int argc, char *argv[])
 	}
 
 	i2d=0;
+#ifdef OLD_FORMAT
+	H5Giterate(file_id, "/2dfull",NULL,second_pass,NULL);
+#else
 	H5Giterate(file_id, "/2Dfull",NULL,second_pass,NULL);
-
+#endif
 	dims[0] = nyid; dims[1] = nxid;
 	for (i2d=0; i2d<n2d; i2d++)
 	{
@@ -232,7 +239,11 @@ int main (int argc, char *argv[])
 	// Loop over 2d vars, read & write
 	for (i2d=0; i2d<n2d; i2d++)
 	{
+#ifdef OLD_FORMAT
+		strcpy(fullvarname,"/2dfull/");
+#else
 		strcpy(fullvarname,"/2Dfull/");
+#endif
 		strcat(fullvarname,varname[i2d]);
 		get2dfloat(file_id,fullvarname,twodvar,0,ny,0,nx); // ORF FIX BUG
 		status = nc_put_vara_float (ncid, *(varid[i2d]),start,edges,twodvar);

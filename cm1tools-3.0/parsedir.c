@@ -180,12 +180,12 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 		}
 		while ((dit = readdir (dip)) != NULL) //ORF the problem was times was passed as int * so we are past the "hang" problem at least
 		{
-			printf("doing strcpy to tmpstr...");
+//			printf("doing strcpy to tmpstr...");
 			strcpy (tmpstr, dit->d_name);
-			printf("...done\n");
+//			printf("...done\n");
 			printf("Working on %s\n",tmpstr);
 			ns = strlen (tmpstr);
-			printf("ns = %i\n",ns);
+//			printf("ns = %i\n",ns);
 			if (ns > 15)
 			{
 				for (i = 0; i < 7; i++)
@@ -204,9 +204,11 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				if (isNumeric (lhsstr))
 				{
 					sprintf(dstring,"%s.%s",lhsstr,rhsstr);
-					printf("dstring = %s\n",dstring);
+//					printf("dstring = %s\n",dstring);
 					times[j] = atof(dstring); //ding
+#ifdef DEBUG
 					printf("j = %i times = %lf\n",j,times[j]);
+#endif
 				}
 				else
 				{
@@ -218,7 +220,9 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				while (tmpstr[i--]!='.');
 				while (tmpstr[i--]!='.');
 				i++;
+#ifdef DEBUG
 				printf("i = %i, j = %i\n",i,j);
+#endif
 				for (k = 0; k < i; k++)
 				{
 					if (j == 0) firstbase[k] = tmpstr[k];
@@ -243,9 +247,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 					strcpy(filebase,firstbase);
 				}
 
-				printf("Doing strcpy...");
 				strcpy (timedir[j], dit->d_name);
-				printf("...done\n");
 				j++;
 			}
 			else if( !strcmp(tmpstr,".") || !strcmp(tmpstr,".."))
@@ -253,7 +255,6 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				// do nothing; we have happened upon '.' or '..'
 			}
 			else ERROR_STOP("Something wrong with file names in timedir");
-			printf("Made it to end of while dit loop\n");
 		}
 		if (closedir (dip) == -1)
 		{
@@ -311,7 +312,9 @@ get_num_time_dirs (char *basedir)
 			strcpy (tmpstr, dit->d_name);
 	//printf("ORF: debug: tmpstr = %s\n",tmpstr);
 			ns = strlen (tmpstr);
+#ifdef DEBUG
 			printf("ns = %i\n",ns);
+#endif
 			if (ns > 15 )
 			{
 				for (i = 0; i < 7; i++) rhsstr[i] = tmpstr[ns - 7 + i];
@@ -515,7 +518,9 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				//just choose 'nodedir[0]' to find my first hdf5 file.
 			{
 				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+#ifdef DEBUG
 				printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
+#endif
 
 				if ((dip = opendir (basedir_full)) == NULL)
 				{
@@ -531,9 +536,13 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
+#ifdef DEBUG
 					printf("get_all_available_times: %s\n",basedir_full);
-					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("NULL\n");
+#endif
+					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("get_all_available_times: foochar = NULL\n");
+#ifdef DEBUG
 					printf("get_all_available_times: tmpstr = %s\n",tmpstr);
+#endif
 					if (foochar != NULL) break;	// Got one
 				}	
 				if (foochar != NULL) break;	// Got one
@@ -608,7 +617,10 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			for (i=0; i<*ntottimes; i++)
 			{
 				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf failed");
+#ifdef DEBUG
 				printf("Reading from cached file: alltimes = %f\n",alltimes[i]);
+#endif
+
 			}
 			printf("Read cached firstfilename and all times\n");
 		}

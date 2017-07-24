@@ -42,11 +42,27 @@ int
 is_between_l (double x, double y, double z)
 {
 	int retval = 0;
+	double eps = 0.001;
 //	printf("is_between_l: %lf %lf %lf\n",x,y,z);
 	if (z >= x && z < y) retval = 1;
 	return retval;
 }
 
+// Need to make this foolproof, may need to go beyond just
+// is_between_fuzzy to determine which hdf5 file for 'edge' cases
+int
+is_between_fuzzy (double x, double y, double z)
+{
+	int retval = 0;
+	double eps = 0.001;
+#ifdef DEBUG
+	printf("is_between_fuzzy: %lf %lf %lf\n",x,y,z);
+#endif
+	if (z > x && z < y) retval = 1;
+	if (fabs(z-y)<eps) retval = 0; // on the edge of nowhere
+	if (fabs(z-x)<eps) retval = 1; // on the edge of somewhere
+	return retval;
+}
 int
 is_not_between_int (int x, int y, int z)
 {
@@ -151,13 +167,13 @@ link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int
 
 	for (i = 0; i < numhdf; i++)
 	{
-		if (is_between (hdf[i]->x0, hdf[i]->xf, gx0) && is_between (hdf[i]->y0, hdf[i]->yf, gy0))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gx0) && is_between (hdf[i]->y0, hdf[i]->yf, gy0))
 		{
 			fx0 = hdf[i]->myi;
 			fy0 = hdf[i]->myj;
 			if (dbg) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
 		}
-		if (is_between (hdf[i]->x0, hdf[i]->xf, gxf) && is_between (hdf[i]->y0, hdf[i]->yf, gyf))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gxf) && is_between (hdf[i]->y0, hdf[i]->yf, gyf))
 		{
 			fxf = hdf[i]->myi;
 			fyf = hdf[i]->myj;
@@ -256,6 +272,10 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	char *alph="abcdefghijklmnopqrstuvwxyz";
 	int letter;
 	int retval;
+// ORF: 2016-12-21: New hdf internal structure
+	int ntimes,timeindex;
+	hsize_t dims[1],maxdims[1];
+	double *filetimes;
 
 
 	typedef struct hdfstruct
@@ -270,8 +290,9 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 
 //ORF TEST
+#ifdef DEBUG
 	for (i=0; i< ntottimes; i++)printf("DEBUG: alltimes[%i] = %lf\n",i,alltimes[i]);
-
+#endif
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;
 	gnz = gzf - gz0 + 1;
@@ -294,19 +315,27 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	// ORF 11/17/12 Wait, we already have 'alltimes' array with all
 	// available times! Just use that!
 
-	if (dtime < alltimes[0] || dtime > alltimes[ntottimes-1])
+	eps=1.0e-3;
+	if (!is_between_fuzzy(alltimes[0],alltimes[ntottimes-1],dtime))
 	{
-		fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",dtime,alltimes[0],alltimes[ntottimes-1]);
-		ERROR_STOP("Requested time not within range\n");
+		// edge case: Asking for last time will fail unless we check
+		// this
+		if(fabs(alltimes[ntottimes-1]-dtime)>eps)
+		{
+			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",dtime,alltimes[0],alltimes[ntottimes-1]);
+			ERROR_STOP("Requested time not within range\n");
+		}
 	}
-
-	for (i=0; i < ntimedirs-1; i++)
+#ifdef DEBUG
+	for (i=0; i < ntimedirs; i++)
 		printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
-
+#endif
 	for (i=0; i < ntimedirs-1; i++)
 	{
+#ifdef DEBUG
 		printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
-		if (is_between_l(dirtimes[i],dirtimes[i+1],dtime)) break;
+#endif
+		if (is_between_fuzzy(dirtimes[i],dirtimes[i+1],dtime)) break;
 	}
 	tb = i;
 	if (ntimedirs == 1) tb = 0;
@@ -332,7 +361,8 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 //ORF need to do floating point shit here
 
-	eps = 1.0e-7;
+	eps = 1.0e-3;
+
 	time_is_in_file = FALSE;
 	for (i=0; i<ntottimes; i++)
 	{
@@ -354,6 +384,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		fprintf(stderr,"\n");
 	}
 	if (time_is_in_file == FALSE)	ERROR_STOP("Invalid time requested");
+
 
 
 	/* We build our decomposition from metadata stored in each hdf
@@ -548,7 +579,76 @@ as unrolled 1D array which must be reassembled by user */
 			}
 			if (dbg) printf("Varname = %s\n",varname);
 
-			sprintf(datasetname,"/%0.7f/3D/%s",dtime,varname);
+	/* ORF 2016-12-21
+	 * Because of single precision floating point time variables in
+	 * cm1r16, we have junk in the least significant digits of our
+	 * time that carry over into our directory names and floating
+	 * point links. It occurs to me that we will proablby never save more
+	 * frequently than every 0.1 seconds or thereabouts and that we
+	 * could probably just remove all those insigificant digtis (store
+	 * it as X.YYY). But, first, I am going to try just doing floating
+	 * point math with the /times array and pick the right group to
+	 * read from, since the groups are zero padded integers (like the
+	 * old way) (converted to a character string) starting at zero, and the 
+	 * floating point links were done as a test (we don't need to use
+	 * them). If performance suffers from having to read the /times
+	 * group every time, I can consider changing the significant
+	 * digits.
+	 * Unfortunately I see no easy way to have this information cached
+	 * since each hdf5 dump can contain any amount of times stacked
+	 * within it, and up to now just sorting the times has been
+	 * sufficient... but there is no way to preserve the group name
+	 * and the time while sorting the way it is currently done.
+	 * I'm getting closer to just requiring a more advanced "makevisit" being run once
+	 * and having all my shit rely on the existence of that file...
+	 * but I'm not quite there yet...
+	 *
+	 * */
+
+
+/* Since our data format requires identical temporal data for all HDF
+ * files in the same directory, we just do this once, in the first pass
+ * through */
+
+			if (iynode==fy0 && ixnode==fx0)
+			{
+				if ((dataset_id = H5Dopen(file_id,"times",H5P_DEFAULT)) < 0) ERROR_STOP("Cannot H5Dopen");
+				if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Cannot H5Dget_space");
+				if ((H5Sget_simple_extent_dims(dataspace_id,dims,maxdims)) < 0)
+					ERROR_STOP("Cannot H5Sget_simple_extent_dims"); //dims[0] will equal number of time levels in file
+				H5Dclose (dataset_id);
+				H5Sclose (dataspace_id);
+				if ((filetimes = (double *)malloc(dims[0]*sizeof(double)))==NULL) ERROR_STOP("Cannot malloc filetimes array");
+				get1ddouble(file_id,"times",filetimes,0,dims[0]);
+				/* Now we have our times array, the size of the times
+				 * array (the number of times in the file) and the
+				 * requested time. There is probably a faster way to
+				 * do this but the truth is we will never have more
+				 * than say 500 array elements to consider so we might
+				 * as well just rip through one by one*/
+
+				/* The actual groups in the HDF files are zero padded,
+				 * starting with zero, incrementing by 1. So getting
+				 * to the right time is easy peasy */
+
+				ntimes = dims[0];
+
+				for (i=0; i<ntimes; i++)
+				{
+//					printf("i = %i \t filetimes[%2i] = %f \t dtime = %f\n",i,i,filetimes[i],dtime);
+					if (fabs(filetimes[i]-dtime)<eps)
+						break;
+				}
+
+				/* Heh, this never fails, it will always send back the
+				 * last time in the file if we don't find our time */
+
+				timeindex = i;
+			}
+
+
+			sprintf(datasetname,"/%05i/3D/%s",timeindex,varname);
+//			sprintf(datasetname,"/%0.7f/3D/%s",dtime,varname);
 			if ((dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
 			{
 					fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);

@@ -91,7 +91,9 @@ extern "C" {
     }
     H5LTread_dataset_string(file_id,"/topdir",topdir);
     H5LTread_dataset_int(file_id,"/ntimedirs",&ntimedirs);
-    dirtimes = (int *)malloc(ntimedirs * sizeof(int));
+// ORF: 2017-1-25: Old format was int, we are now double
+//  dirtimes = (int *)malloc(ntimedirs * sizeof(int));
+    dirtimes = (double *)malloc(ntimedirs * sizeof(double));
     timedir = (char **)malloc(ntimedirs * sizeof(char *)); for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(256 * sizeof(char)));
     strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,H5T_VARIABLE);
     H5LTread_dataset(file_id,"/timedir",strtype,timedir);
@@ -101,9 +103,13 @@ extern "C" {
     H5LTread_dataset(file_id,"/nodedir",strtype,nodedir);
     H5LTread_dataset_int(file_id,"/dn",&dn);
     H5LTread_dataset_int(file_id,"/ntottimes",&ntottimes);
-    alltimes = (int *)malloc(ntottimes * sizeof(int));
-    H5LTread_dataset_int(file_id,"/alltimes",alltimes);
-    H5LTread_dataset_int(file_id,"/dirtimes",dirtimes);
+// ORF: 2017-1-25: Old format was int, we are now double
+//  alltimes = (int *)malloc(ntottimes * sizeof(int));
+    alltimes = (double *)malloc(ntottimes * sizeof(double));
+//  H5LTread_dataset_int(file_id,"/alltimes",alltimes);
+//  H5LTread_dataset_int(file_id,"/dirtimes",dirtimes);
+    H5LTread_dataset_double(file_id,"/alltimes",alltimes);
+    H5LTread_dataset_double(file_id,"/dirtimes",dirtimes);
     H5LTread_dataset_int(file_id,"/nx",&nx);
     H5LTread_dataset_int(file_id,"/ny",&ny);
     H5LTread_dataset_int(file_id,"/nz",&nz);

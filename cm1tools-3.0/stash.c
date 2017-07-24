@@ -8,7 +8,7 @@
 
  * This code inserts namelist.input data, sounding data, and the first
  * few lines of the output file, and some other things, including an
- * optional stash block The code first gets the userblock size from
+ * optional stash block. The code first gets the userblock size from
  * the hdf5 file and only writes data up to this size so as to avoid
  * clobbering the HDF5 data, which would suck.
 
@@ -118,7 +118,7 @@ int main (int argc, char *argv[])
 		"********************************************************************\n",
 		"*******************Welcome to the HDF5 userblock********************\n",
 		"********************************************************************\n",
-		"This file was created with CM1 r18.3 with I/O modifications\n",
+		"This file was created with CM1 with I/O modifications\n",
 		"by Leigh Orf <orf@ssec.wisc.edu>. Useful information is stashed here\n",
 		"including the namelist.input file and the sounding file.\n",
 		"Have a nice day!\n"
@@ -372,7 +372,7 @@ void parse_cmdline(int argc, char *argv[],
 {
 	if(argc==1)
 	{
-		printf("Usage: stash --namelist [namelist_file] --sounding [sounding_file] --output [cm1out_file] --hdf [hdf5_file] --stash [opt_stash-file]\n");
+		printf("Usage: stash --namelist [namelist_file] --sounding [sounding_file] --output [cm1out_file] --hdf [hdf5_file] --pbs [opt_pbs_file] --stash [opt_stash-file]\n");
 		exit(0);
 	}
 	while (1)

@@ -110,7 +110,10 @@ class avtcm1visitFileFormat : public avtMTMDFileFormat
     int dn; 
     char **timedir; 
     char **nodedir;
-    int *dirtimes,*alltimes,ntottimes;
+// ORF: 2017-1-25 these are now double
+//  int *dirtimes,*alltimes
+    double *dirtimes,*alltimes;
+    int ntottimes;
     char varname[100][40]; // 100 vars 40 chars long
     int nvars;
     int ntimedirs;
