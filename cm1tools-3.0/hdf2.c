@@ -95,10 +95,14 @@ int main(int argc, char *argv[])
 			&time, &got_time, &X0, &got_X0, &Y0, &got_Y0, &X1, &got_X1, &Y1, &got_Y1,
 			&Z0, &got_Z0, &Z1, &got_Z1);
 
+/* I want the full, absolute path to the top level directory, not the relative path. 
+ * This is so I can find the files later on if I forget where I put
+ * them, or at least to remind me where they were */
+
 		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 		grok_cm1hdf5_file_structure();
-		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
-	
+		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
+		//printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
 	}
 	else if (we_are_hdf2v5d)
@@ -343,7 +347,6 @@ int main(int argc, char *argv[])
 void grok_cm1hdf5_file_structure()
 {
 	int i;
-//cached code done
 	ntimedirs = get_num_time_dirs(topdir); printf("ntimedirs: %i\n",ntimedirs);
 	if (ntimedirs == 0) ERROR_STOP("No cm1 hdf5 files found");
 
@@ -351,24 +354,14 @@ void grok_cm1hdf5_file_structure()
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dirtimes = (double *)malloc(ntimedirs * sizeof(double)); // ORF NO LONGER INT, RIGHT???
 
-//cached code done
 	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base);
 
-//	for (i=0; i<ntimedirs; i++) printf("SORTED: %s\n",timedir[i]);
-
-//cached code done
 	nnodedirs =  get_num_node_dirs(topdir,timedir[0]);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
 	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
-//cached code done
 	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs);
 
-//	for (i=0; i<nnodedirs; i++) printf("SORTED: %s\n",nodedir[i]);
-//	printf("Spacing between node directories: %i\n",dn);
-
-//cached code done - this one was kicking our ass due to all the hdf5
-//file interrogation
 	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex);
 #ifdef DEBUG
 	printf("Times: ");
@@ -418,22 +411,11 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	const size_t timestart = 0;
 	const size_t timecount = 1;
 	int n_cmdline_args=19;
+
+	/* We used to set arguments based upon what order they were passed to
+	 * hdf2nc. Now we use getopt with descriptive names that can be
+	 * passed in any order, except the variable names all come last */
 	
-	/* Taken care of in parse_cmdline_hdf2nc now, and associated with a descriptive name*/
-
-	/*
-	strcpy(ncbase,argv[2]);
-	X0 = atoi(argv[3]);
-	Y0 = atoi(argv[4]);
-	X1 = atoi(argv[5]);
-	Y1 = atoi(argv[6]);
-	Z0 = atoi(argv[7]);
-	Z1 = atoi(argv[8]);
-	t0 = atof(argv[9]);
-	*/
-
-	timearray[0] = t0;
-
 	/* This is kind of ugly but it works. All command line arguments
 	 * to hdf2nc are mandatory, and we have 18 items before the list
 	 * of variable names that brings up the rear of all the command
@@ -494,6 +476,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	zf = (float *)malloc(nz * sizeof(float));
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
+	/* ORF can't I just read xffull and yffull here?? */
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
@@ -511,18 +494,26 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];
+
+	// Do we save these in the HDF5 files? We should just be able to read them directly.
 	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00); //ORF STUPID FIX BUG BUG BUG
 	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00); //ORF STUPID FIX BUG BUG BUG
 
-
 	H5Z_zfp_initialize();
+
+	// ORF could make option: What kind of netCDF file to create?
+	// If we add optional options to hdf2nc, we'll have to increment
+	// n_cmd_line_args so we get all the varnames
 	status = nc_create (ncfilename, NC_CLOBBER|NC_64BIT_OFFSET, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+
 //	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR)
 //	{
 //		printf("Error %i\n",status);
 //		ERROR_STOP ("nc_create failed");
 //	}
 //	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4|NC_CLASSIC_MODEL, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+//
+//
 	status = nc_def_dim (ncid, "xh", snx, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", sny, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", snz, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
@@ -678,6 +669,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
       status = nc_put_var_int (ncid,y1id,&Y1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,z0id,&Z0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,z1id,&Z1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
+	timearray[0] = t0;
       status = nc_put_vara_double (ncid,timeid,&timestart,&timecount,timearray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 
 	for (ivar = 0; ivar < nvar; ivar++)
