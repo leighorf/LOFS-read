@@ -755,7 +755,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	if (argc == 1)
 	{
 		fprintf(stderr,
-		"Usage: %s --histpath=[histpath] --ncbase=[ncbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1] --time=[time] [varname1 ... varnameX] \n",argv[0]);
+		"Usage: %s --histpath=[histpath] --ncbase=[ncbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1] --time=[time] [varname1 ... varnameN] \n",argv[0]);
 		exit(0);
 	}
 
