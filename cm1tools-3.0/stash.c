@@ -1,6 +1,6 @@
 /*
  *
- * This code was written by Leigh Orf <orf@ssec.wisc.edu> 24-26 October 2016
+ * This code was written by Leigh Orf <leigh.orf@.wisc.edu> 24-26 October 2016
  *
  * Its purpose is to stash useful data in the "user block" of hdf5
  * files. It does not create the user block; this must be done in the
@@ -24,8 +24,8 @@
  * hdf5 files). I'm thinking I'll be calling it like:
 
  *  for i in (find . -name \*hdf5); do
- *      stash --namelist namelist.input --output cm1.out \\
- *     	 --sounding input_sounding --pbs cm1.pbs --stash README.stash --hdf $i
+ *      stash --namelist=namelist.input --output=cm1.out \\
+ *     	 --sounding=input_sounding --pbs=cm1.pbs --stash=README.stash --hdf=$i
  *  done
 
  * This results in no separate userblock.txt file since it's destroyed
@@ -119,7 +119,7 @@ int main (int argc, char *argv[])
 		"*******************Welcome to the HDF5 userblock********************\n",
 		"********************************************************************\n",
 		"This file was created with CM1 with I/O modifications\n",
-		"by Leigh Orf <orf@ssec.wisc.edu>. Useful information is stashed here\n",
+		"by Leigh Orf <leigh.orf@wisc.edu>. Useful information is stashed here\n",
 		"including the namelist.input file and the sounding file.\n",
 		"Have a nice day!\n"
 	};
@@ -163,7 +163,7 @@ int main (int argc, char *argv[])
 	else  strcpy(current_date_and_time,ctime(&rawtime));
 
 	/* Get the stat timestamp info on the hdf5 file */
-    if ((stat(hdf_filename,&statbuffer))<0)
+	if ((stat(hdf_filename,&statbuffer))<0)
 	{
 		strcpy(hdf_atime,"UNKNOWN");
 		strcpy(hdf_mtime,"UNKNOWN");
@@ -382,8 +382,8 @@ void parse_cmdline(int argc, char *argv[],
 			{"output",   required_argument, 0,  'o'},
 			{"sounding", required_argument, 0,  's'},
 			{"hdf",      required_argument, 0,  'h'},
-			{"pbs",      required_argument, 0,  'p'},
-			{"stash",    required_argument, 0,  'z'}
+			{"pbs",      optional_argument, 0,  'p'},
+			{"stash",    optional_argument, 0,  'z'}
 		};
 
 		int r;

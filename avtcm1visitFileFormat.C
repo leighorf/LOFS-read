@@ -56,6 +56,10 @@
 
 #include <InvalidVariableException.h>
 
+// If you're looking for someone to blame for this code, see: Leigh Orf  <leigh.orf@wisc.edu>
+// Huge thanks to Rob Sisneros (NCSA) for writing the mesh, ghost zone, and
+// on-the-fly decomposition code that lets you choose as many MPI ranks
+// as you wish
 
 using     std::string;
 
@@ -72,14 +76,13 @@ void decompose(int *, int *);
 
 #include <DebugStream.h>
 
+//ORF: Everything is now stored in one file (used to be hdforf.h)
+//LOFS=="Leigh Orf File System" or "Lack Of File System" (Heyyyy Rockyyyy)
 extern "C" {
-#include <hdforf.h>
-#include <errorf.h>
-#include <hdf5_hl.h>
+#include <lofs-read.h>
 }
 
-    avtcm1visitFileFormat::avtcm1visitFileFormat(const char *filename)
-: avtMTMDFileFormat(filename)
+    avtcm1visitFileFormat::avtcm1visitFileFormat(const char *filename) : avtMTMDFileFormat(filename)
 {
     int i,nnodedirs;
     hid_t file_id,strtype;
@@ -91,8 +94,6 @@ extern "C" {
     }
     H5LTread_dataset_string(file_id,"/topdir",topdir);
     H5LTread_dataset_int(file_id,"/ntimedirs",&ntimedirs);
-// ORF: 2017-1-25: Old format was int, we are now double
-//  dirtimes = (int *)malloc(ntimedirs * sizeof(int));
     dirtimes = (double *)malloc(ntimedirs * sizeof(double));
     timedir = (char **)malloc(ntimedirs * sizeof(char *)); for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(256 * sizeof(char)));
     strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,H5T_VARIABLE);
@@ -103,11 +104,7 @@ extern "C" {
     H5LTread_dataset(file_id,"/nodedir",strtype,nodedir);
     H5LTread_dataset_int(file_id,"/dn",&dn);
     H5LTread_dataset_int(file_id,"/ntottimes",&ntottimes);
-// ORF: 2017-1-25: Old format was int, we are now double
-//  alltimes = (int *)malloc(ntottimes * sizeof(int));
     alltimes = (double *)malloc(ntottimes * sizeof(double));
-//  H5LTread_dataset_int(file_id,"/alltimes",alltimes);
-//  H5LTread_dataset_int(file_id,"/dirtimes",dirtimes);
     H5LTread_dataset_double(file_id,"/alltimes",alltimes);
     H5LTread_dataset_double(file_id,"/dirtimes",dirtimes);
     H5LTread_dataset_int(file_id,"/nx",&nx);
@@ -123,13 +120,11 @@ extern "C" {
 
     H5LTread_dataset_int(file_id,"/nodex",&nodex);
     H5LTread_dataset_int(file_id,"/nodey",&nodey);
-    //nodex_cm1 = 2 * nodex; //ORF temp; tweak this to your heart's content
-    //nodey_cm1 = 1 * nodey; //ORF temp; tweak this to your heart's content
     xhfull = (float *)malloc(nx * sizeof(float)); yhfull = (float *)malloc(ny * sizeof(float)); zh = (float *)malloc(nz * sizeof(float));
     H5LTread_dataset_float(file_id,"/xhfull",xhfull);
     H5LTread_dataset_float(file_id,"/yhfull",yhfull);
     H5LTread_dataset_float(file_id,"/zh",zh); for (i=0; i < nz; i++)
-        H5LTread_dataset_int(file_id,"/nvars",&nvars);
+    H5LTread_dataset_int(file_id,"/nvars",&nvars);
     strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,40);
     H5LTread_dataset (file_id, "/varname", strtype, *varname);
     H5Fclose(file_id); // This is important!
@@ -187,6 +182,13 @@ avtcm1visitFileFormat::GetTimes(std::vector<double> &times)
 {
     for(int i = 0; i < ntottimes; i++)
         times.push_back(alltimes[i]);
+}
+
+    void
+avtcm1visitFileFormat::GetCycles(std::vector<int> &cycles)
+{
+    for(int i = 0; i < ntottimes; i++)
+        cycles.push_back(i);
 }
 
 

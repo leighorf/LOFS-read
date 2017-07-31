@@ -1,40 +1,23 @@
-/* Leigh Orf cm1tools to convert buffered file-per-core cm1 hdf5 output
- * to other more useful formats
+/* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
+ * to other perhaps more useful formats
  *
  * Big rewrite June 2011. All top-level conversion code in one file, makes
  * maintenance easier. Symlinks to binary determine what is run.
  *
  * Major cleanup 11/23/2016, cleared out all unused variables and got
  * gcc to mostly shut up. Getting this code stable before converting to
- * new cm1hdf5 (subsecond) format.
+ * new cm1hdf5 (subsecond) LOFS format.
  *
- * Spring '17: Switched over to floating point format for times in LOFS
+ * 2/17: Switched over to floating point format for times in LOFS
  *
- * Adding command line parsing 7/17
+ * Added command line parsing 7/17
  */
 
-#include <math.h>
-#include "hdforf.h"
-#include <netcdf.h>
-#include "errorf.h"
-#include <getopt.h>
-void parse_cmdline_hdf2nc(int argc, char *argv[],
-		char *histpath, int *got_histpath, char *ncbase, int *got_ncbase,
-		double *time, int *got_time,
-		int *X0, int *got_X0,
-		int *Y0, int *got_Y0,
-		int *X1, int *got_X1,
-		int *Y1, int *got_Y1,
-		int *Z0, int *got_Z0,
-		int *Z1, int *got_Z1 );
-#define TRUE 1
-#define FALSE 0
+#include "lofs-read.h"
+
 #define MAXVARIABLES (100)
 #define MAXSTR (512)
 
-#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
-
-/* These vars are global, everyone uses them. Or I am lazy. */
 char topdir[PATH_MAX+1];
 int dn;
 char **timedir; 
@@ -49,12 +32,26 @@ double *alltimes;
 int ntottimes;
 int firsttimedirindex;
 
+int debug = 0;
+//Minimum number of required arguments to hdf2nc. Adding optional flags (to
+//hdf2nc) will require incrementing in order to retrieve all the
+//variable names. Make this a global just for simplicity.
+int argc_hdf2nc_min=4;
+int optcount=0;
+
 void grok_cm1hdf5_file_structure();
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
-int hhmmss (int time);
-void hdf2v5d();
-void fix_fubar_v5d_coord (float *c, float *s,int snx, int sny, int snz);
-void lflush (FILE * fp);
+void makevisit(int argc, char *argv[], char *cm1visitbase,int snx0,int sny0,int snx1,int sny1,int snz0,int snz1);
+
+void parse_cmdline_hdf2nc(int argc, char *argv[],
+		char *histpath, char *ncbase,
+		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
+
+void parse_cmdline_makevisit(int argc, char *argv[],
+		char *histpath, char *cm1visitbase,
+		int *snx0, int *sny0, int *snx1, int *sny1, int *snz0, int *snz1);
+
+extern char *optarg; /* This is handled by the getopt code */
 
 int main(int argc, char *argv[])
 {
@@ -70,30 +67,23 @@ int main(int argc, char *argv[])
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
-	else if (strspn("hdf2v5d",progname) == 7) we_are_hdf2v5d = TRUE;
 	else if (strspn("makevisit",progname) == 9) we_are_makevisit = TRUE;
-	else if (strspn("linkfiles",progname) == 9) we_are_linkfiles = TRUE;
 	else
 	{
 		fprintf(stderr,"progname = %s\n",progname);
-		ERROR_STOP("Must call program as either hdf2nc, hdf2v5d, makevisit, or linkfiles and should be symbolically linked");
+		ERROR_STOP("Must call program as either hdf2nc or makevisit");
 	}
 
 	if (we_are_hdf2nc) 
 	{
 		int X0,Y0,X1,Y1,Z0,Z1;
 		double time;
-		int got_histpath,got_ncbase,got_time;
-		int got_X0,got_Y0,got_X1,got_Y1,got_Z0,got_Z1;
 
-		got_X0=got_Y0=got_X1=got_Y1=got_Z0=got_Z1=0;
-		X0=Y0=X1=Y1=Z0=Z1=0;
+		X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
 		time=0.0;
 		char ncbase[MAXSTR];
 
-		parse_cmdline_hdf2nc(argc, argv, histpath, &got_histpath, ncbase, &got_ncbase,
-			&time, &got_time, &X0, &got_X0, &Y0, &got_Y0, &X1, &got_X1, &Y1, &got_Y1,
-			&Z0, &got_Z0, &Z1, &got_Z1);
+		parse_cmdline_hdf2nc(argc, argv, histpath, ncbase, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1 );
 
 /* I want the full, absolute path to the top level directory, not the relative path. 
  * This is so I can find the files later on if I forget where I put
@@ -102,129 +92,37 @@ int main(int argc, char *argv[])
 		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 		grok_cm1hdf5_file_structure();
 		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
-		//printf("ORF: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
+		if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
+		/* If we didn't specify values at the command line set them to full domain parameters */
+		if(X0<0)X0=0; if(Y0<0)Y0=0; if(Z0<0)Z0=0;
+		if(X1<0)X1=nx-1; if(Y1<0)Y1=ny-1; if(Z1<0)Z1=nz-1;
+
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
 	}
-	else if (we_are_hdf2v5d)
-	{
-		if (argc < 2)
-		{
-			fprintf(stderr,"Usage: %s [topdir] \n",progname);
-			ERROR_STOP("Insufficient arguments to hdf2v5d");
-		}
-	}
 	else if (we_are_makevisit)
 	{
-		if (argc < 2)
-		{
-			fprintf(stderr,"Usage: %s [topdir] \n",progname);
-			ERROR_STOP("Insufficient arguments to makevisit");
-		}
+        	int snx0, snx1, sny0, sny1, snz0, snz1;
+		char cm1visitbase[MAXSTR];
+        	snx0 = sny0 = snz0 = snx1 = sny1 = snz1 = -1; //set to bogus value
+
+		parse_cmdline_makevisit(argc, argv, histpath, cm1visitbase, &snx0, &sny0, &snx1, &sny1, &snz0, &snz1);
+
+		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
+		grok_cm1hdf5_file_structure();
+		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
+
+		/* If we didn't specify values at the command line set them
+		 * to full domain parameters */
+		if(snx0<0)snx0=0; if(sny0<0)sny0=0; if(snz0<0)snz0=0;
+		if(snx1<0)snx1=nx-1; if(sny1<0)sny1=ny-1; if(snz1<0)snz1=nz-1;
+
+		makevisit(argc,argv,cm1visitbase,snx0,sny0,snx1,sny1,snz0,snz1);
 	}
-	else if (we_are_linkfiles)
-	{
-		if (argc < 2)
-		{
-			fprintf(stderr,"Usage: %s [topdir] \n",progname);
-			ERROR_STOP("Insufficient arguments to linkfiles");
-		}
-	}
+	exit(0);
+}
 
-
-	if (we_are_hdf2nc)
-	{
-		/*
-		int X0,Y0,X1,Y1,Z0,Z1;
-		double t0;
-		X0=Y0=X1=Y1=Z0=Z1=0;
-		t0=0.0;
-		char ncbase[512];
-		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,t0);
-		*/
-		exit(0); /* ORF we moved it all up */
-	}
-	else if (we_are_hdf2v5d)
-	{
-		hdf2v5d(argc,argv);
-	}
-	else if (we_are_linkfiles)
-	{
-	  int snx0, snx1, sny0, sny1;
-	  int idir,inode;
-	  char dirname[MAXSTR];
-	  //adding subdomain
-	  snx0 = sny0 = 0;
-	  snx1 = nx-1; sny1 = ny-1;
-	  if(argc == 4)
-	  {
-	      snx0 = atoi(argv[2]); snx1 = atoi(argv[3]);
-	  }
-	  else if(argc == 6)
-	  {
-	      snx0 = atoi(argv[2]); sny0 = atoi(argv[3]);
-	      snx1 = atoi(argv[4]); sny1 = atoi(argv[5]);
-	  }
-
-		mkdir("sub3D",0755);
-		for(idir=0;idir<ntimedirs;idir++)
-		{
-			sprintf(dirname,"sub3D/%s",timedir[idir]);
-			mkdir (dirname,0755);
-			for(inode=0;inode<nnodedirs;inode++)
-			{
-				sprintf(dirname,"sub3D/%s/%s",timedir[idir],nodedir[inode]);
-				mkdir (dirname,0755);
-				printf("Created %s\n",dirname);
-			}
-		}
-
-		link_hdf_files (topdir, timedir, nodedir, ntimedirs, dn, dirtimes, alltimes, ntottimes,
-			snx0, sny0, snx1, sny1, nx, ny, nz, nodex, nodey);
-
-	}
-	else if (we_are_makevisit)
-	{
-        int snx0, snx1, sny0, sny1, snz0, snz1;
-        //adding subdomain
-        snx0 = sny0 = snz0 = 0;
-        snx1 = nx-1; sny1 = ny-1; snz1 = nz-1;
-        if(argc == 4)
-        {
-            snx0 = atoi(argv[2]); snx1 = atoi(argv[3]);
-        }
-        else if(argc == 6)
-        {
-            snx0 = atoi(argv[2]); sny0 = atoi(argv[3]);
-            snx1 = atoi(argv[4]); sny1 = atoi(argv[5]);
-        }
-        else if(argc == 8)
-        {
-            snx0 = atoi(argv[2]); sny0 = atoi(argv[3]);
-            snx1 = atoi(argv[4]); sny1 = atoi(argv[5]);
-            snz0 = atoi(argv[6]); snz1 = atoi(argv[7]);
-        }
-
-/* This code essentially reproduces what used to be in
- * avtcm1visitFileFormat, getting everything essential and stuffing it
- * into a file. We use hdf5 format because... we are a masochist(?).
- * Actually, because ascii text got cumbersome with large mesh arrays
- * etc.
- *
- * We need:
- * topdir
- * timedir
- * nodedir
- * ntimedirs
- * dn
- * dirtimes
- * alltimes array
- * varnames array
- * nx, ny, nz, nodex, nodey 
- *
- * Bunch of stuff already grokked once we are here
- *
- * */
-
+void makevisit(int argc, char *argv[], char *cm1visitbase,int snx0,int sny0,int snx1,int sny1,int snz0,int snz1)
+{
 		int i,rank,nvars;
 		hid_t f_id,g_id,strtype;
 		H5G_info_t group_info;
@@ -236,21 +134,17 @@ int main(int argc, char *argv[])
 
 		float *xhfull,*yhfull,*zh;
 
-		for (i=0; i < strlen(topdir)-2; i++) dirbase[i]=topdir[i];
-		dirbase[i]='\0';
-
-		sprintf(visitfile,"%s%s.cm1visit",dirbase,base);
+		sprintf(visitfile,"%s.cm1visit",cm1visitbase);
 		printf("visitfile = %s\n",visitfile);
-		
 		printf("topdir = %s\n",topdir);
 		printf("ntimedirs = %i\n",ntimedirs);
-		for (i=0; i<ntimedirs; i++)printf("%s ",timedir[i]);printf("\n");
-		for (i=0; i<ntimedirs; i++)printf("%f ",dirtimes[i]);printf("\n");
+		if (debug) {for (i=0; i<ntimedirs; i++)printf("%s ",timedir[i]);printf("\n");}
+		if (debug) {for (i=0; i<ntimedirs; i++)printf("%f ",dirtimes[i]);printf("\n");}
 		printf("nnodedirs = %i\n",nnodedirs);
-		for (i=0; i<nnodedirs; i++)printf("%s ",nodedir[i]);printf("\n");
+		if (debug) {for (i=0; i<nnodedirs; i++)printf("%s ",nodedir[i]);printf("\n");}
 		printf("dn = %i\n",dn);
 		printf("ntottimes = %i\n",ntottimes);
-		for (i=0; i<ntottimes; i++)printf("%f ",alltimes[i]);printf("\n");
+		if(debug) {for (i=0; i<ntottimes; i++)printf("%f ",alltimes[i]);printf("\n");}
 		printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",nx,ny,nz,nodex,nodey);
 
 		// Done with file layout and basic metadata, now get mesh
@@ -270,17 +164,15 @@ int main(int argc, char *argv[])
 		get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 		get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 		get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
-// varnames
-//		sprintf(groupname,"%05i/3D",dirtimes[ntimedirs-1]); //is now last since we no longer have get_first_hdf_file_name routine;
-// ORF: there will always be a group zero now that each file begins at
-// zero
 		sprintf(groupname,"%05i/3D",0); //is now last since we no longer have get_first_hdf_file_name routine;
-		// first file name is the last "fist file name" from
-		// sweeping through all times, so now "first file name" is
-		// from last time direcotry 
-		// This is getting convoluted now that I have to deal with
-		// empty node dirs from saving subdomains.
-		printf("MAKEVISIT: firstfilename = %s\t groupname = %s\n",firstfilename,groupname);
+
+/* first file name is the last "fist file name" from sweeping through
+all times, so now "first file name" is from last time direcotry This is
+a little convoluted now that I have to deal with empty node dirs from
+saving subdomains. */
+
+		printf("firstfilename = %s\n",firstfilename);
+		printf("groupname = %s\n",groupname);
 		g_id = H5Gopen(f_id,groupname,H5P_DEFAULT);
 		H5Gget_info(g_id,&group_info);
 		nvars = group_info.nlinks;
@@ -291,6 +183,7 @@ int main(int argc, char *argv[])
 		H5Gclose(g_id);
 		H5Fclose(f_id);
 
+		printf("Variables retrieved: ");
 		for (i = 0; i < nvars; i++) printf("%s ",varname[i]);printf("\n");
 
 		// OK now we have everything, time to make hdf file
@@ -339,35 +232,34 @@ int main(int argc, char *argv[])
 		H5LTmake_dataset (f_id, "/varname", rank, dims, strtype, varname[0]);
 		if (H5Fclose(f_id) < 0) ERROR_STOP("Cannot close visit metadata hdf5 file");
 		printf("Succesfully wrote %s which can now be read by VisIt using the cm1visit plugin.\n",visitfile);
-	}
-
-	exit(0);
 }
 
 void grok_cm1hdf5_file_structure()
 {
 	int i;
-	ntimedirs = get_num_time_dirs(topdir); printf("ntimedirs: %i\n",ntimedirs);
+	ntimedirs = get_num_time_dirs(topdir,debug); printf("ntimedirs: %i\n",ntimedirs);
 	if (ntimedirs == 0) ERROR_STOP("No cm1 hdf5 files found");
 
 	timedir = (char **)malloc(ntimedirs * sizeof(char *));
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dirtimes = (double *)malloc(ntimedirs * sizeof(double)); // ORF NO LONGER INT, RIGHT???
 
-	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base);
+	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base,debug);
 
-	nnodedirs =  get_num_node_dirs(topdir,timedir[0]);
+	nnodedirs =  get_num_node_dirs(topdir,timedir[0],debug);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
+	// ORF 8 == WOT??
 	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
-	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs);
+	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug);
 
-	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex);
-#ifdef DEBUG
-	printf("Times: ");
-	for (i=0; i<ntottimes; i++)printf("%lf ",alltimes[i]);
-	printf("\n");
-#endif
+	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,debug);
+	if(debug)
+	{
+		printf("All available times: ");
+		for (i=0; i<ntottimes; i++)printf("%lf ",alltimes[i]);
+		printf("\n");
+	}
 }
 
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
@@ -384,6 +276,8 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	int j=0,k=0,ii;
 	char varname[MAXVARIABLES][MAXSTR];
 	char ncfilename[MAXSTR];
+
+	extern int H5Z_zfp_initialize(void);
 
 	int snx,sny,snz;
 	hid_t f_id;
@@ -403,31 +297,30 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	size_t s2[3],e2[3];
 	int ivar;
 	long int bufsize;
-	float *xhfull,*yhfull,*zh,*zf;
+	float *xhfull,*yhfull,*xffull,*yffull,*zh,*zf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
 	FILE *fp;
 	char cmdfilename[512];
 	//ORF for writing single time in unlimited time dimension/variable
 	const size_t timestart = 0;
 	const size_t timecount = 1;
-	int n_cmdline_args=19;
 
-	/* We used to set arguments based upon what order they were passed to
-	 * hdf2nc. Now we use getopt with descriptive names that can be
-	 * passed in any order, except the variable names all come last */
-	
-	/* This is kind of ugly but it works. All command line arguments
-	 * to hdf2nc are mandatory, and we have 18 items before the list
-	 * of variable names that brings up the rear of all the command
-	 * line arguments (add one for the executable name!) */
+	/* Since we tack on all the requested variables to the end of the
+	 * command line, we have to find out where the 1st variable
+	 * argument is. Since we have optional arguments, we keep track of
+	 * things and then peel off the file name strings */
 
-	nvar = argc-n_cmdline_args;
+	nvar = argc - argc_hdf2nc_min - optcount;
 
+	if (debug) printf("argc = %i, nvar = %i, optcount = %i\n",argc,nvar,optcount);
+
+	printf("\nWe are requesting the following fields: ");
 	for (i=0; i<nvar; i++)
 	{
-		strcpy(varname[i],argv[i+n_cmdline_args]);
-		fprintf(stdout,"%s \n",varname[i]);
+		strcpy(varname[i],argv[i+argc_hdf2nc_min+optcount]);
+		printf("%s ",varname[i]);
 	}
+	printf("\n");
 	sprintf(ncfilename,"%s.%012.6f.nc",ncbase,t0);
 	
 	snx = X1 - X0 + 1;
@@ -451,7 +344,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
 	bufsize = (long) (snx+1) * (long) (sny+1) * (long) (snz+1) * (long) sizeof(float);
-	fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
+	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -470,13 +363,17 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	}
 	xhfull = (float *)malloc(nx * sizeof(float));
 	yhfull = (float *)malloc(ny * sizeof(float));
+	xffull = (float *)malloc((nx+1) * sizeof(float));
+	yffull = (float *)malloc((ny+1) * sizeof(float));
 	th0 = (float *)malloc(nz * sizeof(float));
 	qv0 = (float *)malloc(nz * sizeof(float));
 	zh = (float *)malloc(nz * sizeof(float));
 	zf = (float *)malloc(nz * sizeof(float));
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
-	/* ORF can't I just read xffull and yffull here?? */
+/* THIS NEEDS TO BE TESTED IN CM1 FIRST... we haven't been saving these */
+//	get1dfloat (f_id,(char *)"mesh/xffull",xhfull,0,nx+1);
+//	get1dfloat (f_id,(char *)"mesh/yffull",yhfull,0,ny+1);
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
@@ -487,33 +384,39 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	yhout = (float *)malloc(sny * sizeof(float));
 	zhout = (float *)malloc(snz * sizeof(float));
 	xfout = (float *)malloc(snx * sizeof(float));
-	yfout = (float *)malloc(sny * sizeof(float));
-	zfout = (float *)malloc(snz * sizeof(float));
+	yfout = (float *)malloc(sny * sizeof(float)); // +1 when we do this right
+	zfout = (float *)malloc(snz * sizeof(float)); // +1 when we do this right
 
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
+	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];     //NEED TO READ REAL ZF
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yhfull[iy]; //ORF FIX
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xhfull[ix]; //ORF FIX 
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
-	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];
-
-	// Do we save these in the HDF5 files? We should just be able to read them directly.
-	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*(yhfull[iy]-15.00); //ORF STUPID FIX BUG BUG BUG
-	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*(xhfull[ix]-15.00); //ORF STUPID FIX BUG BUG BUG
 
 	H5Z_zfp_initialize();
 
-	// ORF could make option: What kind of netCDF file to create?
-	// If we add optional options to hdf2nc, we'll have to increment
-	// n_cmd_line_args so we get all the varnames
-	status = nc_create (ncfilename, NC_CLOBBER|NC_64BIT_OFFSET, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
-//	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR)
-//	{
-//		printf("Error %i\n",status);
-//		ERROR_STOP ("nc_create failed");
-//	}
-//	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4|NC_CLASSIC_MODEL, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
-//
-//
+/*
+
+netCDF files come in several flavors... This is mostly due to the
+passage of time - it's an old format! And files have gotten bigger!
+
+The best is NC_NETCDF4, which is HDF5 but using the netCDF API...
+With HDF5 you can make the hugest-assed files imaginable with nearly
+unlimited variables/variable sizes. If netCDF4 doesn't work you probably
+don't have it built into your netCDF distribution (it requires HDF5).
+
+The second best is NC_64BIT_OFFSET (Can make files bigger than 2 GB)
+
+See this hopefully not dead link for more:
+http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-Support.html#Large-File-Support
+
+*/
+
+	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+
+
 	status = nc_def_dim (ncid, "xh", snx, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", sny, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", snz, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
@@ -528,16 +431,13 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	status = nc_def_var (ncid, "yf", NC_FLOAT, 1, &nyf_dimid, &yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "time", NC_DOUBLE, 1, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-
 	status = nc_put_att_text(ncid, xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-
 	status = nc_put_att_text(ncid, xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, timeid, "units", strlen("s"), "s");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-
 	status = nc_def_var (ncid, "X0", NC_INT, 0, dims, &x0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Y0", NC_INT, 0, dims, &y0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "X1", NC_INT, 0, dims, &x1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -589,73 +489,27 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 			ERROR_STOP("nc_def_var failed");
 		}
 // time consuming and not really saving much space for interesting data
+// Need a ZFP option although unless there is a way around it we'd be
+// compressing already lossy data since our hdf5 files are probably
+// compressed with ZFP
 //                 status=nc_def_var_deflate(ncid, varnameid[ivar], 0, 1, 9);
-//	            if (status != NC_NOERR) printf ("Cannot nc_def_var_deflate for var #%i %s\n", ivar, varname[ivar]);
 	}
 	status = nc_enddef (ncid);
-
-//	this is our 4d write:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, buffer);
 
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
 
 	// For surface theta (Vapor wants 2D vars)
 	//
-	// Save surface thrhopert and dbz for easy viewing as 2D vars in
-	// Vapor
+	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
+	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
 	// Should make this a command line option
+	printf("\nWorking on surface 2D thrhopert and dbz (");
 	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 	status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
 	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 	status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
-	// Temporary: Read u, v, w, xvort,yvort,zvort up front
-	// ORF 2016-03-07 ugh, we stored u v w for 20 meter runs
-	/*
-	*/
-#ifdef READAHEAD
+	printf(")\n");
 
-#ifndef UVW
-	read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#else
-	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	for(k=0; k<snz; k++)
-	{
-		for(j=0; j<sny; j++)
-		{
-			for(i=0; i<snx; i++)
-			{
-				ubuffer[P3(i,j,k,snx,sny)] = 0.5*(buffer[P3(i,j,k,snx+1,sny)] + buffer[P3(i+1,j,k,snx+1,sny)]);
-			}
-		}
-	}
-	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	for(k=0; k<snz; k++)
-	{
-		for(j=0; j<sny; j++)
-		{
-			for(i=0; i<snx; i++)
-			{
-				vbuffer[P3(i,j,k,snx,sny)] = 0.5*(buffer[P3(i,j,k,snx,sny+1)] + buffer[P3(i,j+1,k,snx,sny+1)]);
-			}
-		}
-	}
-	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"w",X0,Y0,X1,Y1,Z0,Z1+1,nx,ny,nz,nodex,nodey);
-	for(k=0; k<snz; k++)
-	{
-		for(j=0; j<sny; j++) 
-		{
-			for(i=0; i<snx; i++) 
-			{
-				wbuffer[P3(i,j,k,snx,sny)] = 0.5*(buffer[P3(i,j,k,snx,sny)] + buffer[P3(i,j,k+1,snx,sny)]);
-			}
-		}
-	}
-#endif
-	read_hdf_mult_md(  xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	read_hdf_mult_md(  yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	read_hdf_mult_md(  zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,  "zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#endif
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,zhid,zhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -675,22 +529,16 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
-#ifdef READAHEAD
-		if     (!strcmp(varname[ivar],"uinterp")) buffer = ubuffer;
-		else if(!strcmp(varname[ivar],"vinterp")) buffer = vbuffer;
-		else if(!strcmp(varname[ivar],"winterp")) buffer = wbuffer;
-		else if(!strcmp(varname[ivar],"xvort")) buffer = xvort;
-		else if(!strcmp(varname[ivar],"yvort")) buffer = yvort;
-		else if(!strcmp(varname[ivar],"zvort")) buffer = zvort;
-		else
-#endif 
-		if(!strcmp(varname[ivar],"hwin_sr"))
+
+// Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
+// Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
+// derivatives of these variables since they have already been interpolated to the scalar grid.
+
+		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
-#ifndef READAHEAD
 			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				usr = ubuffer[i];
@@ -698,81 +546,26 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
 		}
-		else if(!strcmp(varname[ivar],"hwin_gr"))
+		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
-			float umove = 15.1719; float vmove = 10.0781; /* ORF: KLUDGE: should save these in history files */
-			float ugr, vgr;
-#ifndef READAHEAD
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#endif
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				ugr = ubuffer[i]+umove;
-				vgr = vbuffer[i]+vmove;
-				buffer[i] = sqrt(ugr*ugr+vgr*vgr);
-			}
-		}
-		else if(!strcmp(varname[ivar],"hwin_sr_uv"))
-		{
-			float usr,vsr;
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				usr = (i!=snx-1)?ubuffer[P3(i+1,j,k,snx,sny)]+ubuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
-				vsr = (i!=sny-1)?vbuffer[P3(i,j+1,k,snx,sny)]+vbuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
-				buffer[i] = sqrt(usr*usr+vsr*vsr);
-			}
-		}
-		else if(!strcmp(varname[ivar],"hwin_gr_uv"))
-		{
-			float umove = 15.1719; float vmove = 10.0781; /* ORF: KLUDGE: should save these in history files */
-			float ugr, vgr;
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				ugr = (i!=snx-1)?ubuffer[P3(i+1,j,k,snx,sny)]+ubuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
-				vgr = (i!=sny-1)?vbuffer[P3(i,j+1,k,snx,sny)]+vbuffer[P3(i,j,k,snx,sny)]:0.0; //for now just ignore last value
-				ugr += umove;
-				vgr += vmove;
-				buffer[i] = sqrt(ugr*ugr+vgr*vgr);
-			}
-		}
-		else if(!strcmp(varname[ivar],"hvort"))
-		{
-#ifndef READAHEAD
 			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
-#ifndef READAHEAD
 				buffer[i] = sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]);
-#else
-				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
-#endif
 			}
 		}
-//#ifndef FUCKTHIS
-// ORF because I'm saving a variable called vortmag!
-		else if(!strcmp(varname[ivar],"vortmag"))
+		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
-#ifndef READAHEAD
 			read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#endif
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
 			}
 		}
-//#endif
-		else if(!strcmp(varname[ivar],"streamvort")) /* streamwise vorticity */
+		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
 			for(i=0; i<snx*sny*snz; i++)
 			{
@@ -780,7 +573,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 					sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i]);
 			}
 		}
-		else if(!strcmp(varname[ivar],"streamfrac")) /* streamwise vorticity */
+		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
 			for(i=0; i<snx*sny*snz; i++)
 			{
@@ -789,7 +582,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 					sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]));
 			}
 		}
-		else if(!strcmp(varname[ivar],"qcqi"))
+		else if(!strcmp(varname[ivar],"qcqi")) // "cloud" (water+ice)
 		{
 			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -798,192 +591,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 				buffer[i] = ubuffer[i]+vbuffer[i];
 			}
 		}
-			//float *thpert,*qvpert,*qtot,*ql
-		else if(!strcmp(varname[ivar],"thrhopert1"))
-		{
-			float *thpert_thrho,*qvpert_thrho; /* Local copies so as not to screw up other variables */
-			if ((qvar1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar1");
-			if ((qvar2 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
-			if ((qvar3 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
-			reps = 461.5 / 287.04; //from constants.incl in cm1
-			read_hdf_mult_md(qvar1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				qvar3[i] = 0.001*(qvar1[i]+qvar2[i]);
-			}
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				qvar3[i] = qvar3[i] + 0.001*qvar2[i];
-			}
-			qtot = qvar3;
-			read_hdf_mult_md(qvar1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			thpert_thrho = qvar1;
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qvpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			/* NOTE ORF!!! qvpert now g/kg in some simulations!!!!! */
-			qvpert_thrho = qvar2;
-			ii = 0;
-			for(k=0; k<snz; k++)
-			{
-				for(j=0; j<sny; j++)
-				{
-					for(i=0; i<snx; i++)
-					{
-						float theta,num1,denom1,thbar,num2,denom2;
-						theta = th0[k]+thpert_thrho[P3(i,j,k,snx,sny)];
-						num1 = 1.0+reps*(qv0[k]+0.001*qvpert_thrho[P3(i,j,k,snx,sny)]);
-						denom1 = 1.0+qtot[P3(i,j,k,snx,sny)]+qv0[k]+0.001*qvpert_thrho[P3(i,j,k,snx,sny)];
-						thbar = th0[k];
-						num2 = 1.0+reps*qv0[k];
-						denom2 = 1.0+qv0[k];
-
-						buffer[ii] = theta*(num1/denom1) - thbar*(num2/denom2);
-
-//						if(k==0)printf("theta = %f\tnum1 = %f\tdenom1 = %f\t thbar = %f\tnum2 = %f\tdenom2 = %f\tthrho_pert = %f\n",theta,num1,denom1,thbar,num2,denom2,buffer[ii]);
-							
-						ii++;
-					}
-				}
-			}
-			free(qvar1); free(qvar2); free(qvar3);
-		}
-		else if(!strcmp(varname[ivar],"thrhopert2"))
-		{
-			if ((qvar1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar1");
-			if ((qvar2 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
-			if ((qvar3 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate qvar2");
-			reps = 461.5 / 287.04; //from constants.incl in cm1
-			read_hdf_mult_md(qvar1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				qvar3[i] = qvar1[i]+qvar2[i];
-			}
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				qvar3[i] = qvar3[i] + qvar2[i];
-			}
-			qtot = qvar3;
-			read_hdf_mult_md(qvar1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			thpert = qvar1;
-			read_hdf_mult_md(qvar2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qvpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			qvpert = qvar2;
-			ii = 0;
-			for(k=0; k<snz; k++)
-			{
-				for(j=0; j<sny; j++)
-				{
-					for(i=0; i<snx; i++)
-					{
-						float theta,qvactual,qcond,thbar,qvbar;
-						theta = th0[k]+thpert[P3(i,j,k,snx,sny)];
-						qvactual = qv0[k]+qvpert[P3(i,j,k,snx,sny)];
-						qcond = qtot[P3(i,j,k,snx,sny)];
-						thbar = th0[k];
-						qvbar = qv0[k];
-
-						buffer[ii] = theta*(1.0+0.61*qvactual-qcond) - thbar*(1.0+0.61*qvbar);
-							
-						ii++;
-					}
-				}
-			}
-			free(qvar1); free(qvar2); free(qvar3);
-		}
-		else if(!strcmp(varname[ivar],"thrhopert_diff_1e-1"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_1e-1",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"thrhopert_diff_1e-2"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_1e-2",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"thrhopert_diff_1e-3"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert_1e-3",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"qc_diff_1"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_1",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"qc_diff_1e-1"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_1e-1",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"qc_diff_1e-2"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_1e-2",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else if(!strcmp(varname[ivar],"zeta_diff_1e-1"))
-		{
-			read_hdf_mult_md(dum1,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_lossless",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum2,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc_1e-1",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			ii=0;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-			{
-				ii=P3(i,j,k,snx,sny);
-				buffer[ii] = dum1[ii]-dum2[ii];
-			}
-		}
-		else
+		else // We have (hopefully) requested a variable that has been saved
 		{
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 		}
@@ -998,11 +606,9 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	}
 	status = nc_close(ncid); if (status != NC_NOERR)
 	{
-//		printf("ncid = %i\n",ncid);
-	    fprintf(stderr, "%s\n", nc_strerror(status));
+		fprintf(stderr, "%s\n", nc_strerror(status));
 		printf("status = %i\n",status);
 		fprintf(stderr, "Warning: netcdf is throwing an hdf error but our file seems to be fine...\n");
-//		ERROR_STOP("Could not close netcdf file (nc_close)");
 	}
 
 	// Write command line option into file for future reference
@@ -1019,363 +625,226 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	}
 }
 
-void hdf2v5d(int argc, char *argv[])
+void parse_cmdline_makevisit(int argc, char *argv[],
+		char *histpath, char *cm1visitbase,
+		int *snx0, int *sny0, int *snx1, int *sny1, int *snz0, int *snz1)
 {
-	FILE *fp_data;
-	char datafile[100];
-	char v5dfilename[512],cpcmd[512];
-	int xoff,yoff,X0,Y0,X1,Y1,Z0,Z1,snx,sny,snz;
-	int nx,ny,ih;
-	int dt,t0,t1;
-	int compression;
-	int sbox;
-	float umove,vmove;
-	int i, nblocks;
-	int *timestamp,*datestamp;
-	int ivar,nv5dvars,ib,iz;
-	float *buffer,*ubuffer,*vbuffer,*wbuffer,*xh,*yh,*zh,*xyslice;
-	float dx,dy;
-	char v5dvarname[MAXVARIABLES][10];
-	char varname[MAXVARIABLES][10];
-	int iret;
 
-	float dxkm,dykm;
-
-	int projection = 1; // 1 = linear, rectangular, cylindrical equidistant (must represent dx, dy in degrees)
-	int vertical = 2;   // 2 = Stretched vertical grid, explicitly indicate height AGL in array
-	float proj_args[4]; // Projection arguments for our grid 
-	int *nla;
-
-	hid_t file_id;
-
-
-	if (argc == 3)	strcpy(datafile,argv[2]);
-	else 			strcpy(datafile,"hdf2v5d.dat");
-
-
-	if ((fp_data = fopen (datafile, "r")) == NULL)
+	int got_snx0,got_snx1,got_sny0,got_sny1,got_snz0,got_snz1;
+	int got_histpath,got_cm1visitbase;
+	enum { OPT_HISTPATH = 1000, OPT_CM1VISITBASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
+	static struct option long_options[] =
 	{
-		char errorbuf[500];
-		sprintf(errorbuf,"Could not open %s\n",datafile);
-		ERROR_STOP(errorbuf);
-	}
-
-	if ((iret=fscanf (fp_data, "%s", topdir))==EOF)ERROR_STOP("fscanf failed");; lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%s", v5dfilename))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-    if ((iret=fscanf (fp_data, "%d%d", &xoff, &yoff))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d%d%d%d%d%d", &X0, &Y0, &X1, &Y1, &Z0, &Z1))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%i", &dt))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d%d", &t0, &t1))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d", &compression))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	if ((iret=fscanf (fp_data, "%d %f %f", &sbox, &umove, &vmove))==EOF)ERROR_STOP("fscanf failed"); lflush (fp_data);
-	ivar=0;
-	while ((fscanf (fp_data, "%s", &(varname[ivar][0]))) != EOF)
-	{
-		if (!strcmp (varname[ivar], "uinterp"))
-		{
-			strcpy (v5dvarname[ivar], "U");
-		}
-		else if (!strcmp (varname[ivar], "vinterp"))
-		{
-			strcpy (v5dvarname[ivar], "V");
-		}
-		else if (!strcmp (varname[ivar], "winterp"))
-		{
-			strcpy (v5dvarname[ivar], "W");
-		}
-		else
-		{
-			strcpy (v5dvarname[ivar], varname[ivar]);
-		}
-		ivar++;
-	}
-	fclose (fp_data);
-	nv5dvars = ivar;
-
-      X0+=xoff; /* kludge - sort of */
-      X1+=xoff;
-      Y0+=yoff;
-      Y1+=yoff;
-
-	/* make backup dat file for future reference */
-	if ((iret=sprintf (cpcmd, "cp %s hdf2v5d.dat.%s",datafile,v5dfilename))<0)ERROR_STOP("sprintf failed");
-	if ((iret=system (cpcmd))==-1)ERROR_STOP("system copy command failed");
-
-	snx = X1 - X0 + 1;
-	sny = Y1 - Y0 + 1;
-	snz = Z1 - Z0 + 1;
-
-
-	if ((zh = (float *) malloc (snz * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate zh");
-	if ((buffer = (float *) malloc (snx * sny * snz * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((ubuffer = (float *) malloc (snx * sny * snz * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((vbuffer = (float *) malloc (snx * sny * snz * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((wbuffer = (float *) malloc (snx * sny * snz * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((xyslice = (float *) malloc (snx * sny * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate 2D buffer slice");
-
-	if ((file_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-	{
-		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
-		ERROR_STOP("Cannot open hdf file");
-	}
-
-	get1dfloat (file_id,"mesh/zh",zh,Z0,snz);
-//	get0dfloat (file_id, "mesh/dx", &dx);
-//	get0dfloat (file_id, "mesh/dy", &dy);
-
-// ARGH - if we use stretched horizontal grid this is WRONG-O!
-// Should read in xh and yh mesh and take difference in center of domain
-// This will ensure what is desired
-//	get0dfloat (file_id, "mesh/dx", &dx);
-//	get0dfloat (file_id, "mesh/dy", &dy);
-	get0dint (file_id, "grid/nx", &nx);
-	get0dint (file_id, "grid/ny", &ny);
-	if ((xh = (float *) malloc (nx * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate xh");
-	if ((yh = (float *) malloc (ny * sizeof (float))) == NULL) ERROR_STOP("Cannot allocate yh");
-	get1dfloat (file_id,"mesh/xhfull",xh,0,nx-1);
-	get1dfloat (file_id,"mesh/yhfull",yh,0,ny-1);
-	ih=nx/2; dx = xh[ih+1]-xh[ih];
-	ih=ny/2; dy = yh[ih+1]-yh[ih];
-
-	printf("Center of domain: dx = %f\t dy = %f\n",dx,dy);
-
-
-	if (H5Fclose(file_id) < 0) ERROR_STOP("Cannot close hdf file");
-
-	dxkm = dx / 1000.0;
-	dykm = dy / 1000.0;
-
-	for (iz = 0; iz < snz; iz++)
-	{
-		zh[iz] *= 0.001;	/* km */
-	}
-
-	/* Note: proj_args 2 and 3 are increment between rows (colums) in
-	 * degrees. We place our box on the equator where 1 degree lat = 1
-	 * degree lon = 111 km. We could have chosen projection=0 but
-	 * units are generic in that case and we cannot do trajectories */
-	proj_args[0] = 0.0;
-	proj_args[1] = 180.0;
-	proj_args[2] = dykm / 111.0;
-	proj_args[3] = dxkm / 111.0;
-
-	/* number of levels for each variable can vary, ours never do*/
-	if ((nla = (int *) malloc (nv5dvars * sizeof (int))) == NULL) ERROR_STOP("Cannot allocate nla array");
-	for (ivar = 0; ivar < nv5dvars; ivar++) nla[ivar] = snz;
-
-	nblocks = 1 + (t1 - t0) / dt;
-	if ((timestamp = (int *) malloc (nblocks * sizeof (int))) == NULL) ERROR_STOP("Cannot allocate timestamp");
-	if ((datestamp = (int *) malloc (nblocks * sizeof (int))) == NULL) ERROR_STOP("Cannot allocate datestamp")
-
-	for (ib = 0; ib < nblocks; ib++)
-	{
-		timestamp[ib] = hhmmss (t0 + ib * dt);
-		datestamp[ib] = 01001; //arbitrary
-	}
-
-	strcat(v5dfilename,".v5d");
-	v5dCreate (v5dfilename, nblocks, nv5dvars, sny, snx, nla, (const char (*)[10]) v5dvarname, timestamp, datestamp, compression, projection, proj_args, vertical, zh);
-
-	for (ib = 1; ib <= nblocks; ib++)
-	{
-		int itime;
-		itime = (ib - 1) * dt + t0; printf("%05i: ",itime);
-		for (ivar = 1; ivar <= nv5dvars; ivar++)
-		{
-			printf ("%s(", varname[ivar - 1]); fflush (stdout);
-			if(!strcmp(varname[ivar-1],"hwin"))
-			{
-				read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				for(i=0; i<snx*sny*snz; i++)
-				{
-					buffer[i] = sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]);
-				}
-			}
-			else if(!strcmp(varname[ivar-1],"vortmag"))
-			{
-				read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				for(i=0; i<snx*sny*snz; i++)
-				{
-					buffer[i] = sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i]);
-				}
-			}
-			else if(!strcmp(varname[ivar-1],"hvort"))
-			{
-				read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-				for(i=0; i<snx*sny*snz; i++)
-				{
-					buffer[i] = sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]);
-				}
-			}
-			else
-			{
-				read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,itime,varname[ivar-1],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			}
-			printf (")"); fflush (stdout);
-			fix_fubar_v5d_coord (buffer, xyslice,snx,sny,snz);
-			v5dWrite (ib, ivar, buffer);
-		}
-		printf ("\n");
-	}
-	v5dClose ();
-	free(buffer); free(ubuffer); free(vbuffer); free(wbuffer);
-	printf("\nDone.\n");
-}
-
-int hhmmss (int time)
-{
-	int hh, mm, ss, val;
-	ss = time % 60;
-	mm = (time / 60) % 60;
-	hh = time / 3600;
-	val = ss + 100 * mm + 10000 * hh;
-	return (val);
-}
-
-void fix_fubar_v5d_coord (float *c, float *s,int snx, int sny, int snz)
-{
-//fubar used to be another word, I'll let you guess what it was.
-//Historical fact: Vis5d was written at SSEC initially to be compatible
-//with satellite data - which scans top down, so it adoped a coordinate
-//system where top left was (0,0), not bottom left like the flying
-//spaghetti monster meant it to be.
-
-#define P2(x,y,mx) ((y)*(mx)+(x))
-
-	int ix, iy, iz;
-	float *cp1;
-	float *s0;
-
-	s0 = s;
-
-	for (iz = 0; iz < snz; iz++)
-	{
-		cp1 = c;
-
-		for (iy = 0; iy < sny; iy++)
-			for (ix = 0; ix < snx; ix++)
-				s[P2 (sny - 1 - iy, ix, sny)] = *c++;
-
-		c = cp1;
-
-		for (iy = 0; iy < sny; iy++)
-			for (ix = 0; ix < snx; ix++)
-				*c++ = *s++;
-
-		s = s0;					/* restore slice pointer */
-	}
-}
-
-void lflush (FILE * fp)
-{
-	while (fgetc (fp) != '\n');
-}
-
-void	parse_cmdline_hdf2nc(int argc, char *argv[],
-	char *histpath, int *got_histpath, char *ncbase, int *got_ncbase,
-	double *time, int *got_time,
-	int *X0, int *got_X0,
-	int *Y0, int *got_Y0,
-	int *X1, int *got_X1,
-	int *Y1, int *got_Y1,
-	int *Z0, int *got_Z0,
-	int *Z1, int *got_Z1)
-{
-	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1 };
-	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
+		{"histpath", required_argument, 0, OPT_HISTPATH},
+		{"base",   required_argument, 0, OPT_CM1VISITBASE},
+		{"x0",       optional_argument, 0, OPT_X0},
+		{"y0",       optional_argument, 0, OPT_Y0},
+		{"x1",       optional_argument, 0, OPT_X1},
+		{"y1",       optional_argument, 0, OPT_Y1},
+		{"z0",       optional_argument, 0, OPT_Z0},
+		{"z1",       optional_argument, 0, OPT_Z1},
+		{"debug",    optional_argument, 0, OPT_DEBUG}
+	};
 
 	int bail = 0;
+	got_histpath=got_cm1visitbase=got_snx0=got_snx1=got_sny0=got_sny1=got_snz0=got_snz1=0;
 
 	if (argc == 1)
 	{
 		fprintf(stderr,
-		"Usage: %s -histpath [histpath] -ncbase [ncbase] -x0 [X0] -y0 [Y0] -x1 [X1] -y1 [Y1] -z0 [Z0] -z1 [Z1] -time [time] [varname1 ... varnameX] \n",argv[0]);
+		"Usage: %s --histpath=[histpath] --base=[cm1visitbase] --x0=[snx0] --y0=[sny0] --x1=[snx1] --y1=[sny1] --z0=[snz0] --z1=[snz1]\n",argv[0]);
 		exit(0);
 	}
 
-
 	while (1)
 	{
-		static struct option long_options[] =
-		{
-			{"histpath", required_argument, 0, OPT_HISTPATH},
-			{"ncbase",   required_argument, 0, OPT_NCBASE},
-			{"time",     required_argument, 0, OPT_TIME},
-			{"x0",       required_argument, 0, OPT_X0},
-			{"y0",       required_argument, 0, OPT_Y0},
-			{"x1",       required_argument, 0, OPT_X1},
-			{"y1",       required_argument, 0, OPT_Y1},
-			{"z0",       required_argument, 0, OPT_Z0},
-			{"z1",       required_argument, 0, OPT_Z1}
-		};
-
 		int r;
 		int option_index = 0;
-		r = getopt_long_only (argc, argv,"",long_options,&option_index);
+		r = getopt_long (argc, argv,"",long_options,&option_index);
+//		printf("optarg = %s\n",optarg);
 		if (r == -1) break;
 
 		switch(r)
 		{
 			case OPT_HISTPATH:
 				strcpy(histpath,optarg);
-				*got_histpath=1;
+				got_histpath=1;
 				printf("histpath = %s\n",histpath);
 				break;
-			case OPT_NCBASE:
-				strcpy(ncbase,optarg);
-				*got_ncbase=1;
-				printf("ncbase = %s\n",ncbase);
-				break;
-			case OPT_TIME:
-				*time = atof(optarg);
-				*got_time=1;
-				printf("time = %f\n",*time);
+			case OPT_CM1VISITBASE:
+				strcpy(cm1visitbase,optarg);
+				got_cm1visitbase=1;
+				printf("cm1visitbase = %s\n",cm1visitbase);
 				break;
 			case OPT_X0:
-				*X0 = atoi(optarg);
-				*got_X0=1;
-				printf("X0 = %i\n",*X0);
+				*snx0 = atoi(optarg);
+				got_snx0 = 1;
+				optcount++;
+				printf("snx0 = %i\n",*snx0);
 				break;
 			case OPT_Y0:
-				*Y0 = atoi(optarg);
-				*got_Y0=1;
-				printf("Y0 = %i\n",*Y0);
+				*sny0 = atoi(optarg);
+				got_sny0 = 1;
+				optcount++;
+				printf("sny0 = %i\n",*sny0);
 				break;
 			case OPT_X1:
-				*X1 = atoi(optarg);
-				*got_X1=1;
-				printf("X1 = %i\n",*X1);
+				*snx1 = atoi(optarg);
+				got_snx1 = 1;
+				optcount++;
+				printf("snx1 = %i\n",*snx1);
 				break;
 			case OPT_Y1:
-				*Y1 = atoi(optarg);
-				*got_Y1=1;
-				printf("Y1 = %i\n",*Y1);
+				*sny1 = atoi(optarg);
+				got_sny1 = 1;
+				optcount++;
+				printf("sny1 = %i\n",*sny1);
 				break;
 			case OPT_Z0:
-				*Z0 = atoi(optarg);
-				*got_Z0=1;
-				printf("Z0 = %i\n",*Z0);
+				*snz0 = atoi(optarg);
+				got_snz0 = 1;
+				optcount++;
+				printf("snz0 = %i\n",*snz0);
 				break;
 			case OPT_Z1:
-				*Z1 = atoi(optarg);
-				*got_Z1=1;
-				printf("Z1 = %i\n",*Z1);
+				*snz1 = atoi(optarg);
+				got_snz1 = 1;
+				optcount++;
+				printf("Z1 = %i\n",*snz1);
+				break;
+			case OPT_DEBUG:
+				debug=1;
+				optcount++;
+				printf("debug = %i\n",debug);
 				break;
 		}
 	}
 
-		if (*got_histpath==0) { fprintf(stderr,"-histpath not specified\n"); bail = 1; }
-		if (*got_ncbase==0)   { fprintf(stderr,"-ncbase not specified\n"); bail = 1; }
-		if (*got_time==0)   { fprintf(stderr,"-time not specified\n"); bail = 1; }
-		if (*got_X0==0)     { fprintf(stderr,"-x0 not specified\n"); bail = 1; }
-		if (*got_Y0==0)     { fprintf(stderr,"-y0 not specified\n"); bail = 1; }
-		if (*got_X1==0)     { fprintf(stderr,"-x1 not specified\n"); bail = 1; }
-		if (*got_Y1==0)     { fprintf(stderr,"-y1 not specified\n"); bail = 1; }
-		if (*got_Z0==0)     { fprintf(stderr,"-z0 not specified\n"); bail = 1; }
-		if (*got_Z1==0)     { fprintf(stderr,"-z1 not specified\n"); bail = 1; }
-		if (bail)           { fprintf(stderr,"Insufficient arguments to %s\n, exiting.\n",argv[0]); exit(-1); }
+		if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
+		if (!got_cm1visitbase)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
+
+/* These are optional */
+		if (!got_snx0)      fprintf(stderr,"Setting x0 to default value of 0\n");
+		if (!got_snx1)      fprintf(stderr,"Setting x1 to default value of nx-1\n");
+		if (!got_sny0)      fprintf(stderr,"Setting y0 to default value of 0\n");
+		if (!got_sny1)      fprintf(stderr,"Setting y1 to default value of ny-1\n");
+		if (!got_snz0)      fprintf(stderr,"Setting z0 to default value of 0\n");
+		if (!got_snz1)      fprintf(stderr,"Setting z1 to default value of z1-1\n");
+		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
+}
+
+
+void	parse_cmdline_hdf2nc(int argc, char *argv[],
+	char *histpath, char *ncbase, double *time,
+	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
+{
+	int got_histpath,got_ncbase,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
+	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
+	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
+	static struct option long_options[] =
+	{
+		{"histpath", required_argument, 0, OPT_HISTPATH},
+		{"ncbase",   required_argument, 0, OPT_NCBASE},
+		{"time",     required_argument, 0, OPT_TIME},
+		{"x0",       optional_argument, 0, OPT_X0},
+		{"y0",       optional_argument, 0, OPT_Y0},
+		{"x1",       optional_argument, 0, OPT_X1},
+		{"y1",       optional_argument, 0, OPT_Y1},
+		{"z0",       optional_argument, 0, OPT_Z0},
+		{"z1",       optional_argument, 0, OPT_Z1},
+		{"debug",    optional_argument, 0, OPT_DEBUG}
+	};
+
+	got_histpath=got_ncbase=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
+
+	int bail = 0;
+
+	if (argc == 1)
+	{
+		fprintf(stderr,
+		"Usage: %s --histpath=[histpath] --ncbase=[ncbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1] --time=[time] [varname1 ... varnameX] \n",argv[0]);
+		exit(0);
+	}
+
+	while (1)
+	{
+		int r;
+		int option_index = 0;
+		r = getopt_long (argc, argv,"",long_options,&option_index);
+		if (r == -1) break;
+
+		switch(r)
+		{
+			case OPT_HISTPATH:
+				strcpy(histpath,optarg);
+				got_histpath=1;
+				printf("histpath = %s\n",histpath);
+				break;
+			case OPT_NCBASE:
+				strcpy(ncbase,optarg);
+				got_ncbase=1;
+				printf("ncbase = %s\n",ncbase);
+				break;
+			case OPT_TIME:
+				*time = atof(optarg);
+				got_time=1;
+				printf("time = %f\n",*time);
+				break;
+			case OPT_X0:
+				*X0 = atoi(optarg);
+				got_X0=1;
+				optcount++;
+				printf("X0 = %i\n",*X0);
+				break;
+			case OPT_Y0:
+				*Y0 = atoi(optarg);
+				got_Y0=1;
+				optcount++;
+				printf("Y0 = %i\n",*Y0);
+				break;
+			case OPT_X1:
+				*X1 = atoi(optarg);
+				got_X1=1;
+				optcount++;
+				printf("X1 = %i\n",*X1);
+				break;
+			case OPT_Y1:
+				*Y1 = atoi(optarg);
+				got_Y1=1;
+				optcount++;
+				printf("Y1 = %i\n",*Y1);
+				break;
+			case OPT_Z0:
+				*Z0 = atoi(optarg);
+				got_Z0=1;
+				optcount++;
+				printf("Z0 = %i\n",*Z0);
+				break;
+			case OPT_Z1:
+				*Z1 = atoi(optarg);
+				got_Z1=1;
+				optcount++;
+				printf("Z1 = %i\n",*Z1);
+				break;
+			case OPT_DEBUG:
+				debug=1;
+				optcount++;
+				printf("debug = %i\n",debug);
+				break;
+		}
+	}
+
+		if (got_histpath==0) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
+		if (got_ncbase==0)   { fprintf(stderr,"--ncbase not specified\n"); bail = 1; }
+		if (got_time==0)   { fprintf(stderr,"--time not specified\n"); bail = 1; }
+
+/* These are now optional */
+		if (!got_X0)      fprintf(stderr,"Setting X0 to default value of 0\n");
+		if (!got_Y0)      fprintf(stderr,"Setting Y0 to default value of 0\n");
+		if (!got_X1)      fprintf(stderr,"Setting X1 to default value of nx-1\n");
+		if (!got_Y1)      fprintf(stderr,"Setting Y1 to default value of ny-1\n");
+		if (!got_Z0)      fprintf(stderr,"Setting Z0 to default value of 0\n");
+		if (!got_Z1)      fprintf(stderr,"Setting Z1 to default value of nz-1\n");
+
+		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }

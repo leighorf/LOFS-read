@@ -88,7 +88,7 @@ class avtcm1visitFileFormat : public avtMTMDFileFormat
     // If you know the times and cycle numbers, overload this function.
     // Otherwise, VisIt will make up some reasonable ones for you.
     //
-    // virtual void        GetCycles(std::vector<int> &);
+    virtual void        GetCycles(std::vector<int> &);
     virtual bool        ReturnsValidTime() const { return true; }
     virtual void        GetTimes(std::vector<double> &);
     //

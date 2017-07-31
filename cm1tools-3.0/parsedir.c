@@ -1,14 +1,8 @@
-#include <stdio.h>
-#include <sys/types.h>
 #include <dirent.h>
 #include <errno.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <limits.h>
-#include "hdforf.h"
-#include "errorf.h"
+#include "lofs-read.h"
 
 #define MAXSTR (512)
 
@@ -87,7 +81,7 @@ sortdoublearray (double *floatarray, int nel)
 }
 
 void
-get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs)
+get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -157,7 +151,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 }
 
 void
-get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, char *filebase)
+get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, char *filebase,int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -171,6 +165,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 
 	if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
+		printf("Grabbing and caching metadata (only done once):");
 		j = 0;
 		if ((dip = opendir (basedir)) == NULL)
 		{
@@ -178,14 +173,11 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 			fprintf (stderr, "Directory = %s\n", basedir);
 			ERROR_STOP ("Can't open directory");
 		}
-		while ((dit = readdir (dip)) != NULL) //ORF the problem was times was passed as int * so we are past the "hang" problem at least
+		while ((dit = readdir (dip)) != NULL) 
 		{
-//			printf("doing strcpy to tmpstr...");
 			strcpy (tmpstr, dit->d_name);
-//			printf("...done\n");
-			printf("Working on %s\n",tmpstr);
+			if(debug)printf("%s ",tmpstr);fflush(stdout);
 			ns = strlen (tmpstr);
-//			printf("ns = %i\n",ns);
 			if (ns > 15)
 			{
 				for (i = 0; i < 7; i++)
@@ -206,9 +198,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 					sprintf(dstring,"%s.%s",lhsstr,rhsstr);
 //					printf("dstring = %s\n",dstring);
 					times[j] = atof(dstring); //ding
-#ifdef DEBUG
-					printf("j = %i times = %lf\n",j,times[j]);
-#endif
+					if(debug) printf("j = %i times = %lf\n",j,times[j]);
 				}
 				else
 				{
@@ -220,9 +210,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				while (tmpstr[i--]!='.');
 				while (tmpstr[i--]!='.');
 				i++;
-#ifdef DEBUG
-				printf("i = %i, j = %i\n",i,j);
-#endif
+				if (debug) printf("i = %i, j = %i\n",i,j);
 				for (k = 0; k < i; k++)
 				{
 					if (j == 0) firstbase[k] = tmpstr[k];
@@ -233,7 +221,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 
 				if (j > 0)
 				{
-					printf("base = %s\n",base);
+					if (debug) printf("base = %s\n",base);
 					if (strcmp (firstbase, base) != 0)
 					{
 						printf ("ACK: we have more than one base!\n");
@@ -243,7 +231,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				}
 				if (j == 0)
 				{
-					printf ("firstbase = %s\n", firstbase);
+					printf ("\nfirstbase = %s\n", firstbase);
 					strcpy(filebase,firstbase);
 				}
 
@@ -278,13 +266,12 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 			for (i = 0; i < ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",timedir[i],&(times[i])))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
 			printf("Read cached sorted time dirs\n");
-//			for (i = 0; i < ntimedirs; i++) printf("FART: %s %lf\n",timedir[i],times[i]);
 		}
 	}
 }
 
 int
-get_num_time_dirs (char *basedir)
+get_num_time_dirs (char *basedir,int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -310,16 +297,13 @@ get_num_time_dirs (char *basedir)
 		while ((dit = readdir (dip)) != NULL)
 		{
 			strcpy (tmpstr, dit->d_name);
-	//printf("ORF: debug: tmpstr = %s\n",tmpstr);
 			ns = strlen (tmpstr);
-#ifdef DEBUG
-			printf("ns = %i\n",ns);
-#endif
+			if (debug) printf("ns = %i\n",ns);
 			if (ns > 15 )
 			{
 				for (i = 0; i < 7; i++) rhsstr[i] = tmpstr[ns - 7 + i];
 				rhsstr[7] = '\0';
-	//printf("ORF: debug: rhsstr = %s\n",rhsstr);
+				if(debug) printf("DEBUG: rhsstr = %s\n",rhsstr);
 				if (isNumeric (rhsstr))
 				{
 					for (i = 0; i < 5; i++) lhsstr[i] = tmpstr[ns - 13 + i]; // 13 = 7+5+1
@@ -327,7 +311,6 @@ get_num_time_dirs (char *basedir)
 
 					if (isNumeric (lhsstr))
 					{
-//						itime = strtol (rhsstr, NULL, 10); if (itime==LONG_MIN||itime==LONG_MAX) ERROR_STOP("strtol failed"); //does nothing
 						i = 0;
 						sd = 'a';
 						while (sd != '.')
@@ -338,8 +321,8 @@ get_num_time_dirs (char *basedir)
 							else
 								base[i] = sd;
 							i++;
-		//printf("ORF: debug: firstbase = %s\n",firstbase);
-		//printf("ORF: debug: base = %s\n",base);
+							if(debug) printf("DEBUG: firstbase = %s\n",firstbase);
+							if(debug) printf("DEBUG: base = %s\n",base);
 						}
 						if (j == 0)
 							firstbase[i - 1] = '\0';
@@ -397,7 +380,7 @@ get_num_time_dirs (char *basedir)
 }
 
 int
-get_num_node_dirs (char *topdir, char *timedir)
+get_num_node_dirs (char *topdir, char *timedir,int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -413,7 +396,7 @@ get_num_node_dirs (char *topdir, char *timedir)
 		if ((dip = opendir (timedir_full)) == NULL)
 		{
 			perror ("opendir");
-	//		printf ("ORF DEBUG: timedir_full = %s\n", timedir_full);
+			if (debug) printf ("DEBUG: timedir_full = %s\n", timedir_full);
 			ERROR_STOP ("Can't open directory");
 			return 0;
 		}
@@ -450,44 +433,8 @@ get_num_node_dirs (char *topdir, char *timedir)
 	return j;
 }
 
-//ORF WE NO LONGER CALL THIS ROUTINE
-//We were basically calling it several times in the get_all_times
-//routine. So now it is sent back from get_all_available_times below.
-//Note that "firstfilename" will be in the *LAST* available time
-//directory. Who cares, right? But we should probably clean this shit
-//up. 2015-10-16
-void
-get_first_hdf_file_name (char *topdir, char *timedir, char *nodedir, char *filename)
-{
-	DIR *dip;
-	struct dirent *dit;
-	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
-
-	sprintf (basedir_full, "%s/%s/%s", topdir, timedir, nodedir);
-
-	if ((dip = opendir (basedir_full)) == NULL)
-	{
-		perror ("opendir");
-		fprintf (stderr, "Directory = %s\n", basedir_full);
-		ERROR_STOP ("Can't open directory");
-	}
-//	dit = readdir (dip);
-	while ((dit = readdir (dip)) != NULL)
-	{
-		strcpy (tmpstr, dit->d_name);
-//	      printf("get_first_hdf_filename: tmpstr = %s\n",tmpstr);
-		if (strstr(tmpstr,".cm1hdf5")!=NULL) break;
-	}
-	if (closedir (dip) == -1)
-	{
-		perror ("closedir");
-		ERROR_STOP ("Can't close directory");
-	}
-	sprintf (filename, "%s/%s", basedir_full, tmpstr);
-}
-
 double *
-get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex)
+get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex, int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -518,9 +465,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				//just choose 'nodedir[0]' to find my first hdf5 file.
 			{
 				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
-#ifdef DEBUG
-				printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
-#endif
+				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
 
 				if ((dip = opendir (basedir_full)) == NULL)
 				{
@@ -536,13 +481,9 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
-#ifdef DEBUG
-					printf("get_all_available_times: %s\n",basedir_full);
-#endif
-					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("get_all_available_times: foochar = NULL\n");
-#ifdef DEBUG
-					printf("get_all_available_times: tmpstr = %s\n",tmpstr);
-#endif
+					if(debug)printf("get_all_available_times: %s\n",basedir_full);
+//					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("get_all_available_times: foochar = NULL\n");
+//					if(debug)printf("get_all_available_times: tmpstr = %s\n",tmpstr);
 					if (foochar != NULL) break;	// Got one
 				}	
 				if (foochar != NULL) break;	// Got one
@@ -556,7 +497,14 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			}
 
 			sprintf(firstfilename,"%s/%s",basedir_full,tmpstr);
-			printf("get_all_available_times: firstfilename = %s\n",firstfilename);
+			if(debug)
+			{
+				printf("get_all_available_times: firstfilename = %s\n",firstfilename);
+			}
+			else
+			{
+				printf(".");fflush(stdout);
+			}
 
 			if ((file_id = H5Fopen (firstfilename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
@@ -617,15 +565,11 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 			for (i=0; i<*ntottimes; i++)
 			{
 				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf failed");
-#ifdef DEBUG
-				printf("Reading from cached file: alltimes = %f\n",alltimes[i]);
-#endif
 
 			}
 			printf("Read cached firstfilename and all times\n");
 		}
 	}
 
-//	free (firstfilename);
 	return(alltimes);
 }

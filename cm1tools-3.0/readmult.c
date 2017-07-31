@@ -1,27 +1,10 @@
-/*
-    This file is part of cm1tools, written by Leigh Orf (http://orf5.com)
-*/
-
 
 /*
-
-Leigh Orf 8/31/2009
-
-Function:
-
-read_mult_hdf_md is a function which reads in data from multiple 3D
-model HDF files as if they were one big file, assembling requested data
-into a floating point buffer. Code works with a modified version of
-Geroge Bryan's CM1 v16 model (email leigh.orf@cmich.edu for I/O code).
-
+    This file is part of LOFS (Leigh Orf File System; or Lack Of File System),
+    written by Leigh Orf (http://orf.media)
 */
 
-#include "hdforf.h"
-#include "errorf.h"
-#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
-
-#define TRUE  (1)
-#define FALSE (0)
+#include "lofs-read.h"
 
 /* is between or lies on actually */
 int
@@ -55,9 +38,7 @@ is_between_fuzzy (double x, double y, double z)
 {
 	int retval = 0;
 	double eps = 0.001;
-#ifdef DEBUG
-	printf("is_between_fuzzy: %lf %lf %lf\n",x,y,z);
-#endif
+//	printf("is_between_fuzzy: %lf %lf %lf\n",x,y,z);
 	if (z > x && z < y) retval = 1;
 	if (fabs(z-y)<eps) retval = 0; // on the edge of nowhere
 	if (fabs(z-x)<eps) retval = 1; // on the edge of somewhere
@@ -89,157 +70,12 @@ char *replace_str(char *str, char *orig, char *rep)
 }
 
 void
-link_hdf_files (char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn, int *dirtimes, int *alltimes, int ntottimes,
-		int gx0, int gy0, int gxf, int gyf,
-		int nx, int ny, int nz, int nodex, int nodey)
-{
-	int dbg = 0;
-	int i, j, tb;
-	int maxfilelength = 512;
-	char **nodefile;
-	char *linkname,*subtopdir;
-	int numhdf;
-
-	int retval;
-	int numi, numj;
-	int ihdf;
-
-	int fx0=0, fxf=0, fy0=0, fyf=0;	/* file indices */
-	int k,ixnode,iynode,nxnode;
-
-	typedef struct hdfstruct
-	{
-		int x0, xf, y0, yf;
-		int sx0, sxf, sy0, syf;
-		int ax0, axf, ay0, ayf;
-		int myi, myj;
-	} HDFstruct;
-
-	HDFstruct **hdf;
-
-	numhdf = nodex * nodey;
-
-	linkname = (char *)malloc(512*sizeof(char));
-	subtopdir = (char *)malloc(512*sizeof(char));
-
-	if ((hdf = (HDFstruct **) malloc (numhdf * sizeof (HDFstruct *))) == NULL) ERROR_STOP("Insufficient memory");
-	for (i = 0; i < numhdf; i++)
-	{
-		if ((hdf[i] = (HDFstruct *) malloc (sizeof (HDFstruct))) == NULL) ERROR_STOP("Insufficient memory");
-	}
-
-	if ((nodefile = (char **) malloc (numhdf * sizeof (char *))) == NULL)  ERROR_STOP("Insufficient memory");
-
-
-	printf("ntimedirs = %i\n",ntimedirs);
-	for (j=0; j < ntimedirs; j++)//ORF changed
-	{
-	tb = j;
-	if (ntimedirs == 1) tb = 0;
-	for (i = 0; i < numhdf; i++)
-	{
-		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
-		sprintf (nodefile[i], "%s/%s/%06i/%s_%06i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
-	}
-
-	numi = nx / nodex;
-	numj = ny / nodey;
-	for (ihdf = 0; ihdf < numhdf; ihdf++) /* just i not ihdf */
-	{
-		hdf[ihdf]->myj = ihdf / nodex;
-		hdf[ihdf]->myi = ihdf % nodex;
-		hdf[ihdf]->x0 = hdf[ihdf]->myi * numi;
-		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
-		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
-		hdf[ihdf]->yf = (hdf[ihdf]->myj + 1) * numj - 1;
-		if (dbg)
-			fprintf (stderr, "myj = %i myi =%i x0 = %i xf = %i y0 = %i yf = %i\n",
-				 hdf[ihdf]->myj, hdf[ihdf]->myi, hdf[ihdf]->x0, hdf[ihdf]->xf, hdf[ihdf]->y0, hdf[ihdf]->yf);
-	}
-
-	/* first check if our requested subcube lies within our data */
-
-	if (is_not_between_int (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
-
-	if (is_not_between_int (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
-
-	for (i = 0; i < numhdf; i++)
-	{
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gx0) && is_between (hdf[i]->y0, hdf[i]->yf, gy0))
-		{
-			fx0 = hdf[i]->myi;
-			fy0 = hdf[i]->myj;
-			if (dbg) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
-		}
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gxf) && is_between (hdf[i]->y0, hdf[i]->yf, gyf))
-		{
-			fxf = hdf[i]->myi;
-			fyf = hdf[i]->myj;
-			if (dbg) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
-		}
-	}
-
-//	snx = numi;
-//	sny = numj;
-//	dxleft = gx0 % snx;
-//	dxright = gxf % snx;
-//	dybot = gy0 % sny;
-//	dytop = gyf % sny;
-	nxnode = nodex;
-//	nynode = nodey;
-// ORF AMS2014 help determine subdomain node numbers
-	printf("fx0 fy0 fxf fyf: %i %i %i %i\n",fx0,fy0,fxf,fyf);
-
-	printf("ORF: debug: fy0 = %i fyf = %i fx0 = %i fxf = %i\n",fy0,fyf,fx0,fxf);
-
-	subtopdir = replace_str(topdir,"3D","sub3D");
-	retval=rename("sub3D",subtopdir);
-
-//	printf("ORF: debug: Just did this: mv(%s,%s)\n","sub3D",subtopdir);
-//	if(retval!=0 )
-//	{
-//		printf("mv failure: errno = %i %s\n",errno,subtopdir);
-//		ERROR_STOP("Failed to mv sub3D directory");
-//	}
-
-	for (iynode = fy0; iynode <= fyf; iynode++)
-	{
-		for (ixnode = fx0; ixnode <= fxf; ixnode++)
-		{
-			k = ixnode + iynode * nxnode;
-
-			linkname = replace_str(nodefile[k],"3D","sub3D");
-
-			retval=link(nodefile[k],linkname);
-
-//			printf("ORF: debug: Just did this: link(%s,%s)\n",nodefile[k],linkname);
-			if(retval!=0 && errno!=EEXIST)
-			{
-				printf("Link failure: errno = %i %s %s\n",errno,nodefile[k],linkname);
-				ERROR_STOP("Failed to create hard link");
-			}
-//			printf ("linking: %s %s\n",retval,nodefile[k],linkname);
-		}
-	}
-	}
-	/* free all pointers */
-	for (i = 0; i < numhdf; i++)
-	{
-		free (hdf[i]);
-		free (nodefile[i]);
-	}
-	free (hdf);
-	free (nodefile);
-}
-
-void
-read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn, double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
+read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
+		double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
 		int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
 		int nx, int ny, int nz, int nodex, int nodey)
 {
-	int dbg = 0;
+	int dbg = 0; // Not the command line debug. If you are debugging here you must set this to 1 and recompile
 	int i, tb;
 	int maxfilelength = 512;
 	char **nodefile;
@@ -265,18 +101,17 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
  // corresponds to the first time in the hdf files.
 	int time_is_in_file;
 
- // Some silly output - letter is proportional to fraction of 2D
- // horizontal extent of file read; z means you read the whole
- // horizontal space in the file, a means you read a tiny subset.
+ // Some silly 'heartbeat' output - letter written to screen is
+ // proportional to fraction of 2D horizontal extent of file read; z
+ // means you read the whole horizontal space in the file, a means you
+ // read a tiny subset, etc.
 
 	char *alph="abcdefghijklmnopqrstuvwxyz";
 	int letter;
 	int retval;
-// ORF: 2016-12-21: New hdf internal structure
 	int ntimes,timeindex;
 	hsize_t dims[1],maxdims[1];
 	double *filetimes;
-
 
 	typedef struct hdfstruct
 	{
@@ -288,11 +123,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	HDFstruct **hdf;
 
-
-//ORF TEST
-#ifdef DEBUG
-	for (i=0; i< ntottimes; i++)printf("DEBUG: alltimes[%i] = %lf\n",i,alltimes[i]);
-#endif
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;
 	gnz = gzf - gz0 + 1;
@@ -307,14 +137,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	if ((nodefile = (char **) malloc (numhdf * sizeof (char *))) == NULL)  ERROR_STOP("Insufficient memory");
 
-
-	// ORF 7/14/11 get last available time. We can only do this by
-	// reading the times array from one of the files in the directory
-	// with the largest time in its name
-	
-	// ORF 11/17/12 Wait, we already have 'alltimes' array with all
-	// available times! Just use that!
-
 	eps=1.0e-3;
 	if (!is_between_fuzzy(alltimes[0],alltimes[ntottimes-1],dtime))
 	{
@@ -326,40 +148,23 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 			ERROR_STOP("Requested time not within range\n");
 		}
 	}
-#ifdef DEBUG
-	for (i=0; i < ntimedirs; i++)
-		printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
-#endif
+	if(dbg)
+	{
+		for (i=0; i < ntimedirs; i++)
+			printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
+	}
 	for (i=0; i < ntimedirs-1; i++)
 	{
-#ifdef DEBUG
-		printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
-#endif
+		if(dbg) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
 		if (is_between_fuzzy(dirtimes[i],dirtimes[i+1],dtime)) break;
 	}
 	tb = i;
 	if (ntimedirs == 1) tb = 0;
-// ORF 3/7/13 Hmm, nodefile contains an array with EVERY SINGLE cm1hdf file in
-// it - do we really need this?
 	for (i = 0; i < numhdf; i++)
 	{
 		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
 		sprintf (nodefile[i], "%s/%s/%07i/%s_%07i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
 	}
-
-// ORF 7/12/11 Check if requested time actually exists in the files
-// using the times array
-//
-// ORF 11/17/12 Forget that, we already have alltimes array. Just sweep
-// through and check for a match. A binary search algorithm would be
-// best, but we are lazy and the array is short
-
-// Note: This check is unnecessary with VisIt reading from the .cm1visit
-// file as it's already been read in. We really should just generated
-// .cm1visit files on the fly and have hdf2nc and hdf2v5d just go from
-// those, that way all checks are done only once.
-
-//ORF need to do floating point shit here
 
 	eps = 1.0e-3;
 
@@ -385,13 +190,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	}
 	if (time_is_in_file == FALSE)	ERROR_STOP("Invalid time requested");
 
-
-
-	/* We build our decomposition from metadata stored in each hdf
-	 * file. This replaces the metafile creation etc. Uses same
-	 * coordinates as were set in param.F with myi and myj etc.
-	 * EXCEPT I start at zero where as the model starts at one (C vs
-	 * FORTRAN) */
+	/* We build our decomposition from metadata stored in each hdf file */
 
 	numi = nx / nodex;
 	numj = ny / nodey;
@@ -447,7 +246,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	   There are four coordinate systems to worry about:
 
 	   1. Node (spans fx0->fxf and fy0->fyf) - indexes the hdf files we read.
-	   2. Global (spans 0->nx-1 and 0->ny-1) - the whole model domain.  Calling program provides cartesian coords relative to global.
+	   2. Global (spans 0->nx-1 and 0->ny-1) - the whole model domain.  Calling program provides indices relative to global.
 	   3. Requested array (spans 0->gnx-1 and 0->gny-1) - is passed back to calling program.
 	   4. Node-relative array (spans 0->snx-1 and 0->sny-1 - what we ultimately must read from each hdf file.
 
@@ -547,7 +346,8 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 /* Now we have collected all of our array index values delineating node
 relative, domain relative, and retrieved-array relative positions. Need
 to read data from each node file, assemble retrieved array and send back
-as unrolled 1D array which must be reassembled by user */
+as a 1D buffer. Sine this is C and all, 3D arrays are already 1D arrays,
+really. See P3 macro in lofs-read.h */
 
 // ORF 7/7/09
 // HDF5 isn't just a data format, it's a way of life.

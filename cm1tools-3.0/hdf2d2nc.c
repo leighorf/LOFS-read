@@ -1,19 +1,6 @@
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-#include "hdforf.h"
-#include <netcdf.h>
-
-#define FALSE 0
-
-#define P2(x,y,mx) ((y)*(mx)+(x))
-#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
-
+#include "lofs-read.h"
 
 FILE *fp_data;
-
-
-
 int n2d;
 int i2d;
 const char **varname;

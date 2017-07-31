@@ -1,5 +1,4 @@
-#include "hdforf.h"
-#include "errorf.h"
+#include "lofs-read.h"
 
 void
 open_cm1_hdf_file (hid_t *file_id, char *base, int itime, int inode)
