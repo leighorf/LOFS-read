@@ -1,0 +1,8 @@
+*.o
+*.mod
+*~
+.*.swp
+hdf2
+hdf2d2nc
+libcm.a
+stash

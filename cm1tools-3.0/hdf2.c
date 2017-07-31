@@ -59,11 +59,9 @@ int main(int argc, char *argv[])
 	char progname[MAXSTR];
 	char histpath[MAXSTR];
 	int we_are_hdf2nc = FALSE;
-	int we_are_hdf2v5d = FALSE;
 	int we_are_makevisit = FALSE;
-	int we_are_linkfiles = FALSE;
-
-	int idum=0;
+//	int we_are_hdf2v5d = FALSE;
+//	int we_are_linkfiles = FALSE;
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
@@ -127,7 +125,6 @@ void makevisit(int argc, char *argv[], char *cm1visitbase,int snx0,int sny0,int 
 		hid_t f_id,g_id,strtype;
 		H5G_info_t group_info;
 		hsize_t dims[1];
-		char dirbase[MAXSTR];
 		char visitfile[MAXSTR];
 		char groupname[MAXSTR];
 		char varname[MAXVARIABLES][40]; //Yeah I know also hardcoded in avtcm1visitFileFormat.h
@@ -265,15 +262,11 @@ void grok_cm1hdf5_file_structure()
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
-	float *qvar1,*qvar2,*qvar3;
-	float *thpert,*qvpert,*qtot;
-	float reps;
 	float *th0,*qv0;
 	float *dum1,*dum2;
 	double timearray[1];
 
 	int i,ix,iy,iz,nvar;
-	int j=0,k=0,ii;
 	char varname[MAXVARIABLES][MAXSTR];
 	char ncfilename[MAXSTR];
 
@@ -599,10 +592,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		buffer = buf0; /* I will never learn my lesson with pointers........ */
 		if (status != NC_NOERR) 
 		{
-			fprintf(stdout,"Could not write variable %s at time %i to %s\n", varname[ivar],t0,ncfilename);
+			printf("Could not write variable %s at time %f to %s\n", varname[ivar],t0,ncfilename);
 			ERROR_STOP("Write to netcdf file failed");
 		}
-		fprintf(stdout,")\n");
+		printf(")\n");
 	}
 	status = nc_close(ncid); if (status != NC_NOERR)
 	{
