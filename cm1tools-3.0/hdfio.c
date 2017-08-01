@@ -1,49 +1,6 @@
 #include "lofs-read.h"
 
 void
-open_cm1_hdf_file (hid_t *file_id, char *base, int itime, int inode)
-{
-	char fname[200];
-	itime = 30; //ORF test 5/17/11
-	sprintf (fname, "%s%05i_%06i.cm1hdf5", base, itime, inode);
-
-	if ((*file_id = H5Fopen (fname, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-      {
-          fprintf(stderr,"Could not open file %s for reading\n",fname);
-          exit(-1);
-      }
-}
-
-//FORTRAN wrapper
-void open_cm1_hdf_file_(hid_t *file_id, char *base, int *itime, int *inode)
-{
-	open_cm1_hdf_file(file_id,base,*itime,*inode);
-}
-
-void
-open_cm1_hdf_file_rw (hid_t *file_id, char *base, int itime, int inode)
-{
-	char fname[200];
-	sprintf (fname, "%s%05i_%04i.hdf", base, itime, inode);
-	if ((*file_id = H5Fopen (fname, H5F_ACC_RDWR,H5P_DEFAULT)) < 0)
-      {
-          fprintf(stderr,"Could not open file %s for reading/writing\n",fname);
-          exit(-1);
-      }
-}
-
-/*
-void close_cm1_hdf_file (int32 sd_id)
-{
-    int status;
-    if ((status = SDend (sd_id)) == FAIL)
-    {
-        fprintf(stderr,"close_cm1_hdf_file: OH NO! Can't close hdf file with sd_id = %i\n",sd_id);
-    }
-}
-*/
-
-void
 get0dint (hid_t file_id, char *varname, int *var)
 {
 	hid_t dataset_id;
@@ -85,15 +42,12 @@ get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
 	hsize_t offset_in[1],offset_out[1];
 	hid_t dataset_id,dataspace_id,memoryspace_id;
 	herr_t status;
-//	int i;
 
 	rank = 1;
 	offset_in[0] = p0;
 	offset_out[0] = 0; //Always
 	count[0] = np;
 	dims[0] = np;
-
-//	fprintf(stderr,"get1dfloat %i to %i points, %s\n",p0,np,varname);
 
 	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
@@ -105,9 +59,6 @@ get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
 	if ((status = H5Sclose(dataspace_id)) < 0) ERROR_STOP("Could not H5Sclose");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 
-//	for (i=0; i<np; i++) printf("get1ddouble: %lf\n",var[i]);
-
-//	fprintf(stderr,"Got %s!\n",varname);
 }
 
 void
@@ -125,8 +76,6 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 	count[0] = np;
 	dims[0] = np;
 
-//	fprintf(stderr,"get1dfloat %i to %i points, %s\n",p0,np,varname);
-
 	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
 	if ((memoryspace_id = H5Screate_simple(rank,dims,NULL)) < 0) ERROR_STOP("Could not H5Screate_simple");
@@ -137,7 +86,6 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 	if ((status = H5Sclose(dataspace_id)) < 0) ERROR_STOP("Could not H5Sclose");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 
-//	fprintf(stderr,"Got %s!\n",varname);
 }
 
 void
@@ -229,49 +177,6 @@ get3dfloat (hid_t file_id, char *varname, float *var, int z0, int nz, int y0, in
 	if ((status = H5Sclose(dataspace_id)) < 0) ERROR_STOP("Could not H5Sclose");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP ("Could not H5Dclose");
 }
-
-#define MAXHDF (5000)
-/* If the first file is not less than 5000 then it must be at least 2050 AD */
-
-/* Sometimes we need to get metadata before we read in a 3D variable.
-Since all of the nodefiles have the same metadata, we need to pick one
-to read from. Since we may have culled the files to save on disk space,
-we can't always assume '0'. So this function goes through and finds a
-file, stating at zero. It breaks at the first file it finds. */
-
-int first_hdf_index(char *base, int itime)
-{
-    int i;
-    char full_file_name[300];
-
-    for (i = 0; i < MAXHDF; i++)
-    {
-        sprintf (full_file_name, "%s%05i_%06i.cm1hdf5", base, itime, i);
-	  itime = 30;//ORF test 5/17/11
-	  fprintf(stderr,"Trying to access metadata from %s...\n",full_file_name);
-    
-        if (access(full_file_name,F_OK)==0)
-        {
-//		fprintf(stderr,"Got metadata from %s\n",full_file_name);
-            break; /* Current value of i will point to a hdf file from which we can get our metadata */
-        }
-    }
-
-    if (i == MAXHDF)
-    {
-        fprintf(stderr,"\n\nfirst_hdf_index: WOOP WOOP where are all the HDF files??\n");
-        fprintf(stderr,"Unable to find files with base %s at time %i.\nExiting.\n",base,itime);
-        exit(-1);
-    }
-    return i;
-}
-
-//FORTRAN wrapper
-void first_hdf_index_(char *base, int *itime, int *index)
-{
-	*index = first_hdf_index(base,*itime);
-}
-
 
 /* I have decided to create a new routine which must be called before
  * any 3D data is read with read_hdf_mult. This will reduce the number
