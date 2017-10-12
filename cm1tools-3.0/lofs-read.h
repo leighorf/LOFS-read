@@ -13,6 +13,7 @@
 #include <netcdf.h>
 #include <hdf5.h> 
 #include <hdf5_hl.h>
+#include <H5Zzfp.h>
 #include <getopt.h>
 
 #define ERROR_STOP(string) { fprintf(stderr," *** Fatal error in %s line %i: %s\n",__FILE__,__LINE__,string); exit(0); }

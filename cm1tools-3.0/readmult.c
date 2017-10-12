@@ -354,6 +354,10 @@ really. See P3 macro in lofs-read.h */
 //
 // Save ourselves array assembling issues by creating a memory space with the
 // dimensions of the array we are sending back. This is actually pretty cool.
+//
+// First, initialize ZFP lossy floating point compression
+
+	H5Z_zfp_initialize();
 
 	rank=3;
 	count[0]=gnz;count[1]=gny;count[2]=gnx;
@@ -527,4 +531,5 @@ really. See P3 macro in lofs-read.h */
 	}
 	free (hdf);
 	free (nodefile);
+	H5Z_zfp_finalize();
 }
