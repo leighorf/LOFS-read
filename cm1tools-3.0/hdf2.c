@@ -297,6 +297,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	//ORF for writing single time in unlimited time dimension/variable
 	const size_t timestart = 0;
 	const size_t timecount = 1;
+	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0; /* readahead? */
 
 	/* Since we tack on all the requested variables to the end of the
 	 * command line, we have to find out where the 1st variable
@@ -481,10 +482,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
-// time consuming and not really saving much space for interesting data
-// Need a ZFP option although unless there is a way around it we'd be
-// compressing already lossy data since our hdf5 files are probably
-// compressed with ZFP
 //                 status=nc_def_var_deflate(ncid, varnameid[ivar], 0, 1, 9);
 	}
 	status = nc_enddef (ncid);
@@ -519,6 +516,26 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	timearray[0] = t0;
       status = nc_put_vara_double (ncid,timeid,&timestart,&timecount,timearray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 
+//	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0;
+
+	/* So we don't read data more than once, flag stuff that we need
+	 * ahead of time (read ahead) */
+	for (ivar = 0; ivar < nvar; ivar++)
+	{
+		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=1;v_rh=1;}
+		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=1;yvort_rh=1;}
+		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=1;yvort_rh=1;zvort_rh=1;}
+		if(!strcmp(varname[ivar],"streamvort")) {u_rh=1;v_rh=1;w_rh=1;xvort_rh=1;yvort_rh=1;zvort_rh=1;}
+		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=1;v_rh=1;w_rh=1;xvort_rh=1;yvort_rh=1;zvort_rh=1;}
+	}
+	if (u_rh) read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (v_rh) read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (w_rh) read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (xvort_rh) read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (yvort_rh) read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (zvort_rh) read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+
+
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
@@ -530,8 +547,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				usr = ubuffer[i];
@@ -541,18 +556,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<snx*sny*snz; i++)
 			{
-				buffer[i] = sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]);
+				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
 			}
 		}
 		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
-			read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<snx*sny*snz; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
@@ -583,6 +593,36 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				buffer[i] = ubuffer[i]+vbuffer[i];
 			}
+		}
+		else if(!strcmp(varname[ivar],"uinterp"))
+		{
+			if (!u_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=ubuffer;
+		}
+		else if(!strcmp(varname[ivar],"vinterp"))
+		{
+			if (!v_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=vbuffer;
+		}
+		else if(!strcmp(varname[ivar],"winterp"))
+		{
+			if (!w_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=wbuffer;
+		}
+		else if(!strcmp(varname[ivar],"xvort"))
+		{
+			if (!xvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=xvort;
+		}
+		else if(!strcmp(varname[ivar],"yvort"))
+		{
+			if (!yvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=yvort;
+		}
+		else if(!strcmp(varname[ivar],"zvort"))
+		{
+			if (!zvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=zvort;
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
