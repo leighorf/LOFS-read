@@ -31,8 +31,10 @@ int nnodedirs;
 double *alltimes;
 int ntottimes;
 int firsttimedirindex;
+const float MISSING=-1.0E10;
 
 int debug = 0;
+int no2d = 0;
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
 //variable names. Make this a global just for simplicity.
@@ -263,10 +265,10 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
 	float *th0,*qv0;
-	float *dum1,*dum2;
+	float *thrhopert;
 	double timearray[1];
 
-	int i,ix,iy,iz,nvar;
+	int i,j,k,ix,iy,iz,nvar;
 	char varname[MAXVARIABLES][MAXSTR];
 	char ncfilename[MAXSTR];
 
@@ -297,7 +299,8 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	//ORF for writing single time in unlimited time dimension/variable
 	const size_t timestart = 0;
 	const size_t timecount = 1;
-	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0; /* readahead? */
+	/* readahead flags */
+	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
 
 	/* Since we tack on all the requested variables to the end of the
 	 * command line, we have to find out where the 1st variable
@@ -346,8 +349,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	if ((xvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((dum1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((dum2 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
+	if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	//printf("snx = %i sny = %i snz = %i Bufsize = %i\n",snx,sny,snz,bufsize);
 	if (buffer == NULL) ERROR_STOP("Cannot allocate buffer");
 	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
@@ -442,8 +444,11 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	d2[0] = time_dimid;
 	d2[1] = nyh_dimid;
 	d2[2] = nxh_dimid;
-	status = nc_def_var (ncid, "thrhopert_sfc", NC_FLOAT, 3, d2, &thsfcid);
-	status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
+	if (!no2d)
+	{
+		status = nc_def_var (ncid, "thrhopert_sfc", NC_FLOAT, 3, d2, &thsfcid);
+		status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
+	}
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
@@ -482,23 +487,29 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
-//                 status=nc_def_var_deflate(ncid, varnameid[ivar], 0, 1, 9);
+		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
+//          status=nc_def_var_deflate(ncid, varnameid[ivar], 0, 1, 9);
 	}
 	status = nc_enddef (ncid);
 
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
 
-	// For surface theta (Vapor wants 2D vars)
+	// For surface 2d fields (Vapor wants 2D vars)
 	//
 	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
 	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
-	// Should make this a command line option
-	printf("\nWorking on surface 2D thrhopert and dbz (");
-	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-	status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
-	read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-	status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
-	printf(")\n");
+	// This can now be disabled by a command line option but default
+	// is to do the two fields since they are used so much
+
+	if (!no2d)
+	{
+		printf("\nWorking on surface 2D thrhopert and dbz (");
+		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
+		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
+		printf(")\n");
+	}
 
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -522,11 +533,18 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	 * ahead of time (read ahead) */
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
-		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=1;v_rh=1;}
-		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=1;yvort_rh=1;}
-		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=1;yvort_rh=1;zvort_rh=1;}
-		if(!strcmp(varname[ivar],"streamvort")) {u_rh=1;v_rh=1;w_rh=1;xvort_rh=1;yvort_rh=1;zvort_rh=1;}
-		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=1;v_rh=1;w_rh=1;xvort_rh=1;yvort_rh=1;zvort_rh=1;}
+		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
+		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
+		if(!strcmp(varname[ivar],"yvort_baro")) {thrhopert_rh=1;}
+		if(!strcmp(varname[ivar],"yvort_stretch")) {u_rh=w_rh=yvort_rh=1;}
+		if(!strcmp(varname[ivar],"yvort_tilt")) {v_rh=xvort_rh=yvort_rh=1;}
+		if(!strcmp(varname[ivar],"xvort_stretch")) {v_rh=w_rh=xvort_rh=1;}
+		if(!strcmp(varname[ivar],"xvort_tilt")) {u_rh=yvort_rh=zvort_rh=1;}
 	}
 	if (u_rh) read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	if (v_rh) read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -534,15 +552,17 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	if (xvort_rh) read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	if (yvort_rh) read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	if (zvort_rh) read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (thrhopert_rh) read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 
-
-	for (ivar = 0; ivar < nvar; ivar++)
-	{
-		printf("Working on %s (",varname[ivar]);
 
 // Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
 // derivatives of these variables since they have already been interpolated to the scalar grid.
+
+	for (ivar = 0; ivar < nvar; ivar++)
+	{
+		printf("Working on %s (",varname[ivar]);
+		fflush(stdout);
 
 		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
@@ -552,6 +572,192 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				usr = ubuffer[i];
 				vsr = vbuffer[i];
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
+			}
+		}
+		else if(!strcmp(varname[ivar],"hdiv")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+
+			/* set edges to zero - should fill with missing (TODO)*/
+			for(k=0; k<snz; k++)
+			for(j=0; j<sny; j++)
+				buffer[P3(0,j,k,snx,sny)] = 
+				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+
+			for(k=0; k<snz; k++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,0,k,snx,sny)] = 
+				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+
+			for(k=0; k<snz; k++)
+			for(j=1; j<sny-1; j++)
+			for(i=1; i<snx-1; i++)
+			{
+				dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+				dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+				buffer[P3(i,j,k,snx,sny)] =
+					dxi * (ubuffer[P3(i+1,j,k,snx,sny)] - ubuffer[P3(i-1,j,k,snx,sny)]) +
+					dyi * (vbuffer[P3(i,j+1,k,snx,sny)] - vbuffer[P3(i,j-1,k,snx,sny)]) ;
+			}
+		}
+		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+			/* BUG:  Needs to be theta_bar[iz] */
+
+			/* set edges to zero - should fill with missing (TODO)*/
+
+			for(k=0; k<snz; k++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,0,k,snx,sny)] = 
+				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+
+			for(k=0; k<snz; k++)
+			{
+				for(j=1; j<sny-1; j++)
+				{
+					for(i=0; i<snx; i++)
+					{
+						dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+						buffer[P3(i,j,k,snx,sny)] =
+							coeff * dyi * (thrhopert[P3(i,j+1,k,snx,sny)] - thrhopert[P3(i,j-1,k,snx,sny)]) ;
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+			/* BUG:  Needs to be theta_bar[iz] */
+
+			/* set edges to zero - should fill with missing (TODO)*/
+
+			for(k=0; k<snz; k++)
+			for(j=0; j<sny; j++)
+				buffer[P3(0,j,k,snx,sny)] = 
+				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+
+			for(k=0; k<snz; k++)
+			{
+				for(j=0; j<sny; j++)
+				{
+					for(i=1; i<snx-1; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,snx,sny)] =
+							-coeff * dxi * (thrhopert[P3(i+1,j,k,snx,sny)] - thrhopert[P3(i-1,j,k,snx,sny)]) ;
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			for(k=0; k<snz; k++)
+			for(j=0; j<sny; j++)
+				buffer[P3(0,j,k,snx,sny)] = 
+				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+
+			for(j=0; j<sny; j++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,j,0,snx,sny)] = 
+				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+
+			for(k=1; k<snz-1; k++)
+			{
+				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				for(j=0; j<sny; j++)
+				{
+					for(i=1; i<snx-1; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (-yvort[P3(i,j,k,snx,sny)]*(dxi*(ubuffer[P3(i+1,j,k,snx,sny)]-ubuffer[P3(i-1,j,k,snx,sny)]) +
+												dzi*(wbuffer[P3(i,j,k+1,snx,sny)]-wbuffer[P3(i,j,k-1,snx,sny)])));
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			for(k=0; k<snz; k++)
+			for(j=0; j<sny; j++)
+				buffer[P3(0,j,k,snx,sny)] = 
+				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+
+			for(j=0; j<sny; j++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,j,0,snx,sny)] = 
+				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+
+			for(k=1; k<snz; k++)
+			{
+				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				for(j=0; j<sny; j++)
+				{
+					for(i=1; i<snx-1; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (xvort[P3(i,j,k,snx,sny)]*dxi*(vbuffer[P3(i,j+1,k,snx,sny)]-vbuffer[P3(i,j-1,k,snx,sny)]) +
+										    yvort[P3(i,j,k,snx,sny)]*dzi*(vbuffer[P3(i,j,k+1,snx,sny)]-vbuffer[P3(i,j,k-1,snx,sny)]));
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			for(k=0; k<snz; k++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,0,k,snx,sny)] = 
+				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+
+			for(j=0; j<sny; j++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,j,0,snx,sny)] = 
+				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+
+			for(k=1; k<snz-1; k++)
+			{
+				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				for(j=1; j<sny-1; j++)
+				{
+					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					for(i=0; i<snx; i++)
+					{
+						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (-xvort[P3(i,j,k,snx,sny)]*(dyi*(vbuffer[P3(i,j+1,k,snx,sny)]-vbuffer[P3(i,j-1,k,snx,sny)]) +
+												dzi*(wbuffer[P3(i,j,k+1,snx,sny)]-wbuffer[P3(i,j,k-1,snx,sny)])));
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
+		{
+			float dxi,dyi,dzi;
+			for(k=0; k<snz; k++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,0,k,snx,sny)] = 
+				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+
+			for(j=0; j<sny; j++)
+			for(i=0; i<snx; i++)
+				buffer[P3(i,j,0,snx,sny)] = 
+				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+
+			for(k=1; k<snz-1; k++)
+			{
+				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				for(j=1; j<sny-1; j++)
+				{
+					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					for(i=0; i<snx; i++)
+					{
+						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (yvort[P3(i,j,k,snx,sny)]*dyi*(ubuffer[P3(i,j+1,k,snx,sny)]-ubuffer[P3(i,j-1,k,snx,sny)]) +
+										    zvort[P3(i,j,k,snx,sny)]*dzi*(ubuffer[P3(i,j,k+1,snx,sny)]-ubuffer[P3(i,j,k-1,snx,sny)]));
+					}
+				}
 			}
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
@@ -623,6 +829,27 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		{
 			if (!zvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			else buffer=zvort;
+		}
+		else if(!strcmp(varname[ivar],"thrhopert"))
+		{
+			if (!thrhopert_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			else buffer=thrhopert;
+		}
+		else if(!strcmp(varname[ivar],"zvort_tlt"))
+		{
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<snx*sny*snz; i++)
+			{
+				buffer[i] *= 1000.0;
+			}
+		}
+		else if(!strcmp(varname[ivar],"zvort_str"))
+		{
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<snx*sny*snz; i++)
+			{
+				buffer[i] *= 1000.0;
+			}
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
@@ -772,7 +999,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
 {
 	int got_histpath,got_ncbase,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
+	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_NO2D };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -785,7 +1012,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"y1",       optional_argument, 0, OPT_Y1},
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
-		{"debug",    optional_argument, 0, OPT_DEBUG}
+		{"debug",    optional_argument, 0, OPT_DEBUG},
+		{"no2d",     optional_argument, 0, OPT_NO2D}
 	};
 
 	got_histpath=got_ncbase=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
@@ -862,7 +1090,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 			case OPT_DEBUG:
 				debug=1;
 				optcount++;
-				printf("debug = %i\n",debug);
+				break;
+			case OPT_NO2D:
+				no2d=1;
+				optcount++;
 				break;
 		}
 	}
