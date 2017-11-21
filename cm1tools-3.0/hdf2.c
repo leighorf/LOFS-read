@@ -590,14 +590,18 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
 
 			for(k=0; k<snz; k++)
-			for(j=1; j<sny-1; j++)
-			for(i=1; i<snx-1; i++)
 			{
-				dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-				dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-				buffer[P3(i,j,k,snx,sny)] =
-					dxi * (ubuffer[P3(i+1,j,k,snx,sny)] - ubuffer[P3(i-1,j,k,snx,sny)]) +
-					dyi * (vbuffer[P3(i,j+1,k,snx,sny)] - vbuffer[P3(i,j-1,k,snx,sny)]) ;
+				for(j=1; j<sny-1; j++)
+				{
+					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					for(i=1; i<snx-1; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,snx,sny)] =
+						dxi * (ubuffer[P3(i+1,j,k,snx,sny)] - ubuffer[P3(i-1,j,k,snx,sny)]) +
+						dyi * (vbuffer[P3(i,j+1,k,snx,sny)] - vbuffer[P3(i,j-1,k,snx,sny)]) ;
+					}
+				}
 			}
 		}
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
@@ -701,7 +705,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (xvort[P3(i,j,k,snx,sny)]*dxi*(vbuffer[P3(i,j+1,k,snx,sny)]-vbuffer[P3(i,j-1,k,snx,sny)]) +
-										    yvort[P3(i,j,k,snx,sny)]*dzi*(vbuffer[P3(i,j,k+1,snx,sny)]-vbuffer[P3(i,j,k-1,snx,sny)]));
+										    zvort[P3(i,j,k,snx,sny)]*dzi*(vbuffer[P3(i,j,k+1,snx,sny)]-vbuffer[P3(i,j,k-1,snx,sny)]));
 					}
 				}
 			}
@@ -789,15 +793,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
 					(sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i])*
 					sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]));
-			}
-		}
-		else if(!strcmp(varname[ivar],"qcqi")) // "cloud" (water+ice)
-		{
-			read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
-			{
-				buffer[i] = ubuffer[i]+vbuffer[i];
 			}
 		}
 		else if(!strcmp(varname[ivar],"uinterp"))
