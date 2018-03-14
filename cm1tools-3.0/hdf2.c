@@ -35,7 +35,7 @@ int saved_snx0,saved_sny0,saved_snx1,saved_sny1;
 const float MISSING=-1.0E10;
 
 int debug = 0;
-int no2d = 0;
+int yes2d = 0;
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
 //variable names. Make this a global just for simplicity.
@@ -477,7 +477,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	d2[0] = time_dimid;
 	d2[1] = nyh_dimid;
 	d2[2] = nxh_dimid;
-	if (!no2d)
+
+	/* Save some surface 2d slices? */
+	if (yes2d)
 	{
 		status = nc_def_var (ncid, "thrhopert_sfc", NC_FLOAT, 3, d2, &thsfcid);
 		status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
@@ -535,7 +537,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	// This can now be disabled by a command line option but default
 	// is to do the two fields since they are used so much
 
-	if (!no2d)
+	if (yes2d)
 	{
 		printf("\nWorking on surface 2D thrhopert and dbz (");
 		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
@@ -1028,7 +1030,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
 {
 	int got_histpath,got_ncbase,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_NO2D };
+	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_YES2D };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1042,7 +1044,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
-		{"no2d",     optional_argument, 0, OPT_NO2D}
+		{"yes2d",    optional_argument, 0, OPT_YES2D}
 	};
 
 	got_histpath=got_ncbase=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
@@ -1120,8 +1122,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				debug=1;
 				optcount++;
 				break;
-			case OPT_NO2D:
-				no2d=1;
+			case OPT_YES2D:
+				yes2d=1;
 				optcount++;
 				break;
 		}
