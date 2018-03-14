@@ -45,4 +45,4 @@ void get_sorted_node_dirs(char *topdir, char *timedir,char **nodedir, int *dn, i
 void get_sorted_time_dirs(char *topdir, char **timedir, double *times, int ntimedirs, char *base, int debug);
 int get_num_time_dirs(char *topdir, int debug);
 int get_num_node_dirs(char *topdir, char *timedir, int debug);
-double * get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes,char *firstfilename, int *firsttimedirindex, int debug);
+double * get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes,char *firstfilename, int *firsttimedirindex, int *saved_snx0, int *saved_sny0, int *saved_snx1, int *saved_sny1, int debug);

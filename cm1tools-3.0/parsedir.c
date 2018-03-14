@@ -434,7 +434,8 @@ get_num_node_dirs (char *topdir, char *timedir,int debug)
 }
 
 double *
-get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex, int debug)
+get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
+		int *saved_snx0, int *saved_sny0, int *saved_snx1, int *saved_sny1, int debug)
 {
 	DIR *dip;
 	struct dirent *dit;
@@ -445,21 +446,197 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 	double *filetimes;
 	double *alltimes;
 	char *foochar="a";//set to anything
+	int *nodedirmask;
+	int firstnodedir,lastnodedir,nfiles;
+	char **cm1hdf5file;
+	char *hdf5filename;
 
 	FILE *fp;
 
 //	firstfilename = (char *)malloc(512*sizeof(char));
 //
 //
-
+	hdf5filename = (char *)malloc(512*sizeof(char));
 	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
+	nodedirmask = (int *)malloc(nnodedirs*sizeof(int));
 	if ((fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
 	{
 		*ntottimes = 0;
 		k = 0;
+
+/* New: retreive saved snx0,snx1,sny0,sny1 from LOFS */
+
+/* This required a lot more code than I thought it would, and it could definitley be tightened up */
+
+/*
+ *
+Usually a subdomain is saved. The actual indices can only be retrieved
+by diving into the LOFS directory structure. This new functionality
+will mean that if hdf2nc (or makevisit) is called with no horizontal
+indices, it will choose the saved ones rather than throwing an error
+when it can't find file 00000...
+
+First pass, we evaluate the actual HDF5 files saved, and the full
+domain relative indices that reference that data. We only look in the
+first and last node directories that have cm1hdf5 files - the assumption
+is that all times are the same (they should be, or something is broken -
+like a missing piece of a file).
+
+*/
+
+		firstnodedir=lastnodedir=*saved_snx0=*saved_sny0=*saved_snx1=*saved_sny1=0;
+
+		i = 0; /* Only need one time */
+		{
+			for (j=0; j < nnodedirs; j++)
+			{
+				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
+
+				if ((dip = opendir (basedir_full)) == NULL)
+				{
+					perror ("opendir");
+					fprintf (stderr, "Directory = %s\n", basedir_full);
+					ERROR_STOP ("Can't open directory");
+				}
+				while ((dit = readdir (dip)) != NULL)
+				{
+					strcpy (tmpstr, dit->d_name);
+					foochar = strstr(tmpstr,".cm1hdf5");
+//					if(debug)printf("get_all_available_times: %s\n",basedir_full);
+					nodedirmask[j] = (foochar == NULL) ? 0 : 1;
+					if (foochar != NULL) break;
+				}
+			}
+		}
+		/* Now nodedirmask contains zero or more zeroes, followed by at least one one, followed by zero or more zeroes */
+		/* Sweep through and get the first and last node dirs that contain the metadata we need */
+		/* Plants crave electrolytes */
+
+		/* NEED TO TEST WITH BIG ASSED DATA (15m)*/
+		firstnodedir=0;
+		lastnodedir=nnodedirs-1;
+		for (j=0; j < nnodedirs -1; j++) /* because we have j+1 calculation */
+		{
+			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j;
+			if((nodedirmask[j+1]-nodedirmask[j]) == -1) lastnodedir=j;
+		}
+		/* OK now, we must sort the names of the cm1hdf5 files in each directory. Read in snx0,sny0 from firstnodedir, snx1 and sny1 from lastnodedir */
+		j=firstnodedir;
+		{
+			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+			if ((dip = opendir (basedir_full)) == NULL)
+			{
+				perror ("opendir");
+				fprintf (stderr, "Directory = %s\n", basedir_full);
+				ERROR_STOP ("Can't open directory");
+			}
+			nfiles=0;
+			while ((dit = readdir (dip)) != NULL) /* Sigh... first pass just counts the number of cm1hdf5 files so we know how big our array needs to be */
+			{
+				strcpy (tmpstr, dit->d_name);
+				foochar = strstr(tmpstr,".cm1hdf5");
+//				if(debug)printf("get_all_available_times: %s\n",basedir_full);
+				if (foochar != NULL) nfiles++;
+			}
+			fprintf(stderr,"Number of cm1hdf5 files in our first node directory: %i\n",nfiles);
+			/* Allocate file name array */
+			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
+			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+			i=0;
+			dip = opendir (basedir_full); /* no error check because we just opened it*/
+			while ((dit = readdir (dip)) != NULL) /* Populate file list. Then sort. Then FINALLY pick the first and last dammit */
+			{
+				strcpy (tmpstr, dit->d_name);
+				foochar = strstr(tmpstr,".cm1hdf5");
+				if (foochar != NULL)
+				{
+					strcpy (cm1hdf5file[i],tmpstr);i++;
+					if(debug)printf("cm1hdf5file[%i]=%s\n",i-1,cm1hdf5file[i-1]);
+				}
+			}
+			
+			/* Sort 'em */
+
+			sortchararray (cm1hdf5file, nfiles);
+
+			/* Now, finally, pluck our data! */
+			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[0]);
+			if ((file_id = H5Fopen (hdf5filename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
+			{
+				fprintf (stderr, "Cannot open %s, even though it should exist!\n", hdf5filename);
+				ERROR_STOP ("Cannot open hdf file");
+			}
+			get0dint(file_id,"grid/x0",saved_snx0);
+			get0dint(file_id,"grid/y0",saved_sny0);
+			H5Fclose(file_id);
+			fprintf(stderr,"Setting X0 to saved_snx0 which is %i\n",*saved_snx0);
+			fprintf(stderr,"Sedding Y0 to saved_sny0 which is %i\n",*saved_sny0);
+		}
+		j=lastnodedir;
+		{
+			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+			if ((dip = opendir (basedir_full)) == NULL) /* This can never happen! We just opened it :) */
+			{
+				perror ("opendir");
+				fprintf (stderr, "Directory = %s\n", basedir_full);
+				ERROR_STOP ("Can't open directory");
+			}
+			nfiles=0;
+			while ((dit = readdir (dip)) != NULL) /* Sigh... first pass just counts the number of cm1hdf5 files so we know how big our array needs to be */
+			{
+				strcpy (tmpstr, dit->d_name);
+				foochar = strstr(tmpstr,".cm1hdf5");
+				if(debug)printf("get_all_available_times: %s\n",basedir_full);
+				if (foochar != NULL) nfiles++;
+			}
+			/* Allocate file name array */
+			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
+			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+			i=0;
+			dip = opendir (basedir_full);
+			while ((dit = readdir (dip)) != NULL) /* Populate file list. Then sort. Then FINALLY pick the first and last dammit */
+			{
+				strcpy (tmpstr, dit->d_name);
+				foochar = strstr(tmpstr,".cm1hdf5");
+				if(debug)printf("get_all_available_times: %s\n",basedir_full);
+				if (foochar != NULL)
+				{
+					strcpy (cm1hdf5file[i],tmpstr);i++;
+					if(debug) printf("cm1hdf5file[%i]=%s\n",i-1,cm1hdf5file[i-1]);
+				}
+			}
+			
+			/* Sort 'em */
+			sortchararray (cm1hdf5file, nfiles);
+
+			/* Now, Finally, pluck our data! */
+
+			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[nfiles-1]);
+			if ((file_id = H5Fopen (hdf5filename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
+			{
+				fprintf (stderr, "Cannot open %s, even though it should exist!\n", firstfilename);
+				ERROR_STOP ("Cannot open hdf file");
+			}
+
+			get0dint(file_id,"grid/x1",saved_snx1);
+			get0dint(file_id,"grid/y1",saved_sny1);
+			H5Fclose(file_id);
+			fprintf(stderr,"Setting X1 to saved_snx1 which is %i\n",*saved_snx1);
+			fprintf(stderr,"Sedding Y1 to saved_sny1 which is %i\n",*saved_sny1);
+		}
+
+		// Thus endeth the code that finds the saved domain bounds in X and Y
+		// Z shouldn't be too hard... except for the fact that unless I save snz0 as metadata,
+		// I have to go find the dimensions of one of the saved 3D files... I think I'll add a new
+		// piece of metadata to the grid group...
+
 		for (i = 0; i < ntimedirs; i++)
 		{
-			for (j=0; j < nnodedirs; j++) //WHY ARE WE DOING THIS? Because now that I am doing big assed runs I have situations
+			for (j=0; j < nnodedirs; j++)
+				//WHY ARE WE DOING THIS? Because now that I am doing big assed runs I have situations
 				//where when saving subdomains, some of the node
 				//directories are completely empty, so I can no longer
 				//just choose 'nodedir[0]' to find my first hdf5 file.
@@ -482,8 +659,6 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
 					if(debug)printf("get_all_available_times: %s\n",basedir_full);
-//					if(foochar != NULL) printf("get_all_available_times: foochar = %c\n", *foochar); else printf("get_all_available_times: foochar = NULL\n");
-//					if(debug)printf("get_all_available_times: tmpstr = %s\n",tmpstr);
 					if (foochar != NULL) break;	// Got one
 				}	
 				if (foochar != NULL) break;	// Got one
@@ -547,6 +722,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",firstfilename);
+			fprintf(fp,"%i %i %i %i\n",*saved_snx0,*saved_sny0,*saved_snx1,*saved_sny1);
 			fprintf(fp,"%i\n",*ntottimes);
 			for (i=0; i<*ntottimes; i++)
 			{
@@ -560,6 +736,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%s",firstfilename))==EOF)ERROR_STOP("fscanf failed");
+			if((iret=fscanf(fp,"%i %i %i %i",saved_snx0,saved_sny0,saved_snx1,saved_sny1))==EOF)ERROR_STOP("fscanf failed");
 			if((iret=fscanf(fp,"%i",ntottimes))==EOF)ERROR_STOP("fscanf failed");
 			alltimes = (double *)malloc(*ntottimes * sizeof(double));
 			for (i=0; i<*ntottimes; i++)

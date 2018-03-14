@@ -31,6 +31,7 @@ int nnodedirs;
 double *alltimes;
 int ntottimes;
 int firsttimedirindex;
+int saved_snx0,saved_sny0,saved_snx1,saved_sny1;
 const float MISSING=-1.0E10;
 
 int debug = 0;
@@ -93,10 +94,40 @@ int main(int argc, char *argv[])
 		grok_cm1hdf5_file_structure();
 		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
 		if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
-		/* If we didn't specify values at the command line set them to full domain parameters */
-		if(X0<0)X0=0; if(Y0<0)Y0=0; if(Z0<0)Z0=0;
-		if(X1<0)X1=nx-1; if(Y1<0)Y1=ny-1; if(Z1<0)Z1=nz-1;
+		/* If we didn't specify values at the command line, set them to values specifying all the saved data */
+		if(X0<0)X0=saved_snx0; if(Y0<0)Y0=saved_sny0; if(Z0<0)Z0=0;
+		if(X1<0)X1=saved_snx1; if(Y1<0)Y1=saved_sny1; if(Z1<0)Z1=nz-1;
+		/* If our supplied indices are outside of the saved data,
+		 * warn and adjust accordingly */
 
+		/* First, look for idiocy */
+
+		if (X0>X1||Y0>Y1||X1<saved_snx0||Y1<saved_sny0||X0>saved_snx1||Y0>saved_sny1)
+		{
+			printf(" *** X0=%i saved_snx0=%i Y0=%i saved_sny0=%i X1=%i saved_snx1=%i Y1=%i saved_sny1=%i\n",
+					X0,saved_snx0,Y0,saved_sny0,X1,saved_snx1,Y1,saved_sny1);
+			ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
+		}
+		if(X0<saved_snx0)
+		{
+			printf("Oops: requested out of box: Adjusting X0 (%i) to saved_snx0 (%i)\n",X0,saved_snx0);
+			X0=saved_snx0;
+		}
+		if(Y0<saved_sny0)
+		{
+			printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_sny0 (%i)\n",Y0,saved_sny0);
+			Y0=saved_sny0;
+		}
+		if(X1>saved_snx1)
+		{
+			printf("Oops: requested out of box: Adjusting X1 (%i) to saved_snx1 (%i)\n",X1,saved_snx1);
+			X1=saved_snx1;
+		}
+		if(Y1>saved_sny1)
+		{
+			printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_sny1 (%i)\n",Y1,saved_sny1);
+			X1=saved_snx1;
+		}
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
 	}
 	else if (we_are_makevisit)
@@ -247,12 +278,13 @@ void grok_cm1hdf5_file_structure()
 
 	nnodedirs =  get_num_node_dirs(topdir,timedir[0],debug);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
-	// ORF 8 == WOT??
+	// ORF 8 == 7 zero padded node number directory name plus 1 end of string char
 	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
 	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug);
 
-	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,debug);
+	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,
+			&saved_snx0,&saved_sny0,&saved_snx1,&saved_sny1,debug);
 	if(debug)
 	{
 		printf("All available times: ");
@@ -368,8 +400,8 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 /* THIS NEEDS TO BE TESTED IN CM1 FIRST... we haven't been saving these */
-//	get1dfloat (f_id,(char *)"mesh/xffull",xhfull,0,nx+1);
-//	get1dfloat (f_id,(char *)"mesh/yffull",yhfull,0,ny+1);
+ 	get1dfloat (f_id,(char *)"mesh/xffull",xhfull,0,nx+1);
+	get1dfloat (f_id,(char *)"mesh/yffull",yhfull,0,ny+1);
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
@@ -385,8 +417,8 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];     //NEED TO READ REAL ZF
-	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yhfull[iy]; //ORF FIX
-	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xhfull[ix]; //ORF FIX 
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy]; //ORF FIXED
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix]; //ORF FIXED
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
 
@@ -397,6 +429,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 netCDF files come in several flavors... This is mostly due to the
 passage of time - it's an old format! And files have gotten bigger!
+And Leon has gotten larger!
 
 The best is NC_NETCDF4, which is HDF5 but using the netCDF API...
 With HDF5 you can make the hugest-assed files imaginable with nearly
@@ -488,7 +521,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			ERROR_STOP("nc_def_var failed");
 		}
 		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
-//          status=nc_def_var_deflate(ncid, varnameid[ivar], 0, 1, 9);
+//		unfortunately this really slows things down
+//		status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
 	status = nc_enddef (ncid);
 
@@ -1098,10 +1132,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		if (got_time==0)   { fprintf(stderr,"--time not specified\n"); bail = 1; }
 
 /* These are now optional */
-		if (!got_X0)      fprintf(stderr,"Setting X0 to default value of 0\n");
-		if (!got_Y0)      fprintf(stderr,"Setting Y0 to default value of 0\n");
-		if (!got_X1)      fprintf(stderr,"Setting X1 to default value of nx-1\n");
-		if (!got_Y1)      fprintf(stderr,"Setting Y1 to default value of ny-1\n");
+		if (!got_X0)      fprintf(stderr,"Setting X0 to saved min value\n");
+		if (!got_Y0)      fprintf(stderr,"Setting Y0 to saved min value\n");
+		if (!got_X1)      fprintf(stderr,"Setting X1 to saved max value\n");
+		if (!got_Y1)      fprintf(stderr,"Setting Y1 to saved max value\n");
 		if (!got_Z0)      fprintf(stderr,"Setting Z0 to default value of 0\n");
 		if (!got_Z1)      fprintf(stderr,"Setting Z1 to default value of nz-1\n");
 
