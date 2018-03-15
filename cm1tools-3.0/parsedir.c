@@ -461,7 +461,7 @@ void get_unsorted_file_list(char** cm1hdf5file)
 
 double *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
-		int *saved_snx0, int *saved_sny0, int *saved_snx1, int *saved_sny1, int debug)
+		int *saved_X0, int *saved_Y0, int *saved_X1, int *saved_Y1, int debug)
 {
 	int i, j, k, iret, itime;
 	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
@@ -494,7 +494,7 @@ to ASCII text files, also now retrieves actual saved domain index
 (x0,y0,x1,y1) parameters. We cannot assume it's the full domain as I
 regularly save subdomains focused on the mesocyclone, and it's possible
 that files are culled to save disk space. Without passing values to
-snx0 etc. these saved bounds are the default. Hence it's a quick way to
+X0 etc. these saved bounds are the default. Hence it's a quick way to
 construct, for instance, a netCDF file with all the saved LOFS data at
 a given time. No longer will I need to hunt in the node directories for
 the files containing these values!
@@ -516,11 +516,11 @@ Then, we go to the 1st of these node directories to get x0,y0 from the
 "largest numbered file" since cm1 does a 2D decomposition which can be
 expressed in a simple 1d array.
 
-TODO: Save snz0 in cm1hdf5 files so we can retrieve that as well.
+TODO: Save Z0 in cm1hdf5 files so we can retrieve that as well.
 
 */
 
-		firstnodedir=lastnodedir=*saved_snx0=*saved_sny0=*saved_snx1=*saved_sny1=0;
+		firstnodedir=lastnodedir=*saved_X0=*saved_Y0=*saved_X1=*saved_Y1=0;
 
 		itime = 0; /* Only need one time */
 		{
@@ -578,11 +578,11 @@ crave electrolytes.
 				fprintf (stderr, "Cannot open %s, even though it should exist!\n", hdf5filename);
 				ERROR_STOP ("Cannot open hdf file");
 			}
-			get0dint(file_id,"grid/x0",saved_snx0);
-			get0dint(file_id,"grid/y0",saved_sny0);
+			get0dint(file_id,"grid/x0",saved_X0);
+			get0dint(file_id,"grid/y0",saved_Y0);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X0 to saved_snx0 which is %i\n",*saved_snx0);
-			fprintf(stderr,"Setting Y0 to saved_sny0 which is %i\n",*saved_sny0);
+			fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",*saved_X0);
+			fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",*saved_Y0);
 		}
 		j=lastnodedir;
 		{
@@ -609,15 +609,15 @@ crave electrolytes.
 				ERROR_STOP ("Cannot open hdf file");
 			}
 
-			get0dint(file_id,"grid/x1",saved_snx1);
-			get0dint(file_id,"grid/y1",saved_sny1);
+			get0dint(file_id,"grid/x1",saved_X1);
+			get0dint(file_id,"grid/y1",saved_Y1);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X1 to saved_snx1 which is %i\n",*saved_snx1);
-			fprintf(stderr,"Setting Y1 to saved_sny1 which is %i\n",*saved_sny1);
+			fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",*saved_X1);
+			fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",*saved_Y1);
 		}
 
 // Thus endeth the code that finds the saved domain bounds in X and Y. Z
-// shouldn't be too hard... except for the fact that unless I save snz0
+// shouldn't be too hard... except for the fact that unless I save Z0
 // as metadata, I have to go find the dimensions of one of the saved
 // 3D files... I think I'll add a new piece of metadata to the grid
 // group...
@@ -700,7 +700,7 @@ crave electrolytes.
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",firstfilename);
-			fprintf(fp,"%i %i %i %i\n",*saved_snx0,*saved_sny0,*saved_snx1,*saved_sny1);
+			fprintf(fp,"%i %i %i %i\n",*saved_X0,*saved_Y0,*saved_X1,*saved_Y1);
 			fprintf(fp,"%i\n",*ntottimes);
 			for (i=0; i<*ntottimes; i++)
 			{
@@ -716,16 +716,16 @@ crave electrolytes.
 			iret=fscanf(fp,"%s",firstfilename);
 			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",firstfilename);
 				else ERROR_STOP("fscanf firstfilename failed");
-			iret=fscanf(fp,"%i %i %i %i",saved_snx0,saved_sny0,saved_snx1,saved_sny1);
+			iret=fscanf(fp,"%i %i %i %i",saved_X0,saved_Y0,saved_X1,saved_Y1);
 			if(iret!=EOF){
-				fprintf(stderr,"Cached: saved_snx0  = %6i\n",*saved_snx0);
-				fprintf(stderr,"Cached: saved_sny0  = %6i\n",*saved_sny0);
-				fprintf(stderr,"Cached: saved_snx1  = %6i\n",*saved_snx1);
-				fprintf(stderr,"Cached: saved_sny1  = %6i\n",*saved_sny1);
+				fprintf(stderr,"Cached: saved_X0  = %6i\n",*saved_X0);
+				fprintf(stderr,"Cached: saved_Y0  = %6i\n",*saved_Y0);
+				fprintf(stderr,"Cached: saved_X1  = %6i\n",*saved_X1);
+				fprintf(stderr,"Cached: saved_Y1  = %6i\n",*saved_Y1);
 			}
-				else ERROR_STOP("fscanf saved_sn?? failed");
+				else ERROR_STOP("fscanf saved_[XY][01] failed");
 			iret=fscanf(fp,"%i",ntottimes);
-			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes   = %6i\n",*ntottimes);
+			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes = %6i\n",*ntottimes);
 			alltimes = (double *)malloc(*ntottimes * sizeof(double));
 			for (i=0; i<*ntottimes; i++)
 			{

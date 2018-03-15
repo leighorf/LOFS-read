@@ -31,7 +31,7 @@ int nnodedirs;
 double *alltimes;
 int ntottimes;
 int firsttimedirindex;
-int saved_snx0,saved_sny0,saved_snx1,saved_sny1;
+int saved_X0,saved_Y0,saved_X1,saved_Y1;
 const float MISSING=-1.0E10;
 
 int debug = 0;
@@ -45,7 +45,7 @@ int optcount=0;
 
 void grok_cm1hdf5_file_structure();
 void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
-void makevisit(int argc, char *argv[], char *cm1visitbase,int snx0,int sny0,int snx1,int sny1,int snz0,int snz1);
+void makevisit(int argc, char *argv[], char *cm1visitbase,int X0,int Y0,int X1,int Y1,int Z0,int Z1);
 
 void parse_cmdline_hdf2nc(int argc, char *argv[],
 		char *histpath, char *ncbase,
@@ -53,7 +53,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[],
 
 void parse_cmdline_makevisit(int argc, char *argv[],
 		char *histpath, char *cm1visitbase,
-		int *snx0, int *sny0, int *snx1, int *sny1, int *snz0, int *snz1);
+		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
 
 extern char *optarg; /* This is handled by the getopt code */
 
@@ -96,48 +96,48 @@ int main(int argc, char *argv[])
 		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
 		if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 		/* If we didn't specify values at the command line, set them to values specifying all the saved data */
-		if(X0<0)X0=saved_snx0; if(Y0<0)Y0=saved_sny0; if(Z0<0)Z0=0;
-		if(X1<0)X1=saved_snx1; if(Y1<0)Y1=saved_sny1; if(Z1<0)Z1=nz-1;
+		if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
+		if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
 		/* If our supplied indices are outside of the saved data,
 		 * warn and adjust accordingly */
 
 		/* First, look for idiocy */
 
-		if (X0>X1||Y0>Y1||X1<saved_snx0||Y1<saved_sny0||X0>saved_snx1||Y0>saved_sny1)
+		if (X0>X1||Y0>Y1||X1<saved_X0||Y1<saved_Y0||X0>saved_X1||Y0>saved_Y1)
 		{
-			printf(" *** X0=%i saved_snx0=%i Y0=%i saved_sny0=%i X1=%i saved_snx1=%i Y1=%i saved_sny1=%i\n",
-					X0,saved_snx0,Y0,saved_sny0,X1,saved_snx1,Y1,saved_sny1);
+			printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
+					X0,saved_X0,Y0,saved_Y0,X1,saved_X1,Y1,saved_Y1);
 			ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
 		}
-		if(X0<saved_snx0)
+		if(X0<saved_X0)
 		{
-			printf("Oops: requested out of box: Adjusting X0 (%i) to saved_snx0 (%i)\n",X0,saved_snx0);
-			X0=saved_snx0;
+			printf("Oops: requested out of box: Adjusting X0 (%i) to saved_X0 (%i)\n",X0,saved_X0);
+			X0=saved_X0;
 		}
-		if(Y0<saved_sny0)
+		if(Y0<saved_Y0)
 		{
-			printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_sny0 (%i)\n",Y0,saved_sny0);
-			Y0=saved_sny0;
+			printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_Y0 (%i)\n",Y0,saved_Y0);
+			Y0=saved_Y0;
 		}
-		if(X1>saved_snx1)
+		if(X1>saved_X1)
 		{
-			printf("Oops: requested out of box: Adjusting X1 (%i) to saved_snx1 (%i)\n",X1,saved_snx1);
-			X1=saved_snx1;
+			printf("Oops: requested out of box: Adjusting X1 (%i) to saved_X1 (%i)\n",X1,saved_X1);
+			X1=saved_X1;
 		}
-		if(Y1>saved_sny1)
+		if(Y1>saved_Y1)
 		{
-			printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_sny1 (%i)\n",Y1,saved_sny1);
-			X1=saved_snx1;
+			printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_Y1 (%i)\n",Y1,saved_Y1);
+			X1=saved_X1;
 		}
 		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
 	}
 	else if (we_are_makevisit)
 	{
-        	int snx0, snx1, sny0, sny1, snz0, snz1;
+        	int X0, X1, Y0, Y1, Z0, Z1;
 		char cm1visitbase[MAXSTR];
-        	snx0 = sny0 = snz0 = snx1 = sny1 = snz1 = -1; //set to bogus value
+        	X0 = Y0 = Z0 = X1 = Y1 = Z1 = -1; //set to bogus value
 
-		parse_cmdline_makevisit(argc, argv, histpath, cm1visitbase, &snx0, &sny0, &snx1, &sny1, &snz0, &snz1);
+		parse_cmdline_makevisit(argc, argv, histpath, cm1visitbase, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
 
 		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 		grok_cm1hdf5_file_structure();
@@ -145,15 +145,15 @@ int main(int argc, char *argv[])
 
 		/* If we didn't specify values at the command line set them
 		 * to full domain parameters */
-		if(snx0<0)snx0=0; if(sny0<0)sny0=0; if(snz0<0)snz0=0;
-		if(snx1<0)snx1=nx-1; if(sny1<0)sny1=ny-1; if(snz1<0)snz1=nz-1;
+		if(X0<0)X0=0; if(Y0<0)Y0=0; if(Z0<0)Z0=0;
+		if(X1<0)X1=nx-1; if(Y1<0)Y1=ny-1; if(Z1<0)Z1=nz-1;
 
-		makevisit(argc,argv,cm1visitbase,snx0,sny0,snx1,sny1,snz0,snz1);
+		makevisit(argc,argv,cm1visitbase,X0,Y0,X1,Y1,Z0,Z1);
 	}
 	exit(0);
 }
 
-void makevisit(int argc, char *argv[], char *cm1visitbase,int snx0,int sny0,int snx1,int sny1,int snz0,int snz1)
+void makevisit(int argc, char *argv[], char *cm1visitbase,int X0,int Y0,int X1,int Y1,int Z0,int Z1)
 {
 		int i,rank,nvars;
 		hid_t f_id,g_id,strtype;
@@ -245,12 +245,12 @@ saving subdomains. */
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nz", rank, dims, &nz);
         
         //subdomains
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx0", rank, dims, &snx0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx1", rank, dims, &snx1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny0", rank, dims, &sny0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny1", rank, dims, &sny1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz0", rank, dims, &snz0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz1", rank, dims, &snz1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X0", rank, dims, &X0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X1", rank, dims, &X1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y0", rank, dims, &Y0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y1", rank, dims, &Y1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z0", rank, dims, &Z0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z1", rank, dims, &Z1);
 
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodex", rank, dims, &nodex);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodey", rank, dims, &nodey);
@@ -285,7 +285,7 @@ void grok_cm1hdf5_file_structure()
 	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug);
 
 	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,
-			&saved_snx0,&saved_sny0,&saved_snx1,&saved_sny1,debug);
+			&saved_X0,&saved_Y0,&saved_X1,&saved_Y1,debug);
 	if(debug)
 	{
 		printf("All available times: ");
@@ -307,7 +307,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 
 	extern int H5Z_zfp_initialize(void);
 
-	int snx,sny,snz;
+	int NX,NY,NZ;
 	hid_t f_id;
 
 	int status;
@@ -353,27 +353,27 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	printf("\n");
 	sprintf(ncfilename,"%s.%012.6f.nc",ncbase,t0);
 	
-	snx = X1 - X0 + 1;
-	sny = Y1 - Y0 + 1;
-	snz = Z1 - Z0 + 1;
+	NX = X1 - X0 + 1;
+	NY = Y1 - Y0 + 1;
+	NZ = Z1 - Z0 + 1;
 	start[0] = 0;
 	start[1] = 0;
 	start[2] = 0;
 	start[3] = 0;
 	edges[0] = 1;
-	edges[1] = snz;
-	edges[2] = sny;
-	edges[3] = snx;
+	edges[1] = NZ;
+	edges[2] = NY;
+	edges[3] = NX;
 	//For 2D surface slices
 	s2[0] = 0;
 	s2[1] = 0;
 	s2[2] = 0;
 	e2[0] = 1;
-	e2[1] = sny;
-	e2[2] = snx;
+	e2[1] = NY;
+	e2[2] = NX;
 
 	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
-	bufsize = (long) (snx+1) * (long) (sny+1) * (long) (snz+1) * (long) sizeof(float);
+	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
 	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -383,7 +383,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	//printf("snx = %i sny = %i snz = %i Bufsize = %i\n",snx,sny,snz,bufsize);
+	//printf("NX = %i NY = %i NZ = %i Bufsize = %i\n",NX,NY,NZ,bufsize);
 	if (buffer == NULL) ERROR_STOP("Cannot allocate buffer");
 	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 	{
@@ -412,12 +412,12 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 	get1dfloat (f_id,(char *)"basestate/th0",th0,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 
-	xhout = (float *)malloc(snx * sizeof(float));
-	yhout = (float *)malloc(sny * sizeof(float));
-	zhout = (float *)malloc(snz * sizeof(float));
-	xfout = (float *)malloc(snx * sizeof(float));
-	yfout = (float *)malloc(sny * sizeof(float)); // +1 when we do this right
-	zfout = (float *)malloc(snz * sizeof(float)); // +1 when we do this right
+	xhout = (float *)malloc(NX * sizeof(float));
+	yhout = (float *)malloc(NY * sizeof(float));
+	zhout = (float *)malloc(NZ * sizeof(float));
+	xfout = (float *)malloc(NX * sizeof(float));
+	yfout = (float *)malloc(NY * sizeof(float)); // +1 when we do this right
+	zfout = (float *)malloc(NZ * sizeof(float)); // +1 when we do this right
 
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];     //NEED TO READ REAL ZF
@@ -454,15 +454,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
 
-	status = nc_def_dim (ncid, "xh", snx, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
-	status = nc_def_dim (ncid, "yh", sny, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "zh", snz, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "xh", NX, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
+	status = nc_def_dim (ncid, "yh", NY, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "zh", NZ, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	if (saved_staggered_mesh_params)
 	{
-		status = nc_def_dim (ncid, "xf", snx, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
-		status = nc_def_dim (ncid, "yf", sny, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+		status = nc_def_dim (ncid, "xf", NX, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
+		status = nc_def_dim (ncid, "yf", NY, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	}
-	status = nc_def_dim (ncid, "zf", snz, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "zf", NZ, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yh", NC_FLOAT, 1, &nyh_dimid, &yhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -624,7 +624,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				usr = ubuffer[i];
 				vsr = vbuffer[i];
@@ -636,27 +636,27 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			float dxi,dyi,dzi;
 
 			/* set edges to zero - should fill with missing (TODO)*/
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-				buffer[P3(0,j,k,snx,sny)] = 
-				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
 
-			for(k=0; k<snz; k++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,0,k,snx,sny)] = 
-				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
-			for(k=0; k<snz; k++)
+			for(k=0; k<NZ; k++)
 			{
-				for(j=1; j<sny-1; j++)
+				for(j=1; j<NY-1; j++)
 				{
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(i=1; i<snx-1; i++)
+					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,snx,sny)] =
-						dxi * (ubuffer[P3(i+1,j,k,snx,sny)] - ubuffer[P3(i-1,j,k,snx,sny)]) +
-						dyi * (vbuffer[P3(i,j+1,k,snx,sny)] - vbuffer[P3(i,j-1,k,snx,sny)]) ;
+						buffer[P3(i,j,k,NX,NY)] =
+						dxi * (ubuffer[P3(i+1,j,k,NX,NY)] - ubuffer[P3(i-1,j,k,NX,NY)]) +
+						dyi * (vbuffer[P3(i,j+1,k,NX,NY)] - vbuffer[P3(i,j-1,k,NX,NY)]) ;
 					}
 				}
 			}
@@ -669,20 +669,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 			/* set edges to zero - should fill with missing (TODO)*/
 
-			for(k=0; k<snz; k++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,0,k,snx,sny)] = 
-				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
-			for(k=0; k<snz; k++)
+			for(k=0; k<NZ; k++)
 			{
-				for(j=1; j<sny-1; j++)
+				for(j=1; j<NY-1; j++)
 				{
-					for(i=0; i<snx; i++)
+					for(i=0; i<NX; i++)
 					{
 						dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-						buffer[P3(i,j,k,snx,sny)] =
-							coeff * dyi * (thrhopert[P3(i,j+1,k,snx,sny)] - thrhopert[P3(i,j-1,k,snx,sny)]) ;
+						buffer[P3(i,j,k,NX,NY)] =
+							coeff * dyi * (thrhopert[P3(i,j+1,k,NX,NY)] - thrhopert[P3(i,j-1,k,NX,NY)]) ;
 					}
 				}
 			}
@@ -695,20 +695,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 			/* set edges to zero - should fill with missing (TODO)*/
 
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-				buffer[P3(0,j,k,snx,sny)] = 
-				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
 
-			for(k=0; k<snz; k++)
+			for(k=0; k<NZ; k++)
 			{
-				for(j=0; j<sny; j++)
+				for(j=0; j<NY; j++)
 				{
-					for(i=1; i<snx-1; i++)
+					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,snx,sny)] =
-							-coeff * dxi * (thrhopert[P3(i+1,j,k,snx,sny)] - thrhopert[P3(i-1,j,k,snx,sny)]) ;
+						buffer[P3(i,j,k,NX,NY)] =
+							-coeff * dxi * (thrhopert[P3(i+1,j,k,NX,NY)] - thrhopert[P3(i-1,j,k,NX,NY)]) ;
 					}
 				}
 			}
@@ -716,26 +716,26 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-				buffer[P3(0,j,k,snx,sny)] = 
-				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
 
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,j,0,snx,sny)] = 
-				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+			for(j=0; j<NY; j++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,j,0,NX,NY)] = 
+				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
-			for(k=1; k<snz-1; k++)
+			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(j=0; j<sny; j++)
+				for(j=0; j<NY; j++)
 				{
-					for(i=1; i<snx-1; i++)
+					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (-yvort[P3(i,j,k,snx,sny)]*(dxi*(ubuffer[P3(i+1,j,k,snx,sny)]-ubuffer[P3(i-1,j,k,snx,sny)]) +
-												dzi*(wbuffer[P3(i,j,k+1,snx,sny)]-wbuffer[P3(i,j,k-1,snx,sny)])));
+						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (-yvort[P3(i,j,k,NX,NY)]*(dxi*(ubuffer[P3(i+1,j,k,NX,NY)]-ubuffer[P3(i-1,j,k,NX,NY)]) +
+												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)])));
 					}
 				}
 			}
@@ -743,26 +743,26 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			for(k=0; k<snz; k++)
-			for(j=0; j<sny; j++)
-				buffer[P3(0,j,k,snx,sny)] = 
-				buffer[P3(snx-1,j,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
 
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,j,0,snx,sny)] = 
-				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+			for(j=0; j<NY; j++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,j,0,NX,NY)] = 
+				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
-			for(k=1; k<snz; k++)
+			for(k=1; k<NZ; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(j=0; j<sny; j++)
+				for(j=0; j<NY; j++)
 				{
-					for(i=1; i<snx-1; i++)
+					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (xvort[P3(i,j,k,snx,sny)]*dxi*(vbuffer[P3(i,j+1,k,snx,sny)]-vbuffer[P3(i,j-1,k,snx,sny)]) +
-										    zvort[P3(i,j,k,snx,sny)]*dzi*(vbuffer[P3(i,j,k+1,snx,sny)]-vbuffer[P3(i,j,k-1,snx,sny)]));
+						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (xvort[P3(i,j,k,NX,NY)]*dxi*(vbuffer[P3(i,j+1,k,NX,NY)]-vbuffer[P3(i,j-1,k,NX,NY)]) +
+										    zvort[P3(i,j,k,NX,NY)]*dzi*(vbuffer[P3(i,j,k+1,NX,NY)]-vbuffer[P3(i,j,k-1,NX,NY)]));
 					}
 				}
 			}
@@ -770,26 +770,26 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			for(k=0; k<snz; k++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,0,k,snx,sny)] = 
-				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,j,0,snx,sny)] = 
-				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+			for(j=0; j<NY; j++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,j,0,NX,NY)] = 
+				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
-			for(k=1; k<snz-1; k++)
+			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(j=1; j<sny-1; j++)
+				for(j=1; j<NY-1; j++)
 				{
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(i=0; i<snx; i++)
+					for(i=0; i<NX; i++)
 					{
-						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (-xvort[P3(i,j,k,snx,sny)]*(dyi*(vbuffer[P3(i,j+1,k,snx,sny)]-vbuffer[P3(i,j-1,k,snx,sny)]) +
-												dzi*(wbuffer[P3(i,j,k+1,snx,sny)]-wbuffer[P3(i,j,k-1,snx,sny)])));
+						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (-xvort[P3(i,j,k,NX,NY)]*(dyi*(vbuffer[P3(i,j+1,k,NX,NY)]-vbuffer[P3(i,j-1,k,NX,NY)]) +
+												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)])));
 					}
 				}
 			}
@@ -797,47 +797,47 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			for(k=0; k<snz; k++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,0,k,snx,sny)] = 
-				buffer[P3(i,sny-1,k,snx,sny)] = MISSING;
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
-			for(j=0; j<sny; j++)
-			for(i=0; i<snx; i++)
-				buffer[P3(i,j,0,snx,sny)] = 
-				buffer[P3(i,j,snz-1,snx,sny)] = MISSING;
+			for(j=0; j<NY; j++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,j,0,NX,NY)] = 
+				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
-			for(k=1; k<snz-1; k++)
+			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(j=1; j<sny-1; j++)
+				for(j=1; j<NY-1; j++)
 				{
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(i=0; i<snx; i++)
+					for(i=0; i<NX; i++)
 					{
-						buffer[P3(i,j,k,snx,sny)] = 1000.0 * (yvort[P3(i,j,k,snx,sny)]*dyi*(ubuffer[P3(i,j+1,k,snx,sny)]-ubuffer[P3(i,j-1,k,snx,sny)]) +
-										    zvort[P3(i,j,k,snx,sny)]*dzi*(ubuffer[P3(i,j,k+1,snx,sny)]-ubuffer[P3(i,j,k-1,snx,sny)]));
+						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (yvort[P3(i,j,k,NX,NY)]*dyi*(ubuffer[P3(i,j+1,k,NX,NY)]-ubuffer[P3(i,j-1,k,NX,NY)]) +
+										    zvort[P3(i,j,k,NX,NY)]*dzi*(ubuffer[P3(i,j,k+1,NX,NY)]-ubuffer[P3(i,j,k-1,NX,NY)]));
 					}
 				}
 			}
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
 			}
 		}
 		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
 			}
 		}
 		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
 					sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i]);
@@ -845,7 +845,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
 					(sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i])*
@@ -890,7 +890,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"zvort_tlt"))
 		{
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] *= 1000.0;
 			}
@@ -898,7 +898,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"zvort_str"))
 		{
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<snx*sny*snz; i++)
+			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] *= 1000.0;
 			}
@@ -939,10 +939,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 void parse_cmdline_makevisit(int argc, char *argv[],
 		char *histpath, char *cm1visitbase,
-		int *snx0, int *sny0, int *snx1, int *sny1, int *snz0, int *snz1)
+		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1)
 {
 
-	int got_snx0,got_snx1,got_sny0,got_sny1,got_snz0,got_snz1;
+	int got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	int got_histpath,got_cm1visitbase;
 	enum { OPT_HISTPATH = 1000, OPT_CM1VISITBASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
 	static struct option long_options[] =
@@ -959,12 +959,12 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 	};
 
 	int bail = 0;
-	got_histpath=got_cm1visitbase=got_snx0=got_snx1=got_sny0=got_sny1=got_snz0=got_snz1=0;
+	got_histpath=got_cm1visitbase=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
 
 	if (argc == 1)
 	{
 		fprintf(stderr,
-		"Usage: %s --histpath=[histpath] --base=[cm1visitbase] --x0=[snx0] --y0=[sny0] --x1=[snx1] --y1=[sny1] --z0=[snz0] --z1=[snz1]\n",argv[0]);
+		"Usage: %s --histpath=[histpath] --base=[cm1visitbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1]\n",argv[0]);
 		exit(0);
 	}
 
@@ -989,40 +989,40 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 				printf("cm1visitbase = %s\n",cm1visitbase);
 				break;
 			case OPT_X0:
-				*snx0 = atoi(optarg);
-				got_snx0 = 1;
+				*X0 = atoi(optarg);
+				got_X0 = 1;
 				optcount++;
-				printf("snx0 = %i\n",*snx0);
+				printf("X0 = %i\n",*X0);
 				break;
 			case OPT_Y0:
-				*sny0 = atoi(optarg);
-				got_sny0 = 1;
+				*Y0 = atoi(optarg);
+				got_Y0 = 1;
 				optcount++;
-				printf("sny0 = %i\n",*sny0);
+				printf("Y0 = %i\n",*Y0);
 				break;
 			case OPT_X1:
-				*snx1 = atoi(optarg);
-				got_snx1 = 1;
+				*X1 = atoi(optarg);
+				got_X1 = 1;
 				optcount++;
-				printf("snx1 = %i\n",*snx1);
+				printf("X1 = %i\n",*X1);
 				break;
 			case OPT_Y1:
-				*sny1 = atoi(optarg);
-				got_sny1 = 1;
+				*Y1 = atoi(optarg);
+				got_Y1 = 1;
 				optcount++;
-				printf("sny1 = %i\n",*sny1);
+				printf("Y1 = %i\n",*Y1);
 				break;
 			case OPT_Z0:
-				*snz0 = atoi(optarg);
-				got_snz0 = 1;
+				*Z0 = atoi(optarg);
+				got_Z0 = 1;
 				optcount++;
-				printf("snz0 = %i\n",*snz0);
+				printf("Z0 = %i\n",*Z0);
 				break;
 			case OPT_Z1:
-				*snz1 = atoi(optarg);
-				got_snz1 = 1;
+				*Z1 = atoi(optarg);
+				got_Z1 = 1;
 				optcount++;
-				printf("Z1 = %i\n",*snz1);
+				printf("Z1 = %i\n",*Z1);
 				break;
 			case OPT_DEBUG:
 				debug=1;
@@ -1036,12 +1036,12 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 		if (!got_cm1visitbase)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
 
 /* These are optional */
-		if (!got_snx0)      fprintf(stderr,"Setting x0 to default value of 0\n");
-		if (!got_snx1)      fprintf(stderr,"Setting x1 to default value of nx-1\n");
-		if (!got_sny0)      fprintf(stderr,"Setting y0 to default value of 0\n");
-		if (!got_sny1)      fprintf(stderr,"Setting y1 to default value of ny-1\n");
-		if (!got_snz0)      fprintf(stderr,"Setting z0 to default value of 0\n");
-		if (!got_snz1)      fprintf(stderr,"Setting z1 to default value of z1-1\n");
+		if (!got_X0)      fprintf(stderr,"Setting x0 to default value of 0\n");
+		if (!got_X1)      fprintf(stderr,"Setting x1 to default value of nx-1\n");
+		if (!got_Y0)      fprintf(stderr,"Setting y0 to default value of 0\n");
+		if (!got_Y1)      fprintf(stderr,"Setting y1 to default value of ny-1\n");
+		if (!got_Z0)      fprintf(stderr,"Setting z0 to default value of 0\n");
+		if (!got_Z1)      fprintf(stderr,"Setting z1 to default value of z1-1\n");
 		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
 
@@ -1160,10 +1160,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		if (got_time==0)   { fprintf(stderr,"--time not specified\n"); bail = 1; }
 
 /* These are now optional */
-		if (!got_X0)      fprintf(stderr,"Will set X0 to saved_snx0\n");
-		if (!got_Y0)      fprintf(stderr,"Will set Y0 to saved_sny0\n");
-		if (!got_X1)      fprintf(stderr,"Will set X1 to saved_snx1\n");
-		if (!got_Y1)      fprintf(stderr,"Will set Y1 to saved_sny1\n");
+		if (!got_X0)      fprintf(stderr,"Will set X0 to saved_X0\n");
+		if (!got_Y0)      fprintf(stderr,"Will set Y0 to saved_Y0\n");
+		if (!got_X1)      fprintf(stderr,"Will set X1 to saved_X1\n");
+		if (!got_Y1)      fprintf(stderr,"Will set Y1 to saved_Y1\n");
 		if (!got_Z0)      fprintf(stderr,"Setting Z0 to default value of 0\n");
 		if (!got_Z1)      fprintf(stderr,"Setting Z1 to default value of nz-1\n");
 
