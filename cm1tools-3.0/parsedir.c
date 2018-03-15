@@ -287,7 +287,6 @@ get_num_time_dirs (char *basedir,int debug)
 
 	if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
-		printf("Caching num_time_dirs...\n");
 		open_directory (basedir);
 		j = 0;
 		while ((dit = readdir (dip)) != NULL)
@@ -544,10 +543,11 @@ crave electrolytes.
 
 */
 
-		/* NEED TO TEST WITH BIG ASSED DATA (15m)*/
+		/* Tested good with big-assed 15 meter data where we only saved
+		 * the center of the domain*/
 		firstnodedir=0;
 		lastnodedir=nnodedirs-1;
-		for (j=0; j < nnodedirs -1; j++) /* because we have j+1 calculation */
+		for (j=0; j < nnodedirs-1; j++)
 		{
 			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j+1;
 			if((nodedirmask[j+1]-nodedirmask[j]) == -1) lastnodedir=j;
@@ -559,7 +559,7 @@ crave electrolytes.
 			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
-			fprintf(stderr,"Number of cm1hdf5 files in our first node directory: %i\n",nfiles);
+			fprintf(stderr,"Number of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -589,6 +589,7 @@ crave electrolytes.
 			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
+			fprintf(stderr,"Number of cm1hdf5 files in our last (%i) node directory: %i\n",j,nfiles);
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -640,6 +641,7 @@ crave electrolytes.
 					if(debug)printf("get_all_available_times: %s\n",basedir_full);
 					if (foochar != NULL) break;	// Got one
 				}	
+				close_directory();
 				if (foochar != NULL) break;	// Got one
 			}
 			*firsttimedirindex = j; //Might use this someday
@@ -675,8 +677,8 @@ crave electrolytes.
 // doing the 1 shot grokking
 //
 // ORF 6/1/16 Actually now I cache everything, so only need to do
-// all this shit once per hdf2nc or whatever. This routine is very
-// expensive.
+// all this shit once per hdf2nc or whatever. This routine is 
+// expensive if you have a lot of files.
 
 			if ((dataset_id = H5Dopen(file_id,"times",H5P_DEFAULT)) < 0) ERROR_STOP("Cannot H5Dopen");
 			if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Cannot H5Dget_space");
@@ -694,7 +696,6 @@ crave electrolytes.
 			free (filetimes);
 			H5Fclose(file_id);
 
-			close_directory();
 		}
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
@@ -712,16 +713,26 @@ crave electrolytes.
 	{
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%s",firstfilename))==EOF)ERROR_STOP("fscanf failed");
-			if((iret=fscanf(fp,"%i %i %i %i",saved_snx0,saved_sny0,saved_snx1,saved_sny1))==EOF)ERROR_STOP("fscanf failed");
-			if((iret=fscanf(fp,"%i",ntottimes))==EOF)ERROR_STOP("fscanf failed");
+			iret=fscanf(fp,"%s",firstfilename);
+			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",firstfilename);
+				else ERROR_STOP("fscanf firstfilename failed");
+			iret=fscanf(fp,"%i %i %i %i",saved_snx0,saved_sny0,saved_snx1,saved_sny1);
+			if(iret!=EOF){
+				fprintf(stderr,"Cached: saved_snx0  = %6i\n",*saved_snx0);
+				fprintf(stderr,"Cached: saved_sny0  = %6i\n",*saved_sny0);
+				fprintf(stderr,"Cached: saved_snx1  = %6i\n",*saved_snx1);
+				fprintf(stderr,"Cached: saved_sny1  = %6i\n",*saved_sny1);
+			}
+				else ERROR_STOP("fscanf saved_sn?? failed");
+			iret=fscanf(fp,"%i",ntottimes);
+			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes   = %6i\n",*ntottimes);
 			alltimes = (double *)malloc(*ntottimes * sizeof(double));
 			for (i=0; i<*ntottimes; i++)
 			{
-				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf failed");
+				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf alltimes failed");
 
 			}
-			printf("Read cached firstfilename and all times\n");
+			printf("Read all cached metadata from dot files\n");
 		}
 	}
 
