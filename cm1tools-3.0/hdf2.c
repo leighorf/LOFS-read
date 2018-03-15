@@ -11,6 +11,8 @@
  * 2/17: Switched over to floating point format for times in LOFS
  *
  * Added command line parsing 7/17
+ *
+ * Cleaned a bunch of stuff up 3/18, see git log
  */
 
 #include "lofs-read.h"
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
 		X1=saved_X1;
 	}
 
-	if(we_are_hdf2nc)          hdf2nc(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1,time);
+	if(we_are_hdf2nc)             hdf2nc(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1,time);
 	else if (we_are_makevisit) makevisit(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1);
 	exit(0);
 }
@@ -175,7 +177,7 @@ void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,in
 		sprintf(groupname,"%05i/3D",0); //is now last since we no longer have get_first_hdf_file_name routine;
 
 /* first file name is the last "fist file name" from sweeping through
-all times, so now "first file name" is from last time direcotry This is
+all times, so now "first file name" is from last time direcotry. This is
 a little convoluted now that I have to deal with empty node dirs from
 saving subdomains. */
 

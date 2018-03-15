@@ -572,7 +572,7 @@ crave electrolytes.
 			sortchararray (cm1hdf5file, nfiles);
 
 			/* Now, finally, pluck our data! */
-			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[0]);
+			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[0]); /* <-- index zero is earliest time */
 			if ((file_id = H5Fopen (hdf5filename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
 				fprintf (stderr, "Cannot open %s, even though it should exist!\n", hdf5filename);
@@ -602,7 +602,7 @@ crave electrolytes.
 
 			/* Now, finally, pluck our data! */
 
-			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[nfiles-1]);
+			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[nfiles-1]);/* <-- index nfiles-1 is latest time */
 			if ((file_id = H5Fopen (hdf5filename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
 				fprintf (stderr, "Cannot open %s, even though it should exist!\n", firstfilename);
@@ -639,18 +639,36 @@ crave electrolytes.
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
 					if(debug)printf("get_all_available_times: %s\n",basedir_full);
-					if (foochar != NULL) break;	// Got one
+					if (foochar != NULL) break;	// Got a cm1hdf5 file
 				}	
 				close_directory();
-				if (foochar != NULL) break;	// Got one
+				if (foochar != NULL) break;	// Got a cm1hdf5 file
 			}
 			*firsttimedirindex = j; //Might use this someday
 
 			if (!foochar)
 			{
+				/* This should never happen if we have gotten
+				 * this far! */
 				printf("Argh: something wrong with file names in %s\n",basedir_full);
 				ERROR_STOP("Files are messed up\n");
 			}
+
+/*
+
+   firstfilename is the first cm1hdf5 file retrieved from a directory
+   that contains model data. All cm1hdf5 files contain metadata for the
+   full simulation, and also contains metadata for their own time and/or
+   location. Here, we grab the first cm1hdf5 file in a given time/node
+   directory and extract all the times the file contains, which is
+   the same for all of the other files in the directory. We keep
+   firstfilename for use later for extracting global metadata such as
+   nx, ny, nz etc... for these any cm1hdf5 file will do! In this case,
+   firstfilename will be from a file in the last time directory since
+   here we are sweeping through all times to construct the all_times
+   array.
+
+*/
 
 			sprintf(firstfilename,"%s/%s",basedir_full,tmpstr);
 			if(debug)
