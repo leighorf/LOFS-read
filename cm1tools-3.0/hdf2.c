@@ -37,6 +37,8 @@ const float MISSING=-1.0E10;
 int debug = 0;
 int yes2d = 0;
 int saved_staggered_mesh_params = 0;
+
+
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
 //variable names. Make this a global just for simplicity.
@@ -44,15 +46,15 @@ int argc_hdf2nc_min=4;
 int optcount=0;
 
 void grok_cm1hdf5_file_structure();
-void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
-void makevisit(int argc, char *argv[], char *cm1visitbase,int X0,int Y0,int X1,int Y1,int Z0,int Z1);
+void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
+void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,int Z0,int Z1);
 
 void parse_cmdline_hdf2nc(int argc, char *argv[],
-		char *histpath, char *ncbase,
+		char *histpath, char *base,
 		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
 
 void parse_cmdline_makevisit(int argc, char *argv[],
-		char *histpath, char *cm1visitbase,
+		char *histpath, char *base,
 		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
 
 extern char *optarg; /* This is handled by the getopt code */
@@ -66,6 +68,8 @@ int main(int argc, char *argv[])
 	int we_are_makevisit = FALSE;
 //	int we_are_hdf2v5d = FALSE;
 //	int we_are_linkfiles = FALSE;
+	int X0,Y0,X1,Y1,Z0,Z1;
+	double time;
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
@@ -76,84 +80,57 @@ int main(int argc, char *argv[])
 		ERROR_STOP("Must call program as either hdf2nc or makevisit");
 	}
 
-	if (we_are_hdf2nc) 
+	X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
+	time=0.0;
+	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1 );
+	else if (we_are_makevisit) parse_cmdline_makevisit(argc, argv, histpath, base, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
+
+	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
+	grok_cm1hdf5_file_structure();
+	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
+	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
+	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
+	if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
+	if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
+
+	/* If our supplied indices are outside of the saved data,
+	 * warn and adjust accordingly */
+
+	/* First, look for idiocy */
+
+	if (X0>X1||Y0>Y1||X1<saved_X0||Y1<saved_Y0||X0>saved_X1||Y0>saved_Y1)
 	{
-		int X0,Y0,X1,Y1,Z0,Z1;
-		double time;
-
-		X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
-		time=0.0;
-		char ncbase[MAXSTR];
-
-		parse_cmdline_hdf2nc(argc, argv, histpath, ncbase, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1 );
-
-/* I want the full, absolute path to the top level directory, not the relative path. 
- * This is so I can find the files later on if I forget where I put
- * them, or at least to remind me where they were */
-
-		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-		grok_cm1hdf5_file_structure();
-		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
-		if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
-		/* If we didn't specify values at the command line, set them to values specifying all the saved data */
-		if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
-		if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
-		/* If our supplied indices are outside of the saved data,
-		 * warn and adjust accordingly */
-
-		/* First, look for idiocy */
-
-		if (X0>X1||Y0>Y1||X1<saved_X0||Y1<saved_Y0||X0>saved_X1||Y0>saved_Y1)
-		{
-			printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
-					X0,saved_X0,Y0,saved_Y0,X1,saved_X1,Y1,saved_Y1);
-			ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
-		}
-		if(X0<saved_X0)
-		{
-			printf("Oops: requested out of box: Adjusting X0 (%i) to saved_X0 (%i)\n",X0,saved_X0);
-			X0=saved_X0;
-		}
-		if(Y0<saved_Y0)
-		{
-			printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_Y0 (%i)\n",Y0,saved_Y0);
-			Y0=saved_Y0;
-		}
-		if(X1>saved_X1)
-		{
-			printf("Oops: requested out of box: Adjusting X1 (%i) to saved_X1 (%i)\n",X1,saved_X1);
-			X1=saved_X1;
-		}
-		if(Y1>saved_Y1)
-		{
-			printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_Y1 (%i)\n",Y1,saved_Y1);
-			X1=saved_X1;
-		}
-		hdf2nc(argc,argv,ncbase,X0,Y0,X1,Y1,Z0,Z1,time);
+		printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
+				X0,saved_X0,Y0,saved_Y0,X1,saved_X1,Y1,saved_Y1);
+		ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
 	}
-	else if (we_are_makevisit)
+	if(X0<saved_X0)
 	{
-        	int X0, X1, Y0, Y1, Z0, Z1;
-		char cm1visitbase[MAXSTR];
-        	X0 = Y0 = Z0 = X1 = Y1 = Z1 = -1; //set to bogus value
-
-		parse_cmdline_makevisit(argc, argv, histpath, cm1visitbase, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
-
-		if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-		grok_cm1hdf5_file_structure();
-		get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
-
-		/* If we didn't specify values at the command line set them
-		 * to full domain parameters */
-		if(X0<0)X0=0; if(Y0<0)Y0=0; if(Z0<0)Z0=0;
-		if(X1<0)X1=nx-1; if(Y1<0)Y1=ny-1; if(Z1<0)Z1=nz-1;
-
-		makevisit(argc,argv,cm1visitbase,X0,Y0,X1,Y1,Z0,Z1);
+		printf("Oops: requested out of box: Adjusting X0 (%i) to saved_X0 (%i)\n",X0,saved_X0);
+		X0=saved_X0;
 	}
+	if(Y0<saved_Y0)
+	{
+		printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_Y0 (%i)\n",Y0,saved_Y0);
+		Y0=saved_Y0;
+	}
+	if(X1>saved_X1)
+	{
+		printf("Oops: requested out of box: Adjusting X1 (%i) to saved_X1 (%i)\n",X1,saved_X1);
+		X1=saved_X1;
+	}
+	if(Y1>saved_Y1)
+	{
+		printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_Y1 (%i)\n",Y1,saved_Y1);
+		X1=saved_X1;
+	}
+
+	if(we_are_hdf2nc)          hdf2nc(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1,time);
+	else if (we_are_makevisit) makevisit(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1);
 	exit(0);
 }
 
-void makevisit(int argc, char *argv[], char *cm1visitbase,int X0,int Y0,int X1,int Y1,int Z0,int Z1)
+void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,int Z0,int Z1)
 {
 		int i,rank,nvars;
 		hid_t f_id,g_id,strtype;
@@ -165,7 +142,7 @@ void makevisit(int argc, char *argv[], char *cm1visitbase,int X0,int Y0,int X1,i
 
 		float *xhfull,*yhfull,*zh;
 
-		sprintf(visitfile,"%s.cm1visit",cm1visitbase);
+		sprintf(visitfile,"%s.cm1visit",base);
 		printf("visitfile = %s\n",visitfile);
 		printf("topdir = %s\n",topdir);
 		printf("ntimedirs = %i\n",ntimedirs);
@@ -294,7 +271,7 @@ void grok_cm1hdf5_file_structure()
 	}
 }
 
-void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
+void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
 	float *th0,*qv0;
@@ -351,7 +328,7 @@ void hdf2nc(int argc, char *argv[], char *ncbase, int X0, int Y0, int X1, int Y1
 		printf("%s ",varname[i]);
 	}
 	printf("\n");
-	sprintf(ncfilename,"%s.%012.6f.nc",ncbase,t0);
+	sprintf(ncfilename,"%s.%012.6f.nc",base,t0);
 	
 	NX = X1 - X0 + 1;
 	NY = Y1 - Y0 + 1;
@@ -938,12 +915,12 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 }
 
 void parse_cmdline_makevisit(int argc, char *argv[],
-		char *histpath, char *cm1visitbase,
+		char *histpath, char *base,
 		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1)
 {
 
 	int got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	int got_histpath,got_cm1visitbase;
+	int got_histpath,got_base;
 	enum { OPT_HISTPATH = 1000, OPT_CM1VISITBASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
 	static struct option long_options[] =
 	{
@@ -959,12 +936,12 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 	};
 
 	int bail = 0;
-	got_histpath=got_cm1visitbase=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
+	got_histpath=got_base=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
 
 	if (argc == 1)
 	{
 		fprintf(stderr,
-		"Usage: %s --histpath=[histpath] --base=[cm1visitbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1]\n",argv[0]);
+		"Usage: %s --histpath=[histpath] --base=[base] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1]\n",argv[0]);
 		exit(0);
 	}
 
@@ -984,9 +961,9 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 				printf("histpath = %s\n",histpath);
 				break;
 			case OPT_CM1VISITBASE:
-				strcpy(cm1visitbase,optarg);
-				got_cm1visitbase=1;
-				printf("cm1visitbase = %s\n",cm1visitbase);
+				strcpy(base,optarg);
+				got_base=1;
+				printf("base = %s\n",base);
 				break;
 			case OPT_X0:
 				*X0 = atoi(optarg);
@@ -1033,7 +1010,7 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 	}
 
 		if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
-		if (!got_cm1visitbase)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
+		if (!got_base)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
 
 /* These are optional */
 		if (!got_X0)      fprintf(stderr,"Setting x0 to default value of 0\n");
@@ -1047,16 +1024,16 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 
 
 void	parse_cmdline_hdf2nc(int argc, char *argv[],
-	char *histpath, char *ncbase, double *time,
+	char *histpath, char *base, double *time,
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
 {
-	int got_histpath,got_ncbase,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
+	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_XYF, OPT_YES2D };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
-		{"ncbase",   required_argument, 0, OPT_NCBASE},
+		{"base",   required_argument, 0, OPT_NCBASE},
 		{"time",     required_argument, 0, OPT_TIME},
 		{"x0",       optional_argument, 0, OPT_X0},
 		{"y0",       optional_argument, 0, OPT_Y0},
@@ -1069,14 +1046,14 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"yes2d",    optional_argument, 0, OPT_YES2D}
 	};
 
-	got_histpath=got_ncbase=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
+	got_histpath=got_base=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
 
 	int bail = 0;
 
 	if (argc == 1)
 	{
 		fprintf(stderr,
-		"Usage: %s --histpath=[histpath] --ncbase=[ncbase] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1] --time=[time] [varname1 ... varnameN] \n",argv[0]);
+		"Usage: %s --histpath=[histpath] --base=[base] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1] --time=[time] [varname1 ... varnameN] \n",argv[0]);
 		exit(0);
 	}
 
@@ -1095,9 +1072,9 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				printf("histpath = %s\n",histpath);
 				break;
 			case OPT_NCBASE:
-				strcpy(ncbase,optarg);
-				got_ncbase=1;
-				printf("ncbase = %s\n",ncbase);
+				strcpy(base,optarg);
+				got_base=1;
+				printf("base = %s\n",base);
 				break;
 			case OPT_TIME:
 				*time = atof(optarg);
@@ -1156,7 +1133,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	}
 
 		if (got_histpath==0) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
-		if (got_ncbase==0)   { fprintf(stderr,"--ncbase not specified\n"); bail = 1; }
+		if (got_base==0)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
 		if (got_time==0)   { fprintf(stderr,"--time not specified\n"); bail = 1; }
 
 /* These are now optional */
