@@ -438,6 +438,7 @@ int get_nfiles()
 	while ((dit = readdir (dip)) != NULL)
 	{
 		strcpy (tmpstr, dit->d_name);
+//		printf("tmpstr = %s\n",tmpstr);
 		foochar = strstr(tmpstr,".cm1hdf5");
 		if (foochar != NULL) nfiles++;
 	}
@@ -463,7 +464,7 @@ double *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
 		int *saved_snx0, int *saved_sny0, int *saved_snx1, int *saved_sny1, int debug)
 {
-	int i, j, k,iret;
+	int i, j, k, iret, itime;
 	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
 	hid_t file_id,dataset_id,dataspace_id;
 	hsize_t dims[1],maxdims[1];
@@ -522,14 +523,15 @@ TODO: Save snz0 in cm1hdf5 files so we can retrieve that as well.
 
 		firstnodedir=lastnodedir=*saved_snx0=*saved_sny0=*saved_snx1=*saved_sny1=0;
 
-		i = 0; /* Only need one time */
+		itime = 0; /* Only need one time */
 		{
 			for (j=0; j < nnodedirs; j++)
 			{
-				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
-				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
+				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
+				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,itime,timedir[itime],j,nodedir[j]);
 
 				nodedirmask[j] = get_nodemask(basedir_full);
+//				printf("nodedirmask[%i]=%i\n",j,nodedirmask[j]);
 			}
 		}
 
@@ -547,13 +549,14 @@ crave electrolytes.
 		lastnodedir=nnodedirs-1;
 		for (j=0; j < nnodedirs -1; j++) /* because we have j+1 calculation */
 		{
-			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j;
+			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j+1;
 			if((nodedirmask[j+1]-nodedirmask[j]) == -1) lastnodedir=j;
 		}
+		printf("firstnodedir=%i lastnodedir=%i\n",firstnodedir,lastnodedir);
 
 		j=firstnodedir;
 		{
-			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
 			fprintf(stderr,"Number of cm1hdf5 files in our first node directory: %i\n",nfiles);
@@ -583,14 +586,13 @@ crave electrolytes.
 		}
 		j=lastnodedir;
 		{
-			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
+			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
-			i=0;
 			open_directory (basedir_full);
 			get_unsorted_file_list(cm1hdf5file);
 			
