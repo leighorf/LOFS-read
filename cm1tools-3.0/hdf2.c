@@ -923,11 +923,11 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 
 	int got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	int got_histpath,got_base;
-	enum { OPT_HISTPATH = 1000, OPT_CM1VISITBASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
+	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
 	static struct option long_options[] =
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
-		{"base",   required_argument, 0, OPT_CM1VISITBASE},
+		{"base",     required_argument, 0, OPT_BASE},
 		{"x0",       optional_argument, 0, OPT_X0},
 		{"y0",       optional_argument, 0, OPT_Y0},
 		{"x1",       optional_argument, 0, OPT_X1},
@@ -962,7 +962,7 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 				got_histpath=1;
 				printf("histpath = %s\n",histpath);
 				break;
-			case OPT_CM1VISITBASE:
+			case OPT_BASE:
 				strcpy(base,optarg);
 				got_base=1;
 				printf("base = %s\n",base);
@@ -1030,12 +1030,12 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	enum { OPT_HISTPATH = 1000, OPT_NCBASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_XYF, OPT_YES2D };
+	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_XYF, OPT_YES2D };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
-		{"base",   required_argument, 0, OPT_NCBASE},
+		{"base",     required_argument, 0, OPT_BASE},
 		{"time",     required_argument, 0, OPT_TIME},
 		{"x0",       optional_argument, 0, OPT_X0},
 		{"y0",       optional_argument, 0, OPT_Y0},
@@ -1073,7 +1073,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				got_histpath=1;
 				printf("histpath = %s\n",histpath);
 				break;
-			case OPT_NCBASE:
+			case OPT_BASE:
 				strcpy(base,optarg);
 				got_base=1;
 				printf("base = %s\n",base);
