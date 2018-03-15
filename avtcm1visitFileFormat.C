@@ -111,6 +111,9 @@ extern "C" {
     H5LTread_dataset_int(file_id,"/ny",&ny);
     H5LTread_dataset_int(file_id,"/nz",&nz);
 
+    /* Legacy variables; using X0 X1 etc. now, but for backward
+     * compatibility with older cm1hdf5 files, we are still writing
+     * these to cm1hdf5 files, but also X0 X1 etc. */
     H5LTread_dataset_int(file_id,"/snx0",&snx0);
     H5LTread_dataset_int(file_id,"/snx1",&snx1);
     H5LTread_dataset_int(file_id,"/sny0",&sny0);

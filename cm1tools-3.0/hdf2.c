@@ -222,14 +222,27 @@ saving subdomains. */
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nx", rank, dims, &nx);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/ny", rank, dims, &ny);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nz", rank, dims, &nz);
-        
-        //subdomains
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X0", rank, dims, &X0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X1", rank, dims, &X1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y0", rank, dims, &Y0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y1", rank, dims, &Y1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z0", rank, dims, &Z0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z1", rank, dims, &Z1);
+
+//ORF: 2018-03-15 I have finally gotten rid of snx0 etc. and replaced
+//with X0 etc. For reasons I no longer remember I used one variable name
+//approach with hdf2nc and one with makevisit. However so I don't break
+//things when reading old cm1visit files I will still write snx0 etc. so
+//I don't have to deal with breakage. May never remove this, who knows :)
+//Since I'm using the lite interface I can't do a link, so we just
+//duplicate.
+
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X0",   rank, dims, &X0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx0", rank, dims, &X0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X1",   rank, dims, &X1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx1", rank, dims, &X1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y0",   rank, dims, &Y0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny0", rank, dims, &Y0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y1",   rank, dims, &Y1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny1", rank, dims, &Y1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z0",   rank, dims, &Z0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz0", rank, dims, &Z0);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z1",   rank, dims, &Z1);
+		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz1", rank, dims, &Z1);
 
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodex", rank, dims, &nodex);
 		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodey", rank, dims, &nodey);
