@@ -546,8 +546,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	//
 	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
 	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
-	// This can now be disabled by a command line option but default
-	// is to do the two fields since they are used so much
+	// This is now only enabled by a command line option - default
+	// is to not write any 2D fields.
 
 	if (yes2d)
 	{
