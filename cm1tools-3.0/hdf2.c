@@ -38,6 +38,7 @@ const float MISSING=-1.0E10;
 
 int debug = 0;
 int yes2d = 0;
+int gzip = 0;
 int saved_staggered_mesh_params = 0;
 
 
@@ -535,7 +536,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
 //		unfortunately this really slows things down
-//		status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
+		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
 	status = nc_enddef (ncid);
 
@@ -1043,7 +1044,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG, OPT_XYF, OPT_YES2D };
+	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_COMPRESS };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1058,7 +1060,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"xyf",      optional_argument, 0, OPT_XYF},
-		{"yes2d",    optional_argument, 0, OPT_YES2D}
+		{"yes2d",    optional_argument, 0, OPT_YES2D},
+		{"compress", optional_argument, 0, OPT_COMPRESS}
 	};
 
 	got_histpath=got_base=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
@@ -1142,6 +1145,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_YES2D:
 				yes2d=1;
+				optcount++;
+				break;
+			case OPT_COMPRESS:
+				gzip=1;
 				optcount++;
 				break;
 		}
