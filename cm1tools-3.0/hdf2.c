@@ -39,6 +39,7 @@ const float MISSING=-1.0E10;
 int debug = 0;
 int yes2d = 0;
 int gzip = 0;
+int filetype = NC_NETCDF4;
 int saved_staggered_mesh_params = 0;
 
 
@@ -444,7 +445,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 */
 
-	status = nc_create (ncfilename, NC_CLOBBER|NC_NETCDF4, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+	status = nc_create (ncfilename, NC_CLOBBER|filetype, &ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
 
 	status = nc_def_dim (ncid, "xh", NX, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
@@ -948,7 +949,8 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 		{"y1",       optional_argument, 0, OPT_Y1},
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
-		{"debug",    optional_argument, 0, OPT_DEBUG}
+		{"debug",    optional_argument, 0, OPT_DEBUG},
+		{0, 0, 0, 0}//sentinel, needed!
 	};
 
 	int bail = 0;
@@ -965,7 +967,7 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 	{
 		int r;
 		int option_index = 0;
-		r = getopt_long (argc, argv,"",long_options,&option_index);
+		r = getopt_long_only (argc, argv,"",long_options,&option_index);
 //		printf("optarg = %s\n",optarg);
 		if (r == -1) break;
 
@@ -1022,6 +1024,10 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 				optcount++;
 				printf("debug = %i\n",debug);
 				break;
+			case '?':
+				fprintf(stderr,"Exiting: unknown command line option.\n");
+				exit(0);
+				break;
 		}
 	}
 
@@ -1045,7 +1051,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_COMPRESS };
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1061,7 +1067,9 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"xyf",      optional_argument, 0, OPT_XYF},
 		{"yes2d",    optional_argument, 0, OPT_YES2D},
-		{"compress", optional_argument, 0, OPT_COMPRESS}
+		{"nc3",      optional_argument, 0, OPT_NC3},
+		{"compress", optional_argument, 0, OPT_COMPRESS},
+		{0, 0, 0, 0}//sentinel, needed!
 	};
 
 	got_histpath=got_base=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
@@ -1079,7 +1087,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	{
 		int r;
 		int option_index = 0;
-		r = getopt_long (argc, argv,"",long_options,&option_index);
+		r = getopt_long_only (argc, argv,"",long_options,&option_index);
 		if (r == -1) break;
 
 		switch(r)
@@ -1150,6 +1158,14 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 			case OPT_COMPRESS:
 				gzip=1;
 				optcount++;
+				break;
+			case OPT_NC3:
+				filetype=NC_64BIT_OFFSET;
+				optcount++;
+				break;
+			case '?':
+				fprintf(stderr,"Exiting: unknown command line option.\n");
+				exit(0);
 				break;
 		}
 	}
