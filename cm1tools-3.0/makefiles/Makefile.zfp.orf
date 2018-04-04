@@ -4,7 +4,7 @@ HDF5ZFP=/home/lorf/hdf5/h5z-zfp
 ZFP=/home/lorf/build/hdf5/zfp
 NETCDF_DIR=/home/lorf/netcdf4/netcdf-4.4.1/serial
 NETCDFLIBS = -lnetcdf
-CFLAGS = -g -I$(NETCDF_DIR)/include -I$(HDF5ZFP)/include
+CFLAGS = -O2 -I$(NETCDF_DIR)/include -I$(HDF5ZFP)/include
 LINKOPTS  = -L$(NETCDF_DIR)/lib -L$(ZFP)/lib -L$(HDF5ZFP)/lib -lh5zzfp -lzfp $(NETCDFLIBS) 
 LARGE=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
 
