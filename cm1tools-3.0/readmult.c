@@ -126,7 +126,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 
 
-	if(dbg)printf("Hello, my thread id = %i\n",tid);
 
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;

@@ -8,5 +8,5 @@ module load h5zzfp
 module load szip
 module load cray-netcdf
 
-make -f Makefile.zfp install
+make -f Makefile.bw install
 
