@@ -643,6 +643,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
+#pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				usr = ubuffer[i];
@@ -665,6 +666,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,0,k,NX,NY)] = 
 				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=0; k<NZ; k++)
 			{
 				for(j=1; j<NY-1; j++)
@@ -693,6 +695,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,0,k,NX,NY)] = 
 				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=0; k<NZ; k++)
 			{
 				for(j=1; j<NY-1; j++)
@@ -719,6 +722,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(0,j,k,NX,NY)] = 
 				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=0; k<NZ; k++)
 			{
 				for(j=0; j<NY; j++)
@@ -745,6 +749,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,j,0,NX,NY)] = 
 				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
@@ -772,6 +777,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,j,0,NX,NY)] = 
 				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=1; k<NZ; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
@@ -799,6 +805,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,j,0,NX,NY)] = 
 				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
@@ -826,6 +833,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,j,0,NX,NY)] = 
 				buffer[P3(i,j,NZ-1,NX,NY)] = MISSING;
 
+#pragma omp parallel for private(i,j,k)
 			for(k=1; k<NZ-1; k++)
 			{
 				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
@@ -842,6 +850,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
+#pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
@@ -849,6 +858,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
+#pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
@@ -856,6 +866,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
+#pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
@@ -864,6 +875,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
+#pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
