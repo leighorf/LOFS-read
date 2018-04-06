@@ -76,6 +76,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		int nx, int ny, int nz, int nodex, int nodey)
 {
 	int dbg = 0; // Not the command line debug. If you are debugging here you must set this to 1 and recompile
+	int tid;//ORF openmp test
 	int i, tb;
 	int maxfilelength = 512;
 	char **nodefile;
@@ -122,6 +123,10 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	} HDFstruct;
 
 	HDFstruct **hdf;
+
+
+
+	if(dbg)printf("Hello, my thread id = %i\n",tid);
 
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;
