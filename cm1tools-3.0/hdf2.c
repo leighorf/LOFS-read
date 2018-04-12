@@ -13,10 +13,13 @@
  * Added command line parsing 7/17
  *
  * Cleaned a bunch of stuff up 3/18, see git log
+ *
+ * 4/18: added OMP loop directives for our calculation loops
  */
 
 #include "lofs-read.h"
 #include <omp.h>
+#include <time.h>
 
 #define MAXVARIABLES (100)
 #define MAXSTR (512)
@@ -42,6 +45,7 @@ int yes2d = 0;
 int gzip = 0;
 int filetype = NC_NETCDF4;
 int saved_staggered_mesh_params = 0;
+int nthreads = 1;
 
 
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
@@ -597,15 +601,45 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"yvort_tilt")) {v_rh=xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_stretch")) {v_rh=w_rh=xvort_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_tilt")) {u_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"zvort_stretch")) {u_rh=v_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"zvort_tilt")) {w_rh=xvort_rh=zvort_rh=1;}
 	}
 
-	if (u_rh) read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (v_rh) read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (w_rh) read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (xvort_rh) read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (yvort_rh) read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (zvort_rh) read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	if (thrhopert_rh) read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	if (u_rh)
+	{
+		printf("Buffering uinterp:\n");
+		read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (v_rh)
+	{
+		printf("Buffering vinterp:\n");
+		read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (w_rh)
+	{
+		printf("Buffering winterp:\n");
+		read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (xvort_rh)
+	{
+		printf("Buffering xvort:\n");
+		read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (yvort_rh)
+	{
+		printf("Buffering yvort:\n");
+		read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (zvort_rh)
+	{
+		printf("Buffering zvort:\n");
+		read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
+	if (thrhopert_rh)
+	{
+		printf("Buffering thrhopert:\n");
+		read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+	}
 
 
 // Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
@@ -658,6 +692,68 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+		}
+		else if(!strcmp(varname[ivar],"zvort_stretch")) 
+		{
+			float dxi,dyi,dzi;
+
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
+
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
+
+#pragma omp parallel for private(i,j,k)
+			for(k=1; k<NZ-1; k++)
+			{
+				for(j=1; j<NY-1; j++)
+				{
+					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					for(i=0; i<NX; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,NX,NY)] =
+							-1000.0*zvort[P3(i,j,k,NX,NY)] *
+						(dxi * (ubuffer[P3(i+1,j,k,NX,NY)] - ubuffer[P3(i-1,j,k,NX,NY)]) +
+						dyi * (vbuffer[P3(i,j+1,k,NX,NY)] - vbuffer[P3(i,j-1,k,NX,NY)])) ;
+					}
+				}
+			}
+		}
+		else if(!strcmp(varname[ivar],"zvort_tilt")) 
+		{
+			float dxi,dyi,dzi;
+
+			for(k=0; k<NZ; k++)
+			for(j=0; j<NY; j++)
+				buffer[P3(0,j,k,NX,NY)] = 
+				buffer[P3(NX-1,j,k,NX,NY)] = MISSING;
+
+			for(k=0; k<NZ; k++)
+			for(i=0; i<NX; i++)
+				buffer[P3(i,0,k,NX,NY)] = 
+				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
+
+#pragma omp parallel for private(i,j,k)
+			for(k=1; k<NZ-1; k++)
+			{
+				for(j=1; j<NY-1; j++)
+				{
+					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					for(i=0; i<NX; i++)
+					{
+						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						buffer[P3(i,j,k,NX,NY)] =
+							-1000.0*(xvort[P3(i,j,k,NX,NY)] * dxi * (wbuffer[P3(i+1,j,k,NX,NY)] - wbuffer[P3(i-1,j,k,NX,NY)]) +
+						        yvort[P3(i,j,k,NX,NY)] * dyi * (wbuffer[P3(i,j+1,k,NX,NY)] - wbuffer[P3(i,j-1,k,NX,NY)])) ;
+					}
+				}
+			}
+
 		}
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -735,8 +831,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (-yvort[P3(i,j,k,NX,NY)]*(dxi*(ubuffer[P3(i+1,j,k,NX,NY)]-ubuffer[P3(i-1,j,k,NX,NY)]) +
-												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)])));
+						buffer[P3(i,j,k,NX,NY)] = -1000.0 * yvort[P3(i,j,k,NX,NY)]*(dxi*(ubuffer[P3(i+1,j,k,NX,NY)]-ubuffer[P3(i-1,j,k,NX,NY)]) +
+												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)]));
 					}
 				}
 			}
@@ -763,7 +859,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					for(i=1; i<NX-1; i++)
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (xvort[P3(i,j,k,NX,NY)]*dxi*(vbuffer[P3(i,j+1,k,NX,NY)]-vbuffer[P3(i,j-1,k,NX,NY)]) +
+						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (xvort[P3(i,j,k,NX,NY)]*dxi*(vbuffer[P3(i+1,j,k,NX,NY)]-vbuffer[P3(i+1,j,k,NX,NY)]) +
 										    zvort[P3(i,j,k,NX,NY)]*dzi*(vbuffer[P3(i,j,k+1,NX,NY)]-vbuffer[P3(i,j,k-1,NX,NY)]));
 					}
 				}
@@ -791,8 +887,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(i=0; i<NX; i++)
 					{
-						buffer[P3(i,j,k,NX,NY)] = 1000.0 * (-xvort[P3(i,j,k,NX,NY)]*(dyi*(vbuffer[P3(i,j+1,k,NX,NY)]-vbuffer[P3(i,j-1,k,NX,NY)]) +
-												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)])));
+						buffer[P3(i,j,k,NX,NY)] = -1000.0 * xvort[P3(i,j,k,NX,NY)]*(dyi*(vbuffer[P3(i,j+1,k,NX,NY)]-vbuffer[P3(i,j-1,k,NX,NY)]) +
+												dzi*(wbuffer[P3(i,j,k+1,NX,NY)]-wbuffer[P3(i,j,k-1,NX,NY)]));
 					}
 				}
 			}
@@ -843,12 +939,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
+//			clock_t start = clock(), diff;
 #pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
 				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
 					sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i]);
 			}
+//			diff = clock() - start;
+//			int msec=diff*1000/CLOCKS_PER_SEC;
 		}
 		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
@@ -894,22 +993,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		{
 			if (!thrhopert_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			else buffer=thrhopert;
-		}
-		else if(!strcmp(varname[ivar],"zvort_tlt"))
-		{
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] *= 1000.0;
-			}
-		}
-		else if(!strcmp(varname[ivar],"zvort_str"))
-		{
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] *= 1000.0;
-			}
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
@@ -1065,7 +1148,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS };
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1083,6 +1166,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"yes2d",    optional_argument, 0, OPT_YES2D},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
+		{"nthreads", optional_argument, 0, OPT_NTHREADS},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -1175,6 +1259,11 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_NC3:
 				filetype=NC_64BIT_OFFSET;
+				optcount++;
+				break;
+			case OPT_NTHREADS:
+				nthreads=atoi(optarg);
+				omp_set_num_threads(nthreads);
 				optcount++;
 				break;
 			case '?':
