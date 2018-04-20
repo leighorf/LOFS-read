@@ -38,7 +38,7 @@ double *alltimes;
 int ntottimes;
 int firsttimedirindex;
 int saved_X0,saved_Y0,saved_X1,saved_Y1;
-const float MISSING=-1.0E10;
+const float MISSING=1.0E37;
 
 int debug = 0;
 int yes2d = 0;
@@ -748,7 +748,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					{
 						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(i,j,k,NX,NY)] =
-							-1000.0*(xvort[P3(i,j,k,NX,NY)] * dxi * (wbuffer[P3(i+1,j,k,NX,NY)] - wbuffer[P3(i-1,j,k,NX,NY)]) +
+							1000.0*(xvort[P3(i,j,k,NX,NY)] * dxi * (wbuffer[P3(i+1,j,k,NX,NY)] - wbuffer[P3(i-1,j,k,NX,NY)]) +
 						        yvort[P3(i,j,k,NX,NY)] * dyi * (wbuffer[P3(i,j+1,k,NX,NY)] - wbuffer[P3(i,j-1,k,NX,NY)])) ;
 					}
 				}
