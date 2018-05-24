@@ -334,6 +334,12 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	/* readahead flags */
 	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
 
+	float rv = 461.5;
+	float rd = 287.04;
+	float reps;
+
+	reps = rv/rd;
+
 	/* Since we tack on all the requested variables to the end of the
 	 * command line, we have to find out where the 1st variable
 	 * argument is. Since we have optional arguments, we keep track of
@@ -590,6 +596,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=yvort_rh=zvort_rh=1;}
@@ -659,6 +666,21 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				usr = ubuffer[i];
 				vsr = vbuffer[i];
+				buffer[i] = sqrt(usr*usr+vsr*vsr);
+			}
+		}
+		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
+		{
+			float usr,vsr;
+			//TODO: put umove and vmove in the got dammed hdf5
+			//files
+			float umove=15.2;
+			float vmove=10.5;
+#pragma omp parallel for private(i)
+			for(i=0; i<NX*NY*NZ; i++)
+			{
+				usr = ubuffer[i]+umove;
+				vsr = vbuffer[i]+vmove;
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
 		}
@@ -758,7 +780,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+//			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+			float coeff;
 			/* BUG:  Needs to be theta_bar[iz] */
 
 			/* set edges to zero - should fill with missing (TODO)*/
@@ -771,6 +794,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(i,j,k)
 			for(k=0; k<NZ; k++)
 			{
+				coeff = 1000.0 * 9.81 / (th0[k]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
 				for(j=1; j<NY-1; j++)
 				{
 					for(i=0; i<NX; i++)
@@ -785,7 +809,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
 			float dxi,dyi,dzi;
-			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+//			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
+			float coeff;
 			/* BUG:  Needs to be theta_bar[iz] */
 
 			/* set edges to zero - should fill with missing (TODO)*/
@@ -798,6 +823,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(i,j,k)
 			for(k=0; k<NZ; k++)
 			{
+				coeff = 1000.0 * 9.81 / (th0[k]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
 				for(j=0; j<NY; j++)
 				{
 					for(i=1; i<NX-1; i++)
