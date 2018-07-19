@@ -44,7 +44,7 @@ int debug = 0;
 int yes2d = 0;
 int gzip = 0;
 int filetype = NC_NETCDF4;
-int saved_staggered_mesh_params = 0;
+int saved_staggered_mesh_params = 0; //NOTE! For now, pass '-xyf' to cmd line if you have staggered mesh data (xf, yf, zf)
 int nthreads = 1;
 
 
@@ -296,6 +296,7 @@ void grok_cm1hdf5_file_structure()
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
+	float *dum0,*dumarray;
 	float *th0,*qv0;
 	float *thrhopert;
 	double timearray[1];
@@ -333,6 +334,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	const size_t timecount = 1;
 	/* readahead flags */
 	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
+	int qc_rh=0,qi_rh=0,qr_rh=0,qs_rh=0,qg_rh=0;
 
 	float rv = 461.5;
 	float rd = 287.04;
@@ -381,6 +383,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
 	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
+	if ((dum0 = dumarray  = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -610,6 +613,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"xvort_tilt")) {u_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"zvort_stretch")) {u_rh=v_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"zvort_tilt")) {w_rh=xvort_rh=zvort_rh=1;}
+//Might use these, but I usually only read cloud stuff once, so this
+//isn't used... yet
+		if(!strcmp(varname[ivar],"qcloud")) {qc_rh=qi_rh=1;}
+		if(!strcmp(varname[ivar],"qprecip")) {qr_rh=qs_rh=qg_rh=1;}
 	}
 
 	if (u_rh)
@@ -1019,6 +1026,23 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		{
 			if (!thrhopert_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			else buffer=thrhopert;
+		}
+		else if(!strcmp(varname[ivar],"qcloud"))
+		{
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+			buffer=buf0; dumarray=dum0;
+		}
+		else if(!strcmp(varname[ivar],"qprecip"))
+		{
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+			buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+			buffer=buf0; dumarray=dum0;
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{

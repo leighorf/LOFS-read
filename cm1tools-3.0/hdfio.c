@@ -8,6 +8,7 @@ get0dint (hid_t file_id, char *varname, int *var)
 
 	/* shouldn't need these any more */
 	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+//	printf("varname = %s, dataset_id = %i\n",varname,dataset_id);
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_INT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 }
