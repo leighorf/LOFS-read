@@ -1044,6 +1044,33 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
 			buffer=buf0; dumarray=dum0;
 		}
+		else if(!strcmp(varname[ivar],"qvstupid"))
+		{
+			float *theta;
+			if ((theta = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate theta");
+			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"theta",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			//Note, this is already allocated above
+			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhoprime",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			for(i=0; i<NX*NY*NZ; i++) *dumarray++ = *buffer++; buffer=buf0; dumarray=dum0;
+			/* dumarray now contains qc+qi+qr+qs+qg (what I call
+			 * qa in my derivation) */
+
+			// stopped here
+			// We have thetaprime, thetarhoprime, and qa. Need to
+			// calculate thetbar and thetarhoprimebar from the
+			// initial sounding for qv. Then we can subtract qv0
+			// from qv and hopefully what remains isn't shiznit.
+
+		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
