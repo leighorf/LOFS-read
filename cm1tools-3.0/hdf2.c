@@ -38,6 +38,7 @@ double *alltimes;
 int ntottimes;
 int firsttimedirindex;
 int saved_X0,saved_Y0,saved_X1,saved_Y1;
+float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammit! */
 const float MISSING=1.0E37;
 
 int debug = 0;
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 	{
 		printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
 				X0,saved_X0,Y0,saved_Y0,X1,saved_X1,Y1,saved_Y1);
-		ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
+		ERROR_STOP("Your requested indices are wack, or you have missing cm1hdf5 files, goodbye!\n");
 	}
 	if(X0<saved_X0)
 	{
@@ -681,8 +682,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			float usr,vsr;
 			//TODO: put umove and vmove in the got dammed hdf5
 			//files
-			float umove=15.2;
-			float vmove=10.5;
+//			float umove=15.2;
+//			float vmove=10.5;
+//			These are now command line options until we store
+//			these in the cm1hdf5 files
 #pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
@@ -1225,7 +1228,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS };
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1244,6 +1247,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
+		{"umove", optional_argument, 0, OPT_UMOVE},
+		{"vmove", optional_argument, 0, OPT_VMOVE},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -1341,6 +1346,14 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 			case OPT_NTHREADS:
 				nthreads=atoi(optarg);
 				omp_set_num_threads(nthreads);
+				optcount++;
+				break;
+			case OPT_UMOVE:
+				umove=atof(optarg);
+				optcount++;
+				break;
+			case OPT_VMOVE:
+				vmove=atof(optarg);
 				optcount++;
 				break;
 			case '?':

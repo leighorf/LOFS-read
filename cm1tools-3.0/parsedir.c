@@ -524,6 +524,7 @@ TODO: Save Z0 in cm1hdf5 files so we can retrieve that as well.
 
 		itime = 0; /* Only need one time */
 		{
+			int found_something=0;
 			for (j=0; j < nnodedirs; j++)
 			{
 				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
@@ -531,7 +532,10 @@ TODO: Save Z0 in cm1hdf5 files so we can retrieve that as well.
 
 				nodedirmask[j] = get_nodemask(basedir_full);
 //				printf("nodedirmask[%i]=%i\n",j,nodedirmask[j]);
+				if (nodedirmask[j] != 0) found_something = 1;
 			}
+//Edge case: No friggin hdf5 files anywhere! THANK YOU SCRUBBER PROCESS YOU HEARTLESS RO-BOT
+			if (found_something == 0) ERROR_STOP("We don't have any hdf5 files at all! What is this nonsense??");
 		}
 
 /*
