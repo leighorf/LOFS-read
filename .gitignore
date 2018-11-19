@@ -1,0 +1,10 @@
+*.o
+*~
+.*.swp
+.*.swo
+CMakeCache.txt
+CMakeLists.txt
+cm1tools-3.0/hdf2
+cm1tools-3.0/hdf2d2nc
+cm1tools-3.0/libcm.a
+cm1tools-3.0/stash
