@@ -1,0 +1,38 @@
+CC = mpicc
+AR = ar
+CFLAGS = -O2 -fPIC 
+
+LINKOPTS  = -lh5zzfp -lzfp -lhdf5_hl -lhdf5 -lsz -lz -lm -lnetcdf -fopenmp 
+
+all: hdf2 hdf2d2nc stash libcm.a
+
+hdf2: hdf2.o parsedir.o hdfio.o readmult.o
+	$(CC) $(CFLAGS) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o $(LINKOPTS)
+hdf2d2nc: hdf2d2nc.o hdfio.o
+	$(CC) $(CFLAGS) -o hdf2d2nc hdf2d2nc.o hdfio.o $(LINKOPTS)
+stash: stash.o
+	$(CC) $(CFLAGS) -o stash stash.o $(LINKOPTS)
+libcm.a: parsedir.o hdfio.o readmult.o
+	$(AR) crvs libcm.a parsedir.o hdfio.o readmult.o
+readmult.o: readmult.c
+	$(CC) $(CFLAGS) -c readmult.c $(LINKOPTS)
+hdfio.o: hdfio.c
+	$(CC) $(CFLAGS) -c hdfio.c
+parsedir.o: parsedir.c
+	$(CC) $(CFLAGS) -c parsedir.c
+hdf2.o: hdf2.c
+	$(CC) $(CFLAGS) -c hdf2.c
+stash.o: stash.c
+	$(CC) $(CFLAGS) -c stash.c
+hdf2d2nc.o: hdf2d2nc.c
+	$(CC) $(CFLAGS) -c hdf2d2nc.c
+clean:
+	rm -rf *.o hdf2 hdf2d2nc libcm.a stash
+install: hdf2 hdf2d2nc stash
+	install -m 0755 hdf2 $(HOME)/bin
+	install -m 0755 hdf2d2nc $(HOME)/bin
+	install -m 0755 stash $(HOME)/bin
+	cd $(HOME)/bin  && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin  && ln -fs hdf2 makevisit
+
+.PHONY: install
