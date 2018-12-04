@@ -483,22 +483,36 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	}
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "time", NC_DOUBLE, 1, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_put_att_text(ncid, xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, xhid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, yhid, "long_name", strlen("y-coordinate in Cartesian system"), "y-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, yhid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	if (saved_staggered_mesh_params)
 	{
 		status = nc_put_att_text(ncid, xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	}
 	status = nc_put_att_text(ncid, zfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(ncid, timeid, "units", strlen("s"), "s");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "units", strlen("seconds since 2000-1-1 0:0:0"), "seconds since 2000-1-1 0:0:0");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "axis", strlen("T"), "T");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "long_name", strlen("time"), "time");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_def_var (ncid, "X0", NC_INT, 0, dims, &x0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Y0", NC_INT, 0, dims, &y0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "X1", NC_INT, 0, dims, &x1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Y1", NC_INT, 0, dims, &y1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Z0", NC_INT, 0, dims, &z0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Z1", NC_INT, 0, dims, &z1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_put_att_text(ncid, x0id, "long_name", strlen("westmost grid index from LOFS data"), "westmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, x1id, "long_name", strlen("eastmost grid index from LOFS data"), "eastmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, y0id, "long_name", strlen("southmost grid index from LOFS data"), "southmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, y1id, "long_name", strlen("northmost grid index from LOFS data"), "northmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, z0id, "long_name", strlen("bottom grid index from LOFS data"), "bottom grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, z1id, "long_name", strlen("top grid index from LOFS data"), "top grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	d2[0] = time_dimid;
 	d2[1] = nyh_dimid;
@@ -545,6 +559,203 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 
 		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
+		// OK here is where we just go through the different CM1
+		// variable names that George (and I) use, adding variable
+		// attributes merrily. C really needs a 'case' statement
+		// with character data... instaed we will have to settle
+		// with the if-then-else ladder. 
+		if(!strcmp(varname[ivar],"uinterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("eastward_wind"), "eastward_wind");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"vinterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("northward_wind"), "northward_wind");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"winterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("upward_air_velocity"), "upward_air_velocity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"prespert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_pressure_from_base_state"), "perturbation_pressure_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("hPa"), "hPa");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+				
+		else if(!strcmp(varname[ivar],"thpert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_potential_temperature_from_base_state"),
+					"perturbation_potential_temperature_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("K"), "K");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"thrhopert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_density_potential_temperature_from_base_state"),
+					"perturbation_density_potential_temperature_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("K"), "K");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"xvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("x_vorticity"), "x_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"yvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("y_vorticity"), "y_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"zvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("z_vorticity"), "z_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"vortmag"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("vorticity_magnitude"), "vorticity_magnitude");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"dbz"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("simulated_radar_reflectivity"), "simulated_radar_reflectivity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("dBZ"), "dBZ");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"rhopert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("perturbation_density_from_base_state"), "perturbation_density_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("kg/m^3"), "kg/m^3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"khh"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("horizontal_subgrid_eddy_scalar_diffusivity"), "horizontal_subgrid_eddy_scalar_diffusivity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"khv"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("vertical_subgrid_eddy_scalar_diffusivity"), "vertical_subgrid_eddy_scalar_diffusivity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"kmh"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("horizontal_subgrid_eddy_momentum_viscosity"), "horizontal_subgrid_eddy_momentum_viscosity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"kmv"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("vertical_subgrid_eddy_momentum_viscosity"), "vertical_subgrid_eddy_momentum_viscosity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+
+		else if(!strcmp(varname[ivar],"nci"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_cloud_ice_crystals"), "number_concentration_of_cloud_ice_crystals");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("cm^-3"), "cm^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_rain_droplets"), "number_concentration_of_rain_droplets");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncs"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_snow_crystals"), "number_concentration_of_snow_crystals");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncg"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_graupel_particles"), "number_concentration_of_graupel_particles");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qvpert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("perturbation_mixing_ratio_from_base_state"), "perturbation_mixing_ratio_from_base_state");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qc"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("cloud_water_mixing_ratio"), "cloud_water_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qi"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("cloud_ice_mixing_ratio"), "cloud_ice_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("rain_mixing_ratio"), "rain_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qg"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("graupel_mixing_ratio"), "graupel_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+// UGH FINALL OVER
 		if (status != NC_NOERR) 
 		{
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
