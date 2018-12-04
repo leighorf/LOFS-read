@@ -733,7 +733,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
 					strlen("perturbation_mixing_ratio_from_base_state"), "perturbation_mixing_ratio_from_base_state");
 					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		}
 		else if(!strcmp(varname[ivar],"qc"))
 		{
@@ -755,6 +756,14 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		{
 			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
 					strlen("rain_mixing_ratio"), "rain_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qs"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("snow_mixing_ratio"), "snow_mixing_ratio");
 					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
 			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
