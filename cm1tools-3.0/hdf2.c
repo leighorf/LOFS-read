@@ -326,6 +326,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	size_t s2[3],e2[3];
 	int ivar;
 	long int bufsize;
+	float bufsize_gb;
 	float *xhfull,*yhfull,*xffull,*yffull,*zh,*zf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
 	FILE *fp;
@@ -379,8 +380,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	e2[0] = 1;
 	e2[1] = NY;
 	e2[2] = NX;
-
-	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
+/****** MOVE THIS DOWN PAST WHERE WE FIGURE OUT READAHEAD
 	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
 	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -394,6 +394,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	//printf("NX = %i NY = %i NZ = %i Bufsize = %i\n",NX,NY,NZ,bufsize);
 	if (buffer == NULL) ERROR_STOP("Cannot allocate buffer");
+
+******/
+
 	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 	{
 		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
@@ -559,11 +562,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 
 		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
-		// OK here is where we just go through the different CM1
-		// variable names that George (and I) use, adding variable
-		// attributes merrily. C really needs a 'case' statement
-		// with character data... instaed we will have to settle
-		// with the if-then-else ladder. 
+
+
+// You know, netcdf folks, life would be a lot easier if you didn't have
+// this strange concept of "OK we are ending definitions. Now you can
+// actually do stuff, but you have to loop through all your shit again".
+// So this loop is in the "before we call nc_enddef" part of the code,
+// where we set all our lovely attributes.
+
+// So anyway here is where we just go through the different CM1 variable
+// names that George (and I) use, adding variable attributes merrily.
+// C really needs a 'case' statement with character data... instead
+// we will have to settle with the if-then-else ladder. I just don't
+// understand why the world just doesn't conform to all of my whims...
+
 		if(!strcmp(varname[ivar],"uinterp"))
 		{
 			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("eastward_wind"), "eastward_wind");
@@ -755,36 +767,68 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
 			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		}
-// UGH FINALL OVER
+// some diagnostics
+		else if(!strcmp(varname[ivar],"qcloud"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("sum_of_qc_and_qi"), "sum_of_qc_and_qi");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qprecip"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("sum_of_qr_qs_and_qg"), "sum_of_qr_qs_and_qg");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"streamvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("storm_relative_streamwise_vorticity_magnitude"), "storm_relative_streamwise_vorticity_magnitude");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"streamfrac"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("fraction_of_vorticity_that_is_streamwise"), "fraction_of_vorticity_that_is_streamwise");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("#"), "#");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"hwin_sr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("storm_relative_horizontal_wind"), "storm_relative_horizontal_wind");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"hwin_gr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("ground_relative_horizontal_wind"), "ground_relative_horizontal_wind");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+// UGH FINALLY OVER
 		if (status != NC_NOERR) 
 		{
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
 		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
-//		unfortunately this really slows things down
+//		unfortunately this really slows things down. WE NEED ZFP HERE DAMMIT (although that would mean uncompressing and recompressing ZFP data)
 		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
 	status = nc_enddef (ncid);
 
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
-
-	// For surface 2d fields (Vapor wants 2D vars)
-	//
-	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
-	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
-	// This is now only enabled by a command line option - default
-	// is to not write any 2D fields.
-
-	if (yes2d)
-	{
-		printf("\nWorking on surface 2D thrhopert and dbz (");
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
-		printf(")\n");
-	}
 
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -814,7 +858,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
-		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
@@ -831,42 +875,95 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"qprecip")) {qr_rh=qs_rh=qg_rh=1;}
 	}
 
+// HERE IS WHERE WE DO OUR FREAKING MALLOCS
+
+// ORF 2018-12-04: We only malloc beyond our single 3D buffer when
+// requesting on of our diagnostics that require calculations that are a
+// function of other saved 3D arrays
+//
+// Extra point in each dimension is for staggered variables and/or
+// diagnostics that require differencing and we therefore assign
+// boundary values to missing. Since we are (almost) always far enough
+// from the true model lateral boundaries, we would be smarter to just
+// read in one extra value in each dimension for ALL variables (except
+// for the z=-1!) to serve as a "ghost zone" for the "true" calculation
+// array; plus, not everything supports missing value attributes and my
+// missing value is freaking huge
+
+	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+	bufsize_gb = 1.0e-9*bufsize;
+	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
+
+//	This is the one that is always guaranteed!
+	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+
+	// First we do any requested 2d fields (Vapor likes 2D vars)
+	//
+	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
+	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
+	// This is now only enabled by a command line option - default
+	// is to not write any 2D fields.
+
+	if (yes2d)
+	{
+		printf("\nWorking on surface 2D thrhopert and dbz (");
+		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
+		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
+		printf(")\n");
+	}
 	if (u_rh)
 	{
-		printf("Buffering uinterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering uinterp:\n",bufsize_gb);
+		if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate ubuffer");
 		read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (v_rh)
 	{
-		printf("Buffering vinterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering vinterp:\n",bufsize_gb);
+		if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate vbuffer");
 		read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (w_rh)
 	{
-		printf("Buffering winterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering winterp:\n",bufsize_gb);
+		if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate wbuffer");
 		read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (xvort_rh)
 	{
-		printf("Buffering xvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering xvort:\n",bufsize_gb);
+		if ((xvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (yvort_rh)
 	{
-		printf("Buffering yvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering yvort:\n",bufsize_gb);
+		if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (zvort_rh)
 	{
-		printf("Buffering zvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering zvort:\n",bufsize_gb);
+		if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (thrhopert_rh)
 	{
-		printf("Buffering thrhopert:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering thrhopert:\n",bufsize_gb);
+		if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate thrhopert");
 		read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
-
+// for our microphysics "a+b" stuff we just use a generic dum0 array,
+// could probably re-use one of the other variables but oh well
+	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
+	{
+		printf("\nAllocating %5.2f GB of memory and buffering dum0:\n",bufsize_gb);
+		if ((dum0 = dumarray = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate dum0 array");
+		break; //we only do this once!
+	}
 
 // Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
