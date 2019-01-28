@@ -38,6 +38,7 @@ double *alltimes;
 int ntottimes;
 int firsttimedirindex;
 int saved_X0,saved_Y0,saved_X1,saved_Y1;
+float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammit! */
 const float MISSING=1.0E37;
 
 int debug = 0;
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 	{
 		printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
 				X0,saved_X0,Y0,saved_Y0,X1,saved_X1,Y1,saved_Y1);
-		ERROR_STOP("Your requested indices are wack - check for weirdness at the command line\n");
+		ERROR_STOP("Your requested indices are wack, or you have missing cm1hdf5 files, goodbye!\n");
 	}
 	if(X0<saved_X0)
 	{
@@ -296,7 +297,9 @@ void grok_cm1hdf5_file_structure()
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
+	float *writeptr;
 	float *dum0,*dumarray;
+	float *qc,*qi,*qs;
 	float *th0,*qv0;
 	float *thrhopert;
 	double timearray[1];
@@ -325,6 +328,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	size_t s2[3],e2[3];
 	int ivar;
 	long int bufsize;
+	float bufsize_gb;
 	float *xhfull,*yhfull,*xffull,*yffull,*zh,*zf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
 	FILE *fp;
@@ -378,8 +382,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	e2[0] = 1;
 	e2[1] = NY;
 	e2[2] = NX;
-
-	/* ORF LAZY allocate enough for any staggered combination, hence +1 for all three dimensions */
+/****** MOVE THIS DOWN PAST WHERE WE FIGURE OUT READAHEAD
 	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
 	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
@@ -393,6 +396,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
 	//printf("NX = %i NY = %i NZ = %i Bufsize = %i\n",NX,NY,NZ,bufsize);
 	if (buffer == NULL) ERROR_STOP("Cannot allocate buffer");
+
+******/
+
 	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 	{
 		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
@@ -482,22 +488,36 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	}
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "time", NC_DOUBLE, 1, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_put_att_text(ncid, xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, xhid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, yhid, "long_name", strlen("y-coordinate in Cartesian system"), "y-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, yhid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	if (saved_staggered_mesh_params)
 	{
 		status = nc_put_att_text(ncid, xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	}
 	status = nc_put_att_text(ncid, zfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(ncid, timeid, "units", strlen("s"), "s");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "units", strlen("seconds since 2000-1-1 0:0:0"), "seconds since 2000-1-1 0:0:0");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "axis", strlen("T"), "T");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "long_name", strlen("time"), "time");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_def_var (ncid, "X0", NC_INT, 0, dims, &x0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Y0", NC_INT, 0, dims, &y0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "X1", NC_INT, 0, dims, &x1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Y1", NC_INT, 0, dims, &y1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Z0", NC_INT, 0, dims, &z0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "Z1", NC_INT, 0, dims, &z1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_put_att_text(ncid, x0id, "long_name", strlen("westmost grid index from LOFS data"), "westmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, x1id, "long_name", strlen("eastmost grid index from LOFS data"), "eastmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, y0id, "long_name", strlen("southmost grid index from LOFS data"), "southmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, y1id, "long_name", strlen("northmost grid index from LOFS data"), "northmost grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, z0id, "long_name", strlen("bottom grid index from LOFS data"), "bottom grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, z1id, "long_name", strlen("top grid index from LOFS data"), "top grid index from LOFS data");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	d2[0] = time_dimid;
 	d2[1] = nyh_dimid;
@@ -544,35 +564,285 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 
 		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
+
+
+// You know, netcdf folks, life would be a lot easier if you didn't have
+// this strange concept of "OK we are ending definitions. Now you can
+// actually do stuff, but you have to loop through all your shit again".
+// So this loop is in the "before we call nc_enddef" part of the code,
+// where we set all our lovely attributes.
+
+// So anyway here is where we just go through the different CM1 variable
+// names that George (and I) use, adding variable attributes merrily.
+// C really needs a 'case' statement with character data... instead
+// we will have to settle with the if-then-else ladder. I just don't
+// understand why the world just doesn't conform to all of my whims...
+
+		if(!strcmp(varname[ivar],"uinterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("eastward_wind"), "eastward_wind");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"vinterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("northward_wind"), "northward_wind");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"winterp"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("upward_air_velocity"), "upward_air_velocity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"prespert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_pressure_from_base_state"), "perturbation_pressure_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("hPa"), "hPa");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+				
+		else if(!strcmp(varname[ivar],"thpert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_potential_temperature_from_base_state"),
+					"perturbation_potential_temperature_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("K"), "K");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"thrhopert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "long_name", strlen("perturbation_density_potential_temperature_from_base_state"),
+					"perturbation_density_potential_temperature_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("K"), "K");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"xvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("x_vorticity"), "x_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"yvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("y_vorticity"), "y_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"zvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("z_vorticity"), "z_vorticity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"vortmag"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("vorticity_magnitude"), "vorticity_magnitude");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"dbz"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("simulated_radar_reflectivity"), "simulated_radar_reflectivity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("dBZ"), "dBZ");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"rhopert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name", strlen("perturbation_density_from_base_state"), "perturbation_density_from_base_state");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("kg/m^3"), "kg/m^3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"khh"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("horizontal_subgrid_eddy_scalar_diffusivity"), "horizontal_subgrid_eddy_scalar_diffusivity");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"khv"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("vertical_subgrid_eddy_scalar_diffusivity"), "vertical_subgrid_eddy_scalar_diffusivity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"kmh"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("horizontal_subgrid_eddy_momentum_viscosity"), "horizontal_subgrid_eddy_momentum_viscosity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"kmv"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("vertical_subgrid_eddy_momentum_viscosity"), "vertical_subgrid_eddy_momentum_viscosity");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^2/s"), "m^2/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+
+		else if(!strcmp(varname[ivar],"nci"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_cloud_ice_crystals"), "number_concentration_of_cloud_ice_crystals");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("cm^-3"), "cm^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_rain_droplets"), "number_concentration_of_rain_droplets");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncs"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_snow_crystals"), "number_concentration_of_snow_crystals");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"ncg"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("number_concentration_of_graupel_particles"), "number_concentration_of_graupel_particles");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m^-3"), "m^-3");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qvpert"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("perturbation_mixing_ratio_from_base_state"), "perturbation_mixing_ratio_from_base_state");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qc"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("cloud_water_mixing_ratio"), "cloud_water_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qi"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("cloud_ice_mixing_ratio"), "cloud_ice_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("rain_mixing_ratio"), "rain_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qs"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("snow_mixing_ratio"), "snow_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qg"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("graupel_mixing_ratio"), "graupel_mixing_ratio");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+// some diagnostics
+		else if(!strcmp(varname[ivar],"qcloud"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("sum_of_qc_and_qi"), "sum_of_qc_and_qi");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"qprecip"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("sum_of_qr_qs_and_qg"), "sum_of_qr_qs_and_qg");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("g/kg"), "g/kg");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"streamvort"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("storm_relative_streamwise_vorticity_magnitude"), "storm_relative_streamwise_vorticity_magnitude");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("s^-1"), "s^-1");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"streamfrac"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("fraction_of_vorticity_that_is_streamwise"), "fraction_of_vorticity_that_is_streamwise");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("#"), "#");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"hwin_sr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("storm_relative_horizontal_wind"), "storm_relative_horizontal_wind");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+		else if(!strcmp(varname[ivar],"hwin_gr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("ground_relative_horizontal_wind"), "ground_relative_horizontal_wind");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
+// UGH FINALLY OVER
 		if (status != NC_NOERR) 
 		{
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
-		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
-//		unfortunately this really slows things down
+//		ONLY DO THIS if I actually have missing values,
+//		it really derades performance of Vapor (and
+//		pehraps other software)
+//		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
+//		unfortunately this really slows things down. WE NEED ZFP HERE DAMMIT (although that would mean uncompressing and recompressing ZFP data)
 		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
 	status = nc_enddef (ncid);
 
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
-
-	// For surface 2d fields (Vapor wants 2D vars)
-	//
-	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
-	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
-	// This is now only enabled by a command line option - default
-	// is to not write any 2D fields.
-
-	if (yes2d)
-	{
-		printf("\nWorking on surface 2D thrhopert and dbz (");
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
-		printf(")\n");
-	}
 
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -602,7 +872,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
-		if(!strcmp(varname[ivar],"vortmag")) {yvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
@@ -619,42 +889,95 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"qprecip")) {qr_rh=qs_rh=qg_rh=1;}
 	}
 
+// HERE IS WHERE WE DO OUR FREAKING MALLOCS
+
+// ORF 2018-12-04: We only malloc beyond our single 3D buffer when
+// requesting on of our diagnostics that require calculations that are a
+// function of other saved 3D arrays
+//
+// Extra point in each dimension is for staggered variables and/or
+// diagnostics that require differencing and we therefore assign
+// boundary values to missing. Since we are (almost) always far enough
+// from the true model lateral boundaries, we would be smarter to just
+// read in one extra value in each dimension for ALL variables (except
+// for the z=-1!) to serve as a "ghost zone" for the "true" calculation
+// array; plus, not everything supports missing value attributes and my
+// missing value is freaking huge
+
+	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+	bufsize_gb = 1.0e-9*bufsize;
+	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
+
+//	This is the one that is always guaranteed!
+	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+
+	// First we do any requested 2d fields (Vapor likes 2D vars)
+	//
+	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
+	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
+	// This is now only enabled by a command line option - default
+	// is to not write any 2D fields.
+
+	if (yes2d)
+	{
+		printf("\nWorking on surface 2D thrhopert and dbz (");
+		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buf0);
+		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buf0);
+		printf(")\n");
+	}
 	if (u_rh)
 	{
-		printf("Buffering uinterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering uinterp:\n",bufsize_gb);
+		if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate ubuffer");
 		read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (v_rh)
 	{
-		printf("Buffering vinterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering vinterp:\n",bufsize_gb);
+		if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate vbuffer");
 		read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (w_rh)
 	{
-		printf("Buffering winterp:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering winterp:\n",bufsize_gb);
+		if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate wbuffer");
 		read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (xvort_rh)
 	{
-		printf("Buffering xvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering xvort:\n",bufsize_gb);
+		if ((xvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (yvort_rh)
 	{
-		printf("Buffering yvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering yvort:\n",bufsize_gb);
+		if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (zvort_rh)
 	{
-		printf("Buffering zvort:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering zvort:\n",bufsize_gb);
+		if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (thrhopert_rh)
 	{
-		printf("Buffering thrhopert:\n");
+		printf("\nAllocating %5.2f GB of memory and buffering thrhopert:\n",bufsize_gb);
+		if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate thrhopert");
 		read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
-
+// for our microphysics "a+b" stuff we just use a generic dum0 array,
+// could probably re-use one of the other variables but oh well
+	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
+	{
+		printf("\nAllocating %5.2f GB of memory and buffering dum0:\n",bufsize_gb);
+		if ((dum0 = dumarray = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate dum0 array");
+		break; //we only do this once!
+	}
 
 // Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
@@ -675,14 +998,17 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				vsr = vbuffer[i];
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
 		{
 			float usr,vsr;
 			//TODO: put umove and vmove in the got dammed hdf5
 			//files
-			float umove=15.2;
-			float vmove=10.5;
+//			float umove=15.2;
+//			float vmove=10.5;
+//			These are now command line options until we store
+//			these in the cm1hdf5 files
 #pragma omp parallel for private(i)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
@@ -690,6 +1016,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				vsr = vbuffer[i]+vmove;
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hdiv")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -721,6 +1048,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort_stretch")) 
 		{
@@ -752,6 +1080,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort_tilt")) 
 		{
@@ -783,6 +1112,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				}
 			}
 
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -812,6 +1142,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -841,6 +1172,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -869,6 +1201,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -897,6 +1230,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -925,6 +1259,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -953,6 +1288,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
@@ -961,6 +1297,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
@@ -969,6 +1306,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
@@ -981,6 +1319,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 //			diff = clock() - start;
 //			int msec=diff*1000/CLOCKS_PER_SEC;
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
@@ -991,41 +1330,48 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					(sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i])*
 					sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]));
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"uinterp"))
 		{
-			if (!u_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=ubuffer;
+			if (!u_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=ubuffer;
 		}
 		else if(!strcmp(varname[ivar],"vinterp"))
 		{
-			if (!v_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=vbuffer;
+			if (!v_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=vbuffer;
 		}
 		else if(!strcmp(varname[ivar],"winterp"))
 		{
-			if (!w_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=wbuffer;
+			if (!w_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=wbuffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort"))
 		{
-			if (!xvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=xvort;
+			if (!xvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=xvort;
 		}
 		else if(!strcmp(varname[ivar],"yvort"))
 		{
-			if (!yvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=yvort;
+			if (!yvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=yvort;
 		}
 		else if(!strcmp(varname[ivar],"zvort"))
 		{
-			if (!zvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=zvort;
+			if (!zvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=zvort;
 		}
 		else if(!strcmp(varname[ivar],"thrhopert"))
 		{
-			if (!thrhopert_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=thrhopert;
+			if (!thrhopert_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=thrhopert;
 		}
 		else if(!strcmp(varname[ivar],"qcloud"))
 		{
@@ -1033,6 +1379,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
 			buffer=buf0; dumarray=dum0;
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"qprecip"))
 		{
@@ -1043,13 +1390,41 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
 			buffer=buf0; dumarray=dum0;
+			writeptr = buffer;
+		}
+		else if(!strcmp(varname[ivar],"qvstupid"))
+		{
+			float *theta;
+			if ((theta = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate theta");
+			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"theta",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			//Note, this is already allocated above
+			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhoprime",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
+			for(i=0; i<NX*NY*NZ; i++) *dumarray++ = *buffer++; buffer=buf0; dumarray=dum0;
+			/* dumarray now contains qc+qi+qr+qs+qg (what I call
+			 * qa in my derivation) */
+
+			// stopped here
+			// We have thetaprime, thetarhoprime, and qa. Need to
+			// calculate thetbar and thetarhoprimebar from the
+			// initial sounding for qv. Then we can subtract qv0
+			// from qv and hopefully what remains isn't shiznit.
+
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			writeptr = buf0;
 		}
-		status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, buffer);
-		buffer = buf0; /* I will never learn my lesson with pointers........ */
+		status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
 			printf("Could not write variable %s at time %f to %s\n", varname[ivar],t0,ncfilename);
@@ -1198,7 +1573,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS };
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1217,6 +1592,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
+		{"umove", optional_argument, 0, OPT_UMOVE},
+		{"vmove", optional_argument, 0, OPT_VMOVE},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -1314,6 +1691,14 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 			case OPT_NTHREADS:
 				nthreads=atoi(optarg);
 				omp_set_num_threads(nthreads);
+				optcount++;
+				break;
+			case OPT_UMOVE:
+				umove=atof(optarg);
+				optcount++;
+				break;
+			case OPT_VMOVE:
+				vmove=atof(optarg);
 				optcount++;
 				break;
 			case '?':
