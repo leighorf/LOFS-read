@@ -297,7 +297,9 @@ void grok_cm1hdf5_file_structure()
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
+	float *writeptr;
 	float *dum0,*dumarray;
+	float *qc,*qi,*qs;
 	float *th0,*qv0;
 	float *thrhopert;
 	double timearray[1];
@@ -831,7 +833,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
-		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
+//		ONLY DO THIS if I actually have missing values,
+//		it really derades performance of Vapor (and
+//		pehraps other software)
+//		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
 //		unfortunately this really slows things down. WE NEED ZFP HERE DAMMIT (although that would mean uncompressing and recompressing ZFP data)
 		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
@@ -917,10 +922,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	if (yes2d)
 	{
 		printf("\nWorking on surface 2D thrhopert and dbz (");
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buffer);
-		read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buffer);
+		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buf0);
+		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
+		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buf0);
 		printf(")\n");
 	}
 	if (u_rh)
@@ -993,6 +998,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				vsr = vbuffer[i];
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
 		{
@@ -1010,6 +1016,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				vsr = vbuffer[i]+vmove;
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hdiv")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1041,6 +1048,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort_stretch")) 
 		{
@@ -1072,6 +1080,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort_tilt")) 
 		{
@@ -1103,6 +1112,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				}
 			}
 
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1132,6 +1142,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1161,6 +1172,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1189,6 +1201,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1217,6 +1230,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1245,6 +1259,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
@@ -1273,6 +1288,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					}
 				}
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
 		{
@@ -1281,6 +1297,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
 		{
@@ -1289,6 +1306,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
 		{
@@ -1301,6 +1319,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 //			diff = clock() - start;
 //			int msec=diff*1000/CLOCKS_PER_SEC;
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
 		{
@@ -1311,41 +1330,48 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					(sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i])*
 					sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]));
 			}
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"uinterp"))
 		{
-			if (!u_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=ubuffer;
+			if (!u_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=ubuffer;
 		}
 		else if(!strcmp(varname[ivar],"vinterp"))
 		{
-			if (!v_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=vbuffer;
+			if (!v_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=vbuffer;
 		}
 		else if(!strcmp(varname[ivar],"winterp"))
 		{
-			if (!w_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=wbuffer;
+			if (!w_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=wbuffer;
 		}
 		else if(!strcmp(varname[ivar],"xvort"))
 		{
-			if (!xvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=xvort;
+			if (!xvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=xvort;
 		}
 		else if(!strcmp(varname[ivar],"yvort"))
 		{
-			if (!yvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=yvort;
+			if (!yvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=yvort;
 		}
 		else if(!strcmp(varname[ivar],"zvort"))
 		{
-			if (!zvort_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=zvort;
+			if (!zvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=zvort;
 		}
 		else if(!strcmp(varname[ivar],"thrhopert"))
 		{
-			if (!thrhopert_rh)read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			else buffer=thrhopert;
+			if (!thrhopert_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=thrhopert;
 		}
 		else if(!strcmp(varname[ivar],"qcloud"))
 		{
@@ -1353,6 +1379,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
 			buffer=buf0; dumarray=dum0;
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"qprecip"))
 		{
@@ -1363,6 +1390,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
 			buffer=buf0; dumarray=dum0;
+			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"qvstupid"))
 		{
@@ -1393,10 +1421,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else // We have (hopefully) requested a variable that has been saved
 		{
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			writeptr = buf0;
 		}
-		status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, buffer);
-		buffer = buf0; /* I will never learn my lesson with pointers........ */
+		status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
 			printf("Could not write variable %s at time %f to %s\n", varname[ivar],t0,ncfilename);
