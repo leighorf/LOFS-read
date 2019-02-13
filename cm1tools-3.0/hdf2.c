@@ -503,7 +503,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	}
 	status = nc_put_att_text(ncid, zfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(ncid, timeid, "units", strlen("seconds since 2000-1-1 0:0:0"), "seconds since 2000-1-1 0:0:0");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, timeid, "units", strlen("s"), "s");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, timeid, "axis", strlen("T"), "T");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, timeid, "long_name", strlen("time"), "time");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_def_var (ncid, "X0", NC_INT, 0, dims, &x0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -563,7 +563,50 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			dims[3] = nxh_dimid;
 		}
 
-		status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
+//ORF I'm now going to create truly 2D files, otherwise
+//VisIt is dumb
+
+
+		if(X0==X1)
+		{
+			dims[0] = time_dimid;
+			dims[1] = nzh_dimid;
+			dims[2] = nyh_dimid;
+			start[0] = 0;
+			start[1] = 0;
+			start[2] = 0;
+			edges[0] = 1;
+			edges[1] = NZ;
+			edges[2] = NY;
+			status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 3, dims, &(varnameid[ivar]));
+		}
+		else if(Y0==Y1)
+		{
+			dims[0] = time_dimid;
+			dims[1] = nzh_dimid;
+			dims[2] = nxh_dimid;
+			start[0] = 0;
+			start[1] = 0;
+			start[2] = 0;
+			edges[0] = 1;
+			edges[1] = NZ;
+			edges[2] = NX;
+			status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 3, dims, &(varnameid[ivar]));
+		}
+		else if(Z0==Z1)
+		{
+			dims[0] = time_dimid;
+			dims[1] = nyh_dimid;
+			dims[2] = nxh_dimid;
+			start[0] = 0;
+			start[1] = 0;
+			start[2] = 0;
+			edges[0] = 1;
+			edges[1] = NY;
+			edges[2] = NX;
+			status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 3, dims, &(varnameid[ivar]));
+		}
+		else status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
 
 
 // You know, netcdf folks, life would be a lot easier if you didn't have
