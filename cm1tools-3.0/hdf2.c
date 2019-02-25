@@ -44,6 +44,7 @@ const float MISSING=1.0E37;
 int debug = 0;
 int yes2d = 0;
 int gzip = 0;
+int use_box_offset = 0;
 int filetype = NC_NETCDF4;
 int saved_staggered_mesh_params = 0; //NOTE! For now, pass '-xyf' to cmd line if you have staggered mesh data (xf, yf, zf)
 int nthreads = 1;
@@ -100,6 +101,20 @@ int main(int argc, char *argv[])
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
+	if(use_box_offset)
+	{
+		//Often I want to subset from already subsetted LOFS data
+		//to make a netCDF file. Easiest way is to first make a full
+		//subsetted netcdf file then use ncview to get the i,j
+		//indices for the subset (rather than having to do the math
+		//by hand to find the new indices; this allows that with the
+		//--offset option
+		//Implicit: X0,X1,Y0,Y1 specified on cmd line
+		X0+=saved_X0;
+		X1+=saved_X0;
+		Y0+=saved_Y0;
+		Y1+=saved_Y0;
+	}
 	if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
 	if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
 
@@ -525,7 +540,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 	/* Save some surface 2d slices? */
 	if (yes2d)
-	{
+	{//Something wrong with my CM1 calculated thrhopert, prob. a OMP thing
+//		status = nc_def_var (ncid, "thpert_sfc", NC_FLOAT, 3, d2, &thsfcid);
 		status = nc_def_var (ncid, "thrhopert_sfc", NC_FLOAT, 3, d2, &thsfcid);
 		status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
 	}
@@ -862,6 +878,14 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
 			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		}
+		else if(!strcmp(varname[ivar],"windmag_sr"))
+		{
+			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
+					strlen("storm_relative_3D_wind"), "storm_relative_3D_wind");
+					if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
+			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+		}
 		else if(!strcmp(varname[ivar],"hwin_gr"))
 		{
 			status = nc_put_att_text(ncid, varnameid[ivar], "standard_name",
@@ -912,6 +936,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
@@ -964,7 +989,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 	if (yes2d)
 	{
-		printf("\nWorking on surface 2D thrhopert and dbz (");
+		printf("\nWorking on surface 2D thpert and dbz ("); //ORF change thrhopert to thpert here until fix
+//		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buf0);
 		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
@@ -1040,6 +1066,19 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				usr = ubuffer[i];
 				vsr = vbuffer[i];
 				buffer[i] = sqrt(usr*usr+vsr*vsr);
+			}
+			writeptr = buffer;
+		}
+		if(!strcmp(varname[ivar],"windmag_sr")) //storm relative 3D wind speed
+		{
+			float usr,vsr,wsr; //wsr is dumb but whatevah
+#pragma omp parallel for private(i)
+			for(i=0; i<NX*NY*NZ; i++)
+			{
+				usr = ubuffer[i];
+				vsr = vbuffer[i];
+				wsr = wbuffer[i];
+				buffer[i] = sqrt(usr*usr+vsr*vsr+wsr*wsr);
 			}
 			writeptr = buffer;
 		}
@@ -1616,7 +1655,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE };
+		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1637,6 +1676,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
 		{"umove", optional_argument, 0, OPT_UMOVE},
 		{"vmove", optional_argument, 0, OPT_VMOVE},
+		{"offset", optional_argument, 0, OPT_OFFSET},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -1725,6 +1765,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_COMPRESS:
 				gzip=1;
+				optcount++;
+				break;
+			case OPT_OFFSET:
+				use_box_offset=1;
 				optcount++;
 				break;
 			case OPT_NC3:
