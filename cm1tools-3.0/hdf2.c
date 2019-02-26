@@ -355,6 +355,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
 	int qc_rh=0,qi_rh=0,qr_rh=0,qs_rh=0,qg_rh=0;
 
+	float dwdy,dvdz,dudz,dwdx,dvdx,dudy;
+	float dxi,dyi,dzi;
+
 	float rv = 461.5;
 	float rd = 287.04;
 	float reps;
@@ -939,6 +942,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"rotvortx")) {v_rh=w_rh=xvort_rh=1;}
+		if(!strcmp(varname[ivar],"rotvorty")) {u_rh=w_rh=yvort_rh=1;}
+		if(!strcmp(varname[ivar],"rotvortz")) {u_rh=v_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
@@ -1057,7 +1063,97 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		printf("Working on %s (",varname[ivar]);
 		fflush(stdout);
 
-		if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
+
+
+/************************** BEGINNING OF ROT VORT BITCHES ************************/
+
+		if(!strcmp(varname[ivar],"rotvortx")) //storm relative horizontal wind speed
+		{
+			float sign,a1,a2;
+			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
+#pragma omp parallel for private(i,j,k)
+			for(iz=1; iz<NZ-1; iz++)
+			{
+				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				for(iy=1; iy<NY-1; iy++)
+				{
+					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					for(ix=0; ix<NX; ix++)
+					{
+						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= 0.5*dyi;
+						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= 0.5*dzi;
+
+						a1 = dwdy-dvdz; a1*=a1;
+						a2 = dwdy+dvdz; a2*=a2;
+//						printf("dwdy = %12.6f dvdz = %12.6f a1 = %12.6f a2 = %12.6f\n",dwdy,dvdz,a1,a2);
+						sign = (xvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
+
+						if (a1>a2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(a1-a2)*sign;
+					}
+				}
+			}
+			writeptr = buffer;
+		}
+		else if(!strcmp(varname[ivar],"rotvorty")) //storm relative horizontal wind speed
+		{
+			float sign,b1,b2;
+			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
+#pragma omp parallel for private(i,j,k)
+			for(iz=1; iz<NZ-1; iz++)
+			{
+				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				for(iy=1; iy<NY-1; iy++)
+				{
+					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					for(ix=0; ix<NX; ix++)
+					{
+						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= 0.5*dzi;
+						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= 0.5*dzi;
+
+						b1 = dudz-dwdx; b1*=b1;
+						b2 = dudz+dwdx; b2*=b2;
+						sign = (yvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
+
+						if (b1>b2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(b1-b2)*sign;
+					}
+				}
+			}
+			writeptr = buffer;
+		}
+		else if(!strcmp(varname[ivar],"rotvortz")) //storm relative horizontal wind speed
+		{
+			float sign,c1,c2;
+			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
+#pragma omp parallel for private(i,j,k)
+			for(iz=1; iz<NZ-1; iz++)
+			{
+				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				for(iy=1; iy<NY-1; iy++)
+				{
+					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					for(ix=0; ix<NX; ix++)
+					{
+						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= 0.5*dxi;
+						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= 0.5*dzi;
+
+						c1 = dvdx-dudy; c1*=c1;
+						c2 = dvdx+dudy; c2*=c2;
+//						printf("dwdy = %12.6f dvdz = %12.6f a1 = %12.6f a2 = %12.6f\n",dwdy,dvdz,a1,a2);
+						sign = (zvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
+
+						if (c1>c2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(c1-c2)*sign;
+					}
+				}
+			}
+			writeptr = buffer;
+		}
+
+/************************** END OF ROT VORT BITCHES ************************/
+
+		else if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
 #pragma omp parallel for private(i)
@@ -1069,7 +1165,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-		if(!strcmp(varname[ivar],"windmag_sr")) //storm relative 3D wind speed
+		else if(!strcmp(varname[ivar],"windmag_sr")) //storm relative 3D wind speed
 		{
 			float usr,vsr,wsr; //wsr is dumb but whatevah
 #pragma omp parallel for private(i)
@@ -1102,7 +1198,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"hdiv")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 
 			/* set edges to zero - should fill with missing (TODO)*/
 			for(k=0; k<NZ; k++)
@@ -1123,7 +1218,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(i=1; i<NX-1; i++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=1.0/(xhfull[i-X0+1]-xhfull[i-X0-1]);
 						buffer[P3(i,j,k,NX,NY)] =
 						dxi * (ubuffer[P3(i+1,j,k,NX,NY)] - ubuffer[P3(i-1,j,k,NX,NY)]) +
 						dyi * (vbuffer[P3(i,j+1,k,NX,NY)] - vbuffer[P3(i,j-1,k,NX,NY)]) ;
@@ -1134,7 +1229,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"zvort_stretch")) 
 		{
-			float dxi,dyi,dzi;
 
 			for(k=0; k<NZ; k++)
 			for(j=0; j<NY; j++)
@@ -1154,7 +1248,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(i=0; i<NX; i++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=1.0/(xhfull[i-X0+1]-xhfull[i-X0-1]);
 						buffer[P3(i,j,k,NX,NY)] =
 							-1000.0*zvort[P3(i,j,k,NX,NY)] *
 						(dxi * (ubuffer[P3(i+1,j,k,NX,NY)] - ubuffer[P3(i-1,j,k,NX,NY)]) +
@@ -1166,7 +1260,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"zvort_tilt")) 
 		{
-			float dxi,dyi,dzi;
 
 			for(k=0; k<NZ; k++)
 			for(j=0; j<NY; j++)
@@ -1198,7 +1291,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 //			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
 			float coeff;
 			/* BUG:  Needs to be theta_bar[iz] */
@@ -1228,7 +1320,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 //			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
 			float coeff;
 			/* BUG:  Needs to be theta_bar[iz] */
@@ -1258,7 +1349,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 			for(k=0; k<NZ; k++)
 			for(j=0; j<NY; j++)
 				buffer[P3(0,j,k,NX,NY)] = 
@@ -1287,7 +1377,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 			for(k=0; k<NZ; k++)
 			for(j=0; j<NY; j++)
 				buffer[P3(0,j,k,NX,NY)] = 
@@ -1316,7 +1405,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 			for(k=0; k<NZ; k++)
 			for(i=0; i<NX; i++)
 				buffer[P3(i,0,k,NX,NY)] = 
@@ -1345,7 +1433,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
 		{
-			float dxi,dyi,dzi;
 			for(k=0; k<NZ; k++)
 			for(i=0; i<NX; i++)
 				buffer[P3(i,0,k,NX,NY)] = 
@@ -1506,7 +1593,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			writeptr = buf0;
 		}
-		status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
+dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
 			printf("Could not write variable %s at time %f to %s\n", varname[ivar],t0,ncfilename);
