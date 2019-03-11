@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[28]:
-
-
 try:
     import numpy as np
 except:
@@ -16,7 +12,7 @@ try:
     import sharppy.sharptab.interp as interp
     from sharppy.io import spc_decoder as spcdc
 except:
-    print("Error importing SHARPpy. Is it installed?"
+    print("Error importing SHARPpy. Is it installed?")
 
 import datetime
 import argparse
