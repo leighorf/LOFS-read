@@ -4,12 +4,20 @@
 # In[28]:
 
 
-import numpy as np
-import sharppy.sharptab.thermo as thermo
-import sharppy.sharptab.utils as utils
-import sharppy.sharptab.profile as prof
-import sharppy.sharptab.interp as interp
-from sharppy.io import spc_decoder as spcdc
+try:
+    import numpy as np
+except:
+    print("Error importing numpy. Is it installed?")
+
+try:
+    import sharppy.sharptab.thermo as thermo
+    import sharppy.sharptab.utils as utils
+    import sharppy.sharptab.profile as prof
+    import sharppy.sharptab.interp as interp
+    from sharppy.io import spc_decoder as spcdc
+except:
+    print("Error importing SHARPpy. Is it installed?"
+
 import datetime
 import argparse
 
