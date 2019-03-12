@@ -363,6 +363,8 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float rd = 287.04;
 	float reps;
 
+	int nthreads_start;
+
 	reps = rv/rd;
 
 	/* Since we tack on all the requested variables to the end of the
@@ -1061,6 +1063,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
 // derivatives of these variables since they have already been interpolated to the scalar grid.
 
+	nthreads_start=omp_get_num_threads();
+	printf("Using %i threads.\n",nthreads_start);
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
@@ -1077,17 +1081,17 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,dudz,dwdx,dvdx,dudy,a1,a2,b1,b2,c1,c2,rvx,rvy,rvz,rvmag,sign)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
 					for(ix=1; ix<NX-1; ix++)
 					{
 						rvx=rvy=rvz=0.0;
 // X
-						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= 0.5*dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= 0.5*dzi;
+						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
+						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
 
 						a1 = dwdy-dvdz; a1*=a1;
 						a2 = dwdy+dvdz; a2*=a2;
@@ -1095,8 +1099,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 						if (a1>a2) rvx=sqrt(a1-a2)*sign;
 // Y
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= 0.5*dzi;
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= 0.5*dxi;
+						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
+						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
 
 						b1 = dudz-dwdx; b1*=b1;
 						b2 = dudz+dwdx; b2*=b2;
@@ -1104,8 +1108,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 						if (b1>b2) rvy=sqrt(b1-b2)*sign;
 // Z
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= 0.5*dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= 0.5*dyi;
+						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
+						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
 
 						c1 = dvdx-dudy; c1*=c1;
 						c2 = dvdx+dudy; c2*=c2;
@@ -1127,15 +1131,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,a1,a2,sign)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
-						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= 0.5*dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= 0.5*dzi;
+						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
+						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
 
 						a1 = dwdy-dvdz; a1*=a1;
 						a2 = dwdy+dvdz; a2*=a2;
@@ -1154,15 +1158,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dudz,dwdx,b1,b2,sign)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
-						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= 0.5*dzi;
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= 0.5*dxi;
+						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
+						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
 
 						b1 = dudz-dwdx; b1*=b1;
 						b2 = dudz+dwdx; b2*=b2;
@@ -1181,15 +1185,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dvdx,dudy,c1,c2,sign)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
-						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= 0.5*dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= 0.5*dyi;
+						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
+						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
 
 						c1 = dvdx-dudy; c1*=c1;
 						c2 = dvdx+dudy; c2*=c2;
@@ -1201,7 +1205,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"isquared")) //storm relative horizontal wind speed
+		else if(!strcmp(varname[ivar],"isquared"))
 		{
 			float sign,c1,c2;
 			float term[12],isquared;
@@ -1209,25 +1213,25 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(i,ix,iy,iz,term,dzi,dyi,dxi,dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz,isquared)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz+Z0+1]-zh[iz+Z0-1]);
+				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
+					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
 					for(ix=1; ix<NX-1; ix++)
 					{
-						dxi=1.0/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
+						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
 
-						dudx = ubuffer[P3(ix+1,iy,iz,NX,NY)]-ubuffer[P3(ix-1,iy,iz,NX,NY)]; dudx *= 0.5*dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= 0.5*dyi;
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= 0.5*dzi;
+						dudx = ubuffer[P3(ix+1,iy,iz,NX,NY)]-ubuffer[P3(ix-1,iy,iz,NX,NY)]; dudx *= dxi;
+						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
+						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
 
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= 0.5*dxi;
-						dvdy = vbuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]; dvdy *= 0.5*dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= 0.5*dzi;
+						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
+						dvdy = vbuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]; dvdy *= dyi;
+						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
 
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= 0.5*dxi;
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= 0.5*dyi;
-						dwdz = wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]; dwdz *= 0.5*dzi;
+						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
+						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
+						dwdz = wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]; dwdz *= dzi;
 
 						term[ 0] = dwdy-dvdz; term[ 0]*=term[ 0]*0.50;
 						term[ 1] = dwdy+dvdz; term[ 1]*=term[ 1]*0.50*(-1.0);
@@ -1310,15 +1314,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,0,iz,NX,NY)] = 
 				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
 			for(iz=0; iz<NZ; iz++)
 			{
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(ix=1; ix<NX-1; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
 						dxi * (ubuffer[P3(ix+1,iy,iz,NX,NY)] - ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
 						dyi * (vbuffer[P3(ix,iy+1,iz,NX,NY)] - vbuffer[P3(ix,iy-1,iz,NX,NY)]) ;
@@ -1345,10 +1349,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
 							-1000.0*zvort[P3(ix,iy,iz,NX,NY)] *
 						(dxi * (ubuffer[P3(ix+1,iy,iz,NX,NY)] - ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
@@ -1371,15 +1375,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,0,iz,NX,NY)] = 
 				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
 			for(iz=1; iz<NZ-1; iz++)
 			{
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
 							1000.0*(xvort[P3(ix,iy,iz,NX,NY)] * dxi * (wbuffer[P3(ix+1,iy,iz,NX,NY)] - wbuffer[P3(ix-1,iy,iz,NX,NY)]) +
 						        yvort[P3(ix,iy,iz,NX,NY)] * dyi * (wbuffer[P3(ix,iy+1,iz,NX,NY)] - wbuffer[P3(ix,iy-1,iz,NX,NY)])) ;
@@ -1402,7 +1406,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(i,0,k,NX,NY)] = 
 				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,coeff,dyi)
 			for(iz=0; iz<NZ; iz++)
 			{
 				coeff = 1000.0 * 9.81 / (th0[iz]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
@@ -1410,7 +1414,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				{
 					for(ix=0; ix<NX; ix++)
 					{
-						dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+						dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
 							coeff * dyi * (thrhopert[P3(ix,iy+1,iz,NX,NY)] - thrhopert[P3(ix,iy-1,iz,NX,NY)]) ;
 					}
@@ -1431,7 +1435,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(0,iy,iz,NX,NY)] = 
 				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,coeff,dxi)
 			for(iz=0; iz<NZ; iz++)
 			{
 				coeff = 1000.0 * 9.81 / (th0[iz]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
@@ -1439,7 +1443,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				{
 					for(ix=1; ix<NX-1; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
 							-coeff * dxi * (thrhopert[P3(ix+1,iy,iz,NX,NY)] - thrhopert[P3(ix-1,iy,iz,NX,NY)]) ;
 					}
@@ -1459,15 +1463,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,iy,0,NX,NY)] = 
 				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dzi,dxi)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
 				for(iy=0; iy<NY; iy++)
 				{
 					for(ix=1; ix<NX-1; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] = -1000.0 * yvort[P3(ix,iy,iz,NX,NY)]*(dxi*(ubuffer[P3(ix+1,iy,iz,NX,NY)]-ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
 												dzi*(wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]));
 					}
@@ -1487,15 +1491,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,iy,0,NX,NY)] = 
 				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dxi,dzi)
 			for(iz=1; iz<NZ; iz++)
 			{
-				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
 				for(iy=0; iy<NY; iy++)
 				{
 					for(ix=1; ix<NX-1; ix++)
 					{
-						dxi=1.0/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
 						buffer[P3(ix,iy,iz,NX,NY)] = 1000.0 * (xvort[P3(ix,iy,iz,NX,NY)]*dxi*(vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix+1,iy,iz,NX,NY)]) +
 										    zvort[P3(ix,iy,iz,NX,NY)]*dzi*(vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]));
 					}
@@ -1515,13 +1519,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,iy,0,NX,NY)] = 
 				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
 						buffer[P3(ix,iy,iz,NX,NY)] = -1000.0 * xvort[P3(ix,iy,iz,NX,NY)]*(dyi*(vbuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]) +
@@ -1543,13 +1547,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				buffer[P3(ix,iy,0,NX,NY)] = 
 				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
 
-#pragma omp parallel for private(ix,iy,iz)
+#pragma omp parallel for private(ix,iy,iz,dyi,dzi)
 			for(iz=1; iz<NZ-1; iz++)
 			{
-				dzi=1.0/(zh[iz-Z0+1]-zh[iz-Z0-1]);
+				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
 				for(iy=1; iy<NY-1; iy++)
 				{
-					dyi=1.0/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
+					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
 					for(ix=0; ix<NX; ix++)
 					{
 						buffer[P3(ix,iy,ix,NX,NY)] = 1000.0 * (yvort[P3(ix,iy,ix,NX,NY)]*dyi*(ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,ix,NX,NY)]) +
@@ -1693,6 +1697,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			writeptr = buf0;
 		}
+		//ORF for some reason we still show lots of threads humming
+		//when doing serial stuff here, try this
+		omp_set_num_threads(1);
 dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
