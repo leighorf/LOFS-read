@@ -1,4 +1,5 @@
-/* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
+/\
+							* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
  * to other perhaps more useful formats
  *
  * Big rewrite June 2011. All top-level conversion code in one file, makes
@@ -362,8 +363,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float rv = 461.5;
 	float rd = 287.04;
 	float reps;
-
-	int nthreads_start;
 
 	reps = rv/rd;
 
@@ -949,6 +948,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"rotvorty")) {u_rh=w_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"rotvortz")) {u_rh=v_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"rotvortmag")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"roheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"nroheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"vorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"nvorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"isquared")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
@@ -1063,8 +1066,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
 // derivatives of these variables since they have already been interpolated to the scalar grid.
 
-	nthreads_start=omp_get_num_threads();
-	printf("Using %i threads.\n",nthreads_start);
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
@@ -1072,13 +1073,17 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 
 
-/************************** BEGINNING OF ROT VORT BITCHES ************************/
-		if(!strcmp(varname[ivar],"rotvortmag"))
+/************************** BEGINNING OF ROT VORT STUFF ************************/
+		if(!strcmp(varname[ivar],"rotvortmag")||!strcmp(varname[ivar],"roheldens")||!strcmp(varname[ivar],"nroheldens"))
 		{
 			float sign,a1,a2,b1,b2,c1,c2;
-			float rvx,rvy,rvz,rvmag;
+			float rvx,rvy,rvz,rotvortmag,roheldens,nroheldens,rhnorm,windmag;
+			int do_rotvortmag=0,do_roheldens=0,do_nroheldens=0;
+			if(!strcmp(varname[ivar],"rotvortmag"))do_rotvortmag=1;
+			if(!strcmp(varname[ivar],"roheldens"))do_roheldens=1;
+			if(!strcmp(varname[ivar],"nroheldens"))do_nroheldens=1;
 			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,dudz,dwdx,dvdx,dudy,a1,a2,b1,b2,c1,c2,rvx,rvy,rvz,rvmag,sign)
+#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,dudz,dwdx,dvdx,dudy,a1,a2,b1,b2,c1,c2,rvx,rvy,rvz,rotvortmag,roheldens,nroheldens,windmag,rhnorm,sign)
 			for(iz=1; iz<NZ-1; iz++)
 			{
 				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
@@ -1117,8 +1122,27 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 						if (c1>c2) rvz=sqrt(c1-c2)*sign;
 
-						rvmag=sqrt(rvx*rvx+rvy*rvy+rvz*rvz);
-						buffer[P3(ix,iy,iz,NX,NY)] = rvmag;
+						rotvortmag=sqrt(rvx*rvx+rvy*rvy+rvz*rvz);
+						roheldens=ubuffer[P3(ix,iy,iz,NX,NY)]*rvx+vbuffer[P3(ix,iy,iz,NX,NY)]*rvy+wbuffer[P3(ix,iy,iz,NX,NY)]*rvz;
+						windmag=sqrt(
+								(ubuffer[P3(ix,iy,iz,NX,NY)]*ubuffer[P3(ix,iy,iz,NX,NY)])+
+								(vbuffer[P3(ix,iy,iz,NX,NY)]*vbuffer[P3(ix,iy,iz,NX,NY)])+
+								(wbuffer[P3(ix,iy,iz,NX,NY)]*wbuffer[P3(ix,iy,iz,NX,NY)])
+								);
+						rhnorm=windmag*rotvortmag;
+						if(do_rotvortmag)
+						{
+							buffer[P3(ix,iy,iz,NX,NY)] = rotvortmag;
+						}
+						if(do_roheldens)
+						{
+							buffer[P3(ix,iy,iz,NX,NY)] = roheldens;
+						}
+						if(do_nroheldens)
+						{
+							nroheldens=(rotvortmag > 1e-10 && windmag >1e-1)? roheldens/rhnorm : 0.0;
+							buffer[P3(ix,iy,iz,NX,NY)] = nroheldens;
+						}
 					}
 				}
 			}
@@ -1205,12 +1229,18 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"isquared"))
+		else if(!strcmp(varname[ivar],"isquared")||!strcmp(varname[ivar],"vorheldens")||!strcmp(varname[ivar],"nvorheldens"))
 		{
 			float sign,c1,c2;
 			float term[12],isquared;
+			float vcurvx,vcurvy,vcurvz,vcurvmag,vorheldens,nvorheldens,csum,windmag;
+			int do_isquared=0,do_vorheldens=0,do_nvorheldens=0,no_thresh;
+			if(!strcmp(varname[ivar],"isquared"))do_isquared=1;
+			if(!strcmp(varname[ivar],"vorheldens"))do_vorheldens=1;
+			if(!strcmp(varname[ivar],"nvorheldens"))do_nvorheldens=1;
 			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(i,ix,iy,iz,term,dzi,dyi,dxi,dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz,isquared)
+#pragma omp parallel for private(i,ix,iy,iz,no_thresh,term,dzi,dyi,dxi,dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz,\
+							csum,windmag,vcurvx,vcurvy,vcurvz,vcurvmag,vorheldens,nvorheldens,isquared)
 			for(iz=1; iz<NZ-1; iz++)
 			{
 				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
@@ -1246,16 +1276,47 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 						term[10] = dudx;      term[10]*=term[10]*0.25*(-1.0);
 						term[11] = dvdy;      term[11]*=term[11]*0.25*(-1.0);
 
-						isquared = 0.0; for (i=0;i<12;i++) isquared += term[i];
+						if(do_isquared)
+						{
+							isquared = 0.0; for (i=0;i<12;i++) isquared += term[i];
+							buffer[P3(ix,iy,iz,NX,NY)]=isquared;
+						}
 
-						buffer[P3(ix,iy,iz,NX,NY)]=isquared;
+						if(do_vorheldens||do_nvorheldens)
+						{
+							csum = term[0]+term[1]+term[2]+term[3]; sign = (term[0]<0.0)?-1.0:1.0;
+							vcurvx = (csum < 0)? 0.0 : sqrt(csum)*sign;
+
+							csum = term[4]+term[5]+term[6]+term[7]; sign = (term[4]<0.0)?-1.0:1.0;
+							vcurvy = (csum < 0)? 0.0 : sqrt(csum)*sign;
+
+							csum = term[8]+term[9]+term[10]+term[11]; sign = (term[8]<0.0)?-1.0:1.0;
+							vcurvz = (csum < 0)? 0.0 : sqrt(csum)*sign;
+
+							vcurvmag=sqrt(vcurvx*vcurvx+vcurvy*vcurvy+vcurvz*vcurvz);
+
+							windmag=sqrt(
+								(ubuffer[P3(ix,iy,iz,NX,NY)]*ubuffer[P3(ix,iy,iz,NX,NY)])+
+								(vbuffer[P3(ix,iy,iz,NX,NY)]*vbuffer[P3(ix,iy,iz,NX,NY)])+
+								(wbuffer[P3(ix,iy,iz,NX,NY)]*wbuffer[P3(ix,iy,iz,NX,NY)])
+									);
+
+							no_thresh=(vcurvmag<0.001||windmag<0.01);
+
+							vorheldens = no_thresh?0.0:
+								(ubuffer[P3(ix,iy,iz,NX,NY)]*vcurvx+
+								 vbuffer[P3(ix,iy,iz,NX,NY)]*vcurvy+
+								 wbuffer[P3(ix,iy,iz,NX,NY)]*vcurvz);
+								
+							buffer[P3(ix,iy,iz,NX,NY)]= do_vorheldens?vorheldens:no_thresh?0.0:vorheldens/(windmag*vcurvmag);
+						}
 					}
 				}
 			}
 			writeptr = buffer;
 		}
 
-/************************** END OF ROT VORT BITCHES ************************/
+/************************** END OF ROT VORT STUFF ************************/
 
 		else if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
@@ -1697,9 +1758,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			writeptr = buf0;
 		}
-		//ORF for some reason we still show lots of threads humming
-		//when doing serial stuff here, try this
-		omp_set_num_threads(1);
 dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
