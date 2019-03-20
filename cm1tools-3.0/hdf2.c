@@ -1,5 +1,4 @@
-/\
-							* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
+/* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
  * to other perhaps more useful formats
  *
  * Big rewrite June 2011. All top-level conversion code in one file, makes
