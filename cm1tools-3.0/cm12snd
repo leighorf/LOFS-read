@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+
+
+import numpy as np
+import argparse
+from datetime import datetime
+
+
+c1 = 0.0498646455 ; c2 = 2.4082965 ; c3 = 7.07475
+c4 = 38.9114 ; c5 = 0.0915 ; c6 = 1.2035
+eps = 0.62197
+reps = 1./eps
+ZEROCNK = 273.15
+ROCP = 0.28571426
+G=9.81
+cp = 1005.7
+rd = 287.04
+
+
+def temp_at_mixrat(w, p):
+    '''
+    Returns the temperature (C) of air at the given mixing ratio (g/kg) and
+    pressure (hPa)
+    Parameters
+    ----------
+    w : number, numpy array
+        Mixing Ratio (g/kg)
+    p : number, numpy array
+        Pressure (hPa)
+    Returns
+    -------
+    Temperature (C) of air at given mixing ratio and pressure
+    '''
+    x = np.log10(w * p / (622. + w))
+    x = (np.power(10.,((c1 * x) + c2)) - c3 + (c4 * np.power((np.power(10,(c5 * x)) - c6),2))) - ZEROCNK
+    return x
+
+def theta(p, t, p2=1000.):
+    '''
+    Returns the potential temperature (K) of a parcel.
+    Parameters
+    ----------
+    p : number, numpy array
+        The pressure of the parcel (hPa)
+    t : number, numpy array
+        Temperature of the parcel (K)
+    p2 : number, numpy array (default 1000.)
+        Reference pressure level (hPa)
+    Returns
+    -------
+    Potential temperature (K)
+    '''
+    return t * np.power((p2 / p),ROCP)
+
+
+
+
+def cm1_to_arrays(filename):
+    file = open(filename, 'r')
+    lines = file.readlines()
+    sfc_pres = 0
+    sfc_theta = 0
+    sfc_qv = 0
+    p00 = 1000.
+
+    pres = []
+    pi = []
+    hght = []
+    theta = []
+    thetav = []
+    tmpk = []
+    qv = []
+    u = []
+    v = []
+
+    nline = 0
+    for line in lines:
+        line = line.strip('\n')
+        line = line.split(" ")
+        if nline == 0:
+            sfc_pres = float(line[0])
+            sfc_theta = float(line[1])
+            sfc_qv = float(line[2])
+        else:
+            hght.append(float(line[0]))
+            theta.append(float(line[1]))
+            qv.append(float(line[2]))
+            u.append(float(line[3]))
+            v.append(float(line[4]))
+        nline += 1
+
+    pi_sfc = np.power((sfc_pres/p00), ROCP)
+    pi.append(pi_sfc)
+    thv_sfc = sfc_theta*(1.0+sfc_qv/1000.*reps)/(1.0+sfc_qv/1000.)
+    tsurf  = sfc_theta * pi_sfc
+
+
+    hght.insert(0, 0.)
+    #pres.insert(0, sfc_pres)
+    theta.insert(0, sfc_theta)
+    thetav.insert(0, thv_sfc)
+    qv.insert(0, sfc_qv)
+    u.insert(0, 0.)
+    v.insert(0, 0.)
+    u = np.array(u) * 1.94384449 ## convert to kts from ms
+    v = np.array(v) * 1.94384449 ## convert to kts from ms
+
+
+    qv = np.array(qv) / 1000. ## put in g/g
+    thetav = np.array(theta)*(1.0+reps*qv)/(1.0+qv)
+    hght = np.array(hght)
+
+    for k in range(1, len(hght)):
+        pi.append( pi[k-1]-G*(hght[k]-hght[k-1]) / (cp*0.5*(thetav[k]+thetav[k-1])) )
+    pi = np.array(pi)
+    for k in range(len(hght)):
+        pres.append(p00*(pi[k]**(cp/rd)))
+        tmpk.append(theta[k]*pi[k])
+
+    tmpc = np.array(tmpk) - 273.15
+    pres = np.array(pres)
+    dwpc = temp_at_mixrat(qv*1000., pres) ## qv in g/kg for this
+    wspd = np.sqrt(u**2 + v**2)
+    wdir = np.degrees(np.arctan2(-u, -v))
+    wdir[wdir < 0] += 360
+    
+    return {'pres': pres, 'hght': hght, 'tmpc': tmpc, 'dwpc': dwpc, 'wdir': wdir, 'wspd': wspd}
+
+def write_snd(file_name, data):
+    snd_file = open(file_name, 'w')
+
+    snd_loc = ("****")
+
+    now = datetime.utcnow()
+    snd_file.write("%TITLE%\n")
+    snd_file.write("%s   %s\n" % (snd_loc, now.strftime("%y%m%d/%H%M")))
+    snd_file.write("   LEVEL       HGHT       TEMP       DWPT       WDIR       WSPD\n")
+    snd_file.write("-------------------------------------------------------------------\n")
+    snd_file.write("%RAW%\n")
+    for idx in range(data['pres'].shape[0]):
+        str = ""
+        for col in ['pres', 'hght', 'tmpc', 'dwpc', 'wdir', 'wspd']:
+            str += "%8.2f,  " % data[col][idx]
+
+        snd_file.write(str[:-3] + "\n")
+    snd_file.write("%END%\n")
+    snd_file.close()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--snd', action='store', dest='ofile', help='Output sounding file path for SHARPpy file', default=None, required=True)
+    parser.add_argument('--cm1', action='store', dest='ifile', help='The input path for the CM1 sounding format file', default=None, required=True)
+    args = parser.parse_args()
+    data = cm1_to_arrays(args.ifile)
+    write_snd(args.ofile, data)
+
+
