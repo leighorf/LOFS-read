@@ -77,6 +77,8 @@ def cm1_to_arrays(filename):
     for line in lines:
         line = line.strip('\n')
         line = line.split(" ")
+        ## filter out blank strings
+        line = [x for x in line if x]
         if nline == 0:
             sfc_pres = float(line[0])
             sfc_theta = float(line[1])
