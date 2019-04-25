@@ -47,9 +47,7 @@ int yes2d = 0;
 int gzip = 0;
 int use_box_offset = 0;
 int filetype = NC_NETCDF4;
-int saved_staggered_mesh_params = 0; //NOTE! For now, pass '-xyf' to cmd line if you have staggered mesh data (xf, yf, zf)
 int nthreads = 1;
-
 
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
@@ -316,7 +314,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float *writeptr;
 	float *dum0,*dumarray;
 	float *qc,*qi,*qs;
-	float *th0,*qv0;
+	float *u0,*v0,*p0,*th0,*qv0;
 	float *thrhopert;
 	double timearray[1];
 
@@ -433,12 +431,14 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	zf = (float *)malloc(nz * sizeof(float));
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
+
 /* THIS NEEDS TO BE TESTED IN CM1 FIRST... we haven't been saving these */
-	if (saved_staggered_mesh_params)
-	{
-	 	get1dfloat (f_id,(char *)"mesh/xffull",xffull,0,nx+1);
-		get1dfloat (f_id,(char *)"mesh/yffull",yffull,0,ny+1);
-	}
+
+	/* NOTE FROM FUTURE: IT WORKS BEYOTCHES. REMOVING ALL CONDITIONAL
+	 * CRAPOLA. No more instances of "saved_staggered_mesh_params" */
+
+	get1dfloat (f_id,(char *)"mesh/xffull",xffull,0,nx+1);
+	get1dfloat (f_id,(char *)"mesh/yffull",yffull,0,ny+1);
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
@@ -455,11 +455,8 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
 	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];     //NEED TO READ REAL ZF
 
-	if (saved_staggered_mesh_params)
-	{
-		for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
-		for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
-	}
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
 
@@ -490,21 +487,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_def_dim (ncid, "xh", NX, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", NY, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", NZ, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	if (saved_staggered_mesh_params)
-	{
-		status = nc_def_dim (ncid, "xf", NX, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
-		status = nc_def_dim (ncid, "yf", NY, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	}
+	status = nc_def_dim (ncid, "xf", NX, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
+	status = nc_def_dim (ncid, "yf", NY, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zf", NZ, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yh", NC_FLOAT, 1, &nyh_dimid, &yhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zh", NC_FLOAT, 1, &nzh_dimid, &zhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	if (saved_staggered_mesh_params)
-	{
-		status = nc_def_var (ncid, "xf", NC_FLOAT, 1, &nxf_dimid, &xfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-		status = nc_def_var (ncid, "yf", NC_FLOAT, 1, &nyf_dimid, &yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	}
+	status = nc_def_var (ncid, "xf", NC_FLOAT, 1, &nxf_dimid, &xfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "yf", NC_FLOAT, 1, &nyf_dimid, &yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "zf", NC_FLOAT, 1, &nzf_dimid, &zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "time", NC_DOUBLE, 1, &time_dimid, &timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_put_att_text(ncid, xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -516,11 +507,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_put_att_text(ncid, zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	if (saved_staggered_mesh_params)
-	{
-		status = nc_put_att_text(ncid, xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-		status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	}
+	status = nc_put_att_text(ncid, xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(ncid, yfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, zfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, timeid, "units", strlen("s"), "s");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(ncid, timeid, "axis", strlen("T"), "T");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -554,7 +542,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	{
 		if(!strcmp(varname[ivar],"u"))
 		{
-			if(!saved_staggered_mesh_params) ERROR_STOP("We are asking for u but did not save xf mesh array, sorry!");
 			dims[0] = time_dimid;
 			dims[1] = nzh_dimid;
 			dims[2] = nyh_dimid;
@@ -562,7 +549,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if (!strcmp(varname[ivar],"v"))
 		{
-			if(!saved_staggered_mesh_params) ERROR_STOP("We are asking for v but did not save yf mesh array, sorry!");
 			dims[0] = time_dimid;
 			dims[1] = nzh_dimid;
 			dims[2] = nyf_dimid;
@@ -918,11 +904,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,zhid,zhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	if (saved_staggered_mesh_params)
-	{
-		status = nc_put_var_float (ncid,xfid,xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-		status = nc_put_var_float (ncid,yfid,yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	}
+	status = nc_put_var_float (ncid,xfid,xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,yfid,yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (ncid,zfid,zfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_int (ncid,x0id,&X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,y0id,&Y0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
@@ -1906,7 +1889,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_XYF, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
+		OPT_DEBUG, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1920,7 +1903,6 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
-		{"xyf",      optional_argument, 0, OPT_XYF},
 		{"yes2d",    optional_argument, 0, OPT_YES2D},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
@@ -2004,10 +1986,6 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_DEBUG:
 				debug=1;
-				optcount++;
-				break;
-			case OPT_XYF:
-				saved_staggered_mesh_params=1;
 				optcount++;
 				break;
 			case OPT_YES2D:
