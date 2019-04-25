@@ -27,7 +27,7 @@ echo "Installing NetCDF C++ and Fortran APIs"
 spack install netcdf-cxx4@4.3.0 ^hdf5@1.10.3+cxx~debug+fortran+hl+mpi+pic+shared+szip~threadsafe
 spack install netcdf-fortran@4.4.4 ^hdf5@1.10.3+cxx~debug+fortran+hl+mpi+pic+shared+szip~threadsafe
 echo "Installing ZFP Plugin for HDF5"
-spack install h5z-zfp@0.8.0+fortran ^hdf5@1.10.3+cxx~debug+fortran+hl+mpi+pic+shared+szip~threadsafe
+spack install h5z-zfp@develop+fortran ^hdf5@1.10.3+cxx~debug+fortran+hl+mpi+pic+shared+szip~threadsafe
 
 
 echo "Loading module files"
@@ -35,9 +35,10 @@ spack load hdf5
 spack load netcdf
 spack load netcdf-fortran
 spack load netcdf-cxx4
-spack load h5z-zfp
-spack load zfp
+#spack load h5z-zfp
+#spack load zfp
 spack load openmpi
 
 echo "Building LOFS"
+make -f Makefile.spack all
 make -f Makefile.spack install
