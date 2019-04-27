@@ -314,7 +314,8 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float *writeptr;
 	float *dum0,*dumarray;
 	float *qc,*qi,*qs;
-	float *u0,*v0,*p0,*th0,*qv0;
+	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
+	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
 	float *thrhopert;
 	double timearray[1];
 
@@ -427,6 +428,10 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	yffull = (float *)malloc((ny+1) * sizeof(float));
 	th0 = (float *)malloc(nz * sizeof(float));
 	qv0 = (float *)malloc(nz * sizeof(float));
+	u0 = (float *)malloc(nz * sizeof(float));
+	v0 = (float *)malloc(nz * sizeof(float));
+	pres0 = (float *)malloc(nz * sizeof(float));
+	pi0 = (float *)malloc(nz * sizeof(float));
 	zh = (float *)malloc(nz * sizeof(float));
 	zf = (float *)malloc(nz * sizeof(float));
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
@@ -443,6 +448,10 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
 	get1dfloat (f_id,(char *)"basestate/th0",th0,0,nz);
+	get1dfloat (f_id,(char *)"basestate/u0",u0,0,nz);
+	get1dfloat (f_id,(char *)"basestate/v0",v0,0,nz);
+	get1dfloat (f_id,(char *)"basestate/pres0",pres0,0,nz);
+	get1dfloat (f_id,(char *)"basestate/pi0",pi0,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 
 	xhout = (float *)malloc(NX * sizeof(float));
@@ -891,15 +900,28 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			ERROR_STOP("nc_def_var failed");
 		}
 //		ONLY DO THIS if I actually have missing values,
-//		it really derades performance of Vapor (and
-//		pehraps other software)
+//		it really degrades performance of Vapor (and pehraps other software)
 //		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
 //		unfortunately this really slows things down. WE NEED ZFP HERE DAMMIT (although that would mean uncompressing and recompressing ZFP data)
 		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
-	status = nc_enddef (ncid);
 
-	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
+// But wait! There's more! Let's actually do the world a favor and save
+// the sounding data into the netCDF files mmmmkay???
+	status = nc_def_var (ncid, "u0", NC_FLOAT, 1, &nzh_dimid, &u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "v0", NC_FLOAT, 1, &nzh_dimid, &v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "th0", NC_FLOAT, 1, &nzh_dimid, &th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "pres0", NC_FLOAT, 1, &nzh_dimid, &pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "pi0", NC_FLOAT, 1, &nzh_dimid, &pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	status = nc_def_var (ncid, "qv0", NC_FLOAT, 1, &nzh_dimid, &qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+
+	status = nc_enddef (ncid); if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
+
+
+// STOPPED HERE. IT COMPILES. NEED TO TEST.
+
+// WE HAVE ENDED OUR FREAKING DEFINITIONS
+// NOW LET'S DO A BUNCH OF ACTUAL CRAP
 
       status = nc_put_var_float (ncid,xhid,xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_float (ncid,yhid,yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
@@ -907,6 +929,12 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_put_var_float (ncid,xfid,xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (ncid,yfid,yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (ncid,zfid,zfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,u0id,u0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,v0id,v0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,th0id,th0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,pres0id,pres0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,pi0id,pi0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (ncid,qv0id,qv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
       status = nc_put_var_int (ncid,x0id,&X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,y0id,&Y0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
       status = nc_put_var_int (ncid,x1id,&X1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
@@ -1048,6 +1076,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
 // derivatives of these variables since they have already been interpolated to the scalar grid.
 
+//dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
