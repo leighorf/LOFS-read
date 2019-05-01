@@ -98,36 +98,24 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 // Make swaths a "special" varname. If "swaths" is chosen, nz is
 // repurposed as being the number of swaths... we should have our
-// mallocs done so we don't have to worry about doing that in here. Need
-// a new "get_nswaths" function that we call from hdf2c. Iterate over
-// the new 2D/swaths and 2D/static variables, and count them.
-//
-// For now, it's an all or nothing deal - all the swaths or none of
-// them. Could be more fine-grained later.
+// mallocs done so we don't have to worry about doing that in here. For
+// now, it's an all or nothing deal - all the swaths or none of them.
+// Could be more fine-grained later.
 //
 // I feel a refactoring coming on. For one, for a given time we can
-// cache all the metadata - and implicit to LOFS you could chose any
-// time and you'd have all the metadata for all the times. So some sort
-// of caching mechanism, either using global variables or files.
+// cache all the metadata (everything in the hdf structure) - and
+// implicit to LOFS you could chose any time and you'd have all the
+// metadata for all the times. So some sort of caching mechanism, either
+// using global variables or files.
 //
-// Also once I get the swath stuff goign it's time to create a data
-// structure for all the metadata stuff that is passed redundantly
+// Also now that I've got the swath stuff working it's time to create a
+// data structure for all the metadata stuff that is passed redundantly
 // to this routine - reduce the number of arguments by a lot. This
 // structure should perhaps be world readable so we don't need to keep
 // passing it to routines.
 //
-// Actually, stuff no change to the API. I'm changing it anyway, so I
-// should just have swaths be neatly incorporated into the next version,
-// either as a varname or argument. Down the road I should make it
-// possible to just refernece a swath or 2D variable by name since they
-// are all unique - however this requires knowing the var names which
-// are long in order to be sufficiently descriptive (WTF is shs, for
-// instance -"surface 5km helicity swath"??).
-//
-// We need to be sure the floating point buffer is big enough to fit the
-// swath data... remember we are stacking these all into 1 3D array.
-// Remember, this routine is called ONCE PER 3D VAR (or once per 2D
-// bundle).
+// To avoid accidental weirdness, I make a buffer exclusively for the 3D
+// swath stack rather than reusing the 3D one
 
 void
 read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
@@ -188,9 +176,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	} HDFstruct;
 
 	HDFstruct **hdf;
-
-
-
 
 	gnx = gxf - gx0 + 1;
 	gny = gyf - gy0 + 1;
@@ -412,6 +397,12 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		}
 	}
 
+	/* We need to split the above part of the code off and only call it
+	 * once while using this program. Currently we recalculate this
+	 * every time when it's not necessary; further we should shove all
+	 * the metadata goodness into a structure... maybe just add to the
+	 * current HDFStruct... and make it a global structure (TODO)) */
+
 /* Now we have collected all of our array index values delineating node
 relative, domain relative, and retrieved-array relative positions. Need
 to read data from each node file, assemble retrieved array and send back
@@ -478,6 +469,10 @@ really. See P3 macro in lofs-read.h */
 	 * and having all my shit rely on the existence of that file...
 	 * but I'm not quite there yet...
 	 *
+	 * Note from the future (2019-05-01): We haven't had problems with the floating
+	 * point stuff and we've been saving data as frequently as every
+	 * 1/6 second. So maybe we are cool.
+	 *
 	 * */
 
 
@@ -485,7 +480,8 @@ really. See P3 macro in lofs-read.h */
  * files in the same directory, we just do this once, in the first pass
  * through.
  *
- * 2019-04-30 Here we also collect all of the new 2D snapshot/swath names and the total number */
+ * 2019-04-30 Here we also collect all of the new 2D snapshot/swath names and the total number.
+ * This is now stored in the LOFS HDF5 files */
 
 			if (iynode==fy0 && ixnode==fx0)
 			{
@@ -522,24 +518,31 @@ really. See P3 macro in lofs-read.h */
 
 				timeindex = i;
 
-				/* We are still in the "only do once" part of the 2d loop */
+				/* 2019-05-01. New swath code.
 
-				/* Get our 2d information (number, names) and memoryspace worked out */
+				We are still in the "only do once" part of the 2d loop. We must get
+				our 2d information (number, names) and memoryspace worked out . THEN
+				break from the "only do once" part and do the rest, still will have
+				to check if doing 2d
+				*/
 
-				/* THEN break from the "only do once" part and do the rest, still will have to check if doing 2d */
-
-				if (!strcmp(varname,"swaths"))
+				if (!strcmp(varname,"swaths")) //"swaths" is a special variable name here, kind of kludgey...
 				{
-					n2d = 0;
+					n2d = 0; // number of 2D swaths
 					H5Giterate(file_id, "/00000/2D/static",NULL,twod_first_pass,NULL);
-					n2dstatic = n2d;
+					n2dstatic = n2d; // number of "static" swaths (the stuff I added like dbz_500m)
 					H5Giterate(file_id, "/00000/2D/swath",NULL,twod_first_pass,NULL);
-					n2dswath = n2d - n2dstatic;
+					n2dswath = n2d - n2dstatic; // number of actual swaths (George's, and the bunch I added)
 
 //					printf("n2dstatic = %i n2dswath = %i n2d = %i\n",n2dstatic,n2dswath,n2d);
 
 					twodvarname = (const char **)malloc(n2d*sizeof(char *));
 
+					// Our memoryspace is a 3D array of
+					// dimension [n2d][gny][gnx]
+					// n2d = number of swaths
+					// gny, gnx is as it has always been, see
+					// above "four coordinate systems" comment
 					rank=3;
 					count3[0]=n2d;count3[1]=gny;count3[2]=gnx;
 					swath_memoryspace_id = H5Screate_simple(rank,count3,NULL);
@@ -553,9 +556,13 @@ really. See P3 macro in lofs-read.h */
 					H5Giterate(file_id, "/00000/2D/static",NULL,twod_second_pass,NULL);
 					H5Giterate(file_id, "/00000/2D/swath",NULL,twod_second_pass,NULL);
 
-//					for (i2d=0; i2d<n2d; i2d++) printf("First iterate: %s\n",twodvarname[i2d]);
+					/* Unlike with hdf2.c, we iterate to only get
+					 * a list of the swath variable names, not
+					 * set up an id array because HDF5 has a
+					 * different way... we'll get access to
+					 * the data a bit further down */
 				}
-			}
+			} // We really could just pull this shit out of the 2D loop
 
 			/* Now we are in our 2d loop, after 1st pass stuff above */
 
@@ -595,15 +602,12 @@ really. See P3 macro in lofs-read.h */
 						printf ("%c",alph[letter]); fflush (stdout);
 					}
 
-					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
-					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
-					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("FUCK YOU");
-//					printf("DEBUG: %i %i %s gf[0]: %f\n",k,i2d,twodvarname[i2d],gf[i2d*count3[1]*count3[2]]);
+					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
+					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("h5dread");
 					H5Dclose (swath_dataset_id);
 					H5Sclose (swath_dataspace_id);
 				}
-
-//				printf("Made it to the end of static 2D swath arrays\n");
 
 				for (i2d = n2dstatic; i2d < n2d; i2d++)
 				{
@@ -620,11 +624,10 @@ really. See P3 macro in lofs-read.h */
 					if (rank != 2) ERROR_STOP("Rank has to equal 2 - something hideously fucked up, goodbye!");
 
 					offset_out3[0] = i2d;
-//					printf("DEBUG0: k=%i i2d=%i twodvarname=%s\n",k,i2d,twodvarname[i2d]);
 
-					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
-					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
-					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("FUCK YOU");
+					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
+					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("h5dread");
 					H5Dclose (swath_dataset_id);
 					H5Sclose (swath_dataspace_id);
 				}
@@ -681,8 +684,6 @@ really. See P3 macro in lofs-read.h */
 						ERROR_STOP("H5Dread failed");
 				}
 				
-				//ORF TEST
-				//printf("%f\n",gf[0]);
 				H5Dclose (dataset_id);
 				H5Sclose (dataspace_id);
 			}

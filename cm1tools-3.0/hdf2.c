@@ -134,13 +134,13 @@ int main(int argc, char *argv[])
 	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
 	if(use_box_offset)
 	{
-		//Often I want to subset from already subsetted LOFS data
-		//to make a netCDF file. Easiest way is to first make a full
-		//subsetted netcdf file then use ncview to get the i,j
-		//indices for the subset (rather than having to do the math
-		//by hand to find the new indices; this allows that with the
-		//--offset option
-		//Implicit: X0,X1,Y0,Y1 specified on cmd line
+//Often I want to subset from already subsetted LOFS data
+//to make a netCDF file. Easiest way is to first make a full
+//subsetted netcdf file then use ncview to get the i,j
+//indices for the subset (rather than having to do the math
+//by hand to find the new indices; this allows that with the
+//--offset option
+//Implicit: X0,X1,Y0,Y1 specified on cmd line
 		X0+=saved_X0;
 		X1+=saved_X0;
 		Y0+=saved_Y0;
@@ -423,7 +423,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NZ = Z1 - Z0 + 1;
 
 
-/* These are standards for on the scalar mesh and requesting 3D data */
+/* These are standard for on the scalar mesh and requesting 3D data */
 
 	start[0] = 0;
 	start[1] = 0;
@@ -435,7 +435,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	edges[3] = NX;
 
 //For 2D surface slices and swaths/static slices
-//See d2 definition and how itis used in iteration function
+//See d2 definition and how it is used in iteration function
 	s2[0] = 0;
 	s2[1] = 0;
 	s2[2] = 0;
@@ -594,11 +594,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		H5Giterate(f_id, "/00000/2D/static",NULL,twod_second_pass_hdf2nc,NULL);
 		H5Giterate(f_id, "/00000/2D/swath",NULL,twod_second_pass_hdf2nc,NULL);
 
-		/* And, like magic, we have populated our netcdf index arrays for all the swath slices */
+		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
+		/* u v and w live on their own mesh (Arakawa C grid)*/
+
 		if(!strcmp(varname[ivar],"u"))
 		{
 			dims[0] = time_dimid;
@@ -620,7 +622,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			dims[2] = nyh_dimid;
 			dims[3] = nxh_dimid;
 		}
-		else
+		else /* scalar grid */
 		{
 			dims[0] = time_dimid;
 			dims[1] = nzh_dimid;
@@ -628,8 +630,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			dims[3] = nxh_dimid;
 		}
 
-//ORF I'm now going to create truly 2D files, otherwise
-//VisIt is dumb
+// I'm now going to create truly 2D files when we ask for them rather
+//than putting them into a 3D container as I have done in the past
 
 		if(X0==X1)
 		{
@@ -677,7 +679,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
-
 
 // Here is where we just go through the different CM1 variable names
 // that George (and I) use, adding variable attributes merrily. C really
@@ -943,16 +944,29 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			status = nc_put_att_text(ncid, varnameid[ivar], "units", strlen("m/s"), "m/s");
 			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		}
-// UGH FINALLY OVER
-//		ONLY DO THIS if I actually have missing values,
-//		it really degrades performance of Vapor (and pehraps other software)
-//		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
-//		unfortunately this really slows things down. WE NEED ZFP HERE DAMMIT (although that would mean uncompressing and recompressing ZFP data)
+
+//  UGH FINALLY OVER
+
+//  ONLY DO THIS if I actually have missing values, it really degrades
+//  performance of Vapor (and pehraps other software)
+//
+//  status =  nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
+//
+//  Unfortunately this really slows things down. WE NEED
+//  ZFP HERE DAMMIT (although that would mean uncompressing and
+//  recompressing ZFP data)
+
+
+//  gzip, lowest level, is good for getting something like 2:1 compression with normal use
+//  For large files, you will feel the cost of doing the compression
 		if (gzip) status=nc_def_var_deflate(ncid, varnameid[ivar], 1, 1, 1);
 	}
 
+	//end of looping over variables before nc_enddef
+
 // But wait! There's more! Let's actually do the world a favor and save
 // the sounding data into the netCDF files mmmmkay???
+
 	status = nc_def_var (ncid, "u0", NC_FLOAT, 1, &nzh_dimid, &u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "v0", NC_FLOAT, 1, &nzh_dimid, &v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "th0", NC_FLOAT, 1, &nzh_dimid, &th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -985,8 +999,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
       status = nc_put_var_int (ncid,z1id,&Z1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	timearray[0] = t0;
       status = nc_put_vara_double (ncid,timeid,&timestart,&timecount,timearray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
-
-//	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0;
 
 	/* So we don't read data more than once, flag stuff that we need
 	 * ahead of time (read ahead) */
@@ -1038,12 +1050,15 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // array; plus, not everything supports missing value attributes and my
 // missing value is freaking huge
 
-	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
-	bufsize_gb = 1.0e-9*bufsize;
-	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
-	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
+	if (nvar != 0) // We could be just doing swaths, for instance
+	{
+		bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+		bufsize_gb = 1.0e-9*bufsize;
+		printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+		if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
 
-	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+	}
 
 	//Grab stack o' swaths and blast them home
 	if (do_swaths)
@@ -1058,13 +1073,12 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		for (i2d=0;i2d<n2d;i2d++)
 		{
 			for (iy=0; iy<NY; iy++) for (ix=0; ix<NX; ix++) twodfield[P2(ix,iy,NX)] = twodbuffer[P3(ix,iy,i2d,NX,NY)];
-//			printf("i2d = %i twodvarid[i2d] = %i twodvarname = %s %f\n",i2d,twodvarid[i2d],twodvarname[i2d],twodfield[0]);
 			writeptr = twodfield;
 			status = nc_put_vara_float (ncid, twodvarid[i2d], s2, e2, writeptr);
 		}
 		free(twodbuf0);
 		printf(")\n");
-	}
+	}//So we are all done with swaths.
 	if (yes2d)
 	{
 		printf("\nWorking on surface 2D fields ("); //ORF change thrhopert to thpert here until fix
@@ -1074,7 +1088,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
 		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buf0);
 		printf(")\n");
-	}
+	}//And other 2D fields
 	if (u_rh)
 	{
 		printf("\nAllocating %5.2f GB of memory and buffering uinterp:\n",bufsize_gb);

@@ -1,6 +1,6 @@
 CC = cc
 AR = ar
-CFLAGS = -O3 -fPIC
+CFLAGS = -O2 -fPIC
 #HDF5ZFP=/sw/bw/thg/h5zfp/1.8.18
 #ZFP=/sw/bw/thg/zfp/0.5.0
 #LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP)/lib -lh5zzfp -lzfp
