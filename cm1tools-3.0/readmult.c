@@ -69,6 +69,66 @@ char *replace_str(char *str, char *orig, char *rep)
   return buffer;
 }
 
+//2019-04-30 taken from hdf2d2nc.c - iterate over a HDF group, first
+//pass gets the number of items, second pass gets the variable names
+
+int n2d,n2dstatic,n2dswath,i2d;
+const char **twodvarname;
+
+herr_t twod_first_pass(hid_t loc_id, const char *name, void *opdata)
+{
+    H5G_stat_t statbuf;
+    H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
+    n2d++;
+    return 0;
+}
+
+herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
+{
+    H5G_stat_t statbuf;
+    H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
+    strcpy((char *)twodvarname[i2d],name);
+    i2d++;
+    return 0;
+}
+
+// We now incorporate 2D swaths from 3D files
+//
+// Trick: Don't have to change API here. Instead:
+//
+// Make swaths a "special" varname. If "swaths" is chosen, nz is
+// repurposed as being the number of swaths... we should have our
+// mallocs done so we don't have to worry about doing that in here. Need
+// a new "get_nswaths" function that we call from hdf2c. Iterate over
+// the new 2D/swaths and 2D/static variables, and count them.
+//
+// For now, it's an all or nothing deal - all the swaths or none of
+// them. Could be more fine-grained later.
+//
+// I feel a refactoring coming on. For one, for a given time we can
+// cache all the metadata - and implicit to LOFS you could chose any
+// time and you'd have all the metadata for all the times. So some sort
+// of caching mechanism, either using global variables or files.
+//
+// Also once I get the swath stuff goign it's time to create a data
+// structure for all the metadata stuff that is passed redundantly
+// to this routine - reduce the number of arguments by a lot. This
+// structure should perhaps be world readable so we don't need to keep
+// passing it to routines.
+//
+// Actually, stuff no change to the API. I'm changing it anyway, so I
+// should just have swaths be neatly incorporated into the next version,
+// either as a varname or argument. Down the road I should make it
+// possible to just refernece a swath or 2D variable by name since they
+// are all unique - however this requires knowing the var names which
+// are long in order to be sufficiently descriptive (WTF is shs, for
+// instance -"surface 5km helicity swath"??).
+//
+// We need to be sure the floating point buffer is big enough to fit the
+// swath data... remember we are stacking these all into 1 3D array.
+// Remember, this routine is called ONCE PER 3D VAR (or once per 2D
+// bundle).
+
 void
 read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
 		double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
@@ -83,12 +143,17 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 	char datasetname[100];
 	int numhdf;
 
-	hsize_t count[3];
-	hsize_t offset_in[3],offset_out[3];
+	hsize_t count3[3];
+	hsize_t offset_in3[3],offset_out3[3];
+	hsize_t count2[2];
+	hsize_t offset_in2[2],offset_out2[2];
 	hid_t file_id,dataset_id,dataspace_id,memoryspace_id;
+	hid_t swath_dataset_id,swath_dataspace_id,swath_memoryspace_id, single_swath_memoryspace_id;
 	int status;
 	int numi, numj;
 	int ihdf;
+
+	int ix,iy;
 
 	int gnx, gny, gnz;
 	int fx0=0, fxf=0, fy0=0, fyf=0;	/* file indices */
@@ -364,8 +429,8 @@ really. See P3 macro in lofs-read.h */
 	H5Z_zfp_initialize();
 
 	rank=3;
-	count[0]=gnz;count[1]=gny;count[2]=gnx;
-	status=memoryspace_id = H5Screate_simple(rank,count,NULL);
+	count3[0]=gnz;count3[1]=gny;count3[2]=gnx;
+	status=memoryspace_id = H5Screate_simple(rank,count3,NULL);
 	if (status < 0) ERROR_STOP("H5Screate_simple failed");
 	printf("\n");
 	for (iynode = fy0; iynode <= fyf; iynode++)
@@ -386,6 +451,8 @@ really. See P3 macro in lofs-read.h */
 				exit (-1);
 			}
 			if (dbg) printf("Varname = %s\n",varname);
+
+//			printf("DEBUG: nodefile = %s\n",nodefile[k]);
 
 	/* ORF 2016-12-21
 	 * Because of single precision floating point time variables in
@@ -416,7 +483,9 @@ really. See P3 macro in lofs-read.h */
 
 /* Since our data format requires identical temporal data for all HDF
  * files in the same directory, we just do this once, in the first pass
- * through */
+ * through.
+ *
+ * 2019-04-30 Here we also collect all of the new 2D snapshot/swath names and the total number */
 
 			if (iynode==fy0 && ixnode==fx0)
 			{
@@ -452,81 +521,177 @@ really. See P3 macro in lofs-read.h */
 				 * last time in the file if we don't find our time */
 
 				timeindex = i;
+
+				/* We are still in the "only do once" part of the 2d loop */
+
+				/* Get our 2d information (number, names) and memoryspace worked out */
+
+				/* THEN break from the "only do once" part and do the rest, still will have to check if doing 2d */
+
+				if (!strcmp(varname,"swaths"))
+				{
+					n2d = 0;
+					H5Giterate(file_id, "/00000/2D/static",NULL,twod_first_pass,NULL);
+					n2dstatic = n2d;
+					H5Giterate(file_id, "/00000/2D/swath",NULL,twod_first_pass,NULL);
+					n2dswath = n2d - n2dstatic;
+
+//					printf("n2dstatic = %i n2dswath = %i n2d = %i\n",n2dstatic,n2dswath,n2d);
+
+					twodvarname = (const char **)malloc(n2d*sizeof(char *));
+
+					rank=3;
+					count3[0]=n2d;count3[1]=gny;count3[2]=gnx;
+					swath_memoryspace_id = H5Screate_simple(rank,count3,NULL);
+
+					for (i2d=0; i2d<n2d; i2d++)
+					{
+						twodvarname[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
+					}
+
+					i2d=0;
+					H5Giterate(file_id, "/00000/2D/static",NULL,twod_second_pass,NULL);
+					H5Giterate(file_id, "/00000/2D/swath",NULL,twod_second_pass,NULL);
+
+//					for (i2d=0; i2d<n2d; i2d++) printf("First iterate: %s\n",twodvarname[i2d]);
+				}
 			}
 
+			/* Now we are in our 2d loop, after 1st pass stuff above */
 
-			sprintf(datasetname,"/%05i/3D/%s",timeindex,varname);
-//			sprintf(datasetname,"/%0.7f/3D/%s",dtime,varname);
-			if ((dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
+			if (!strcmp(varname,"swaths"))
 			{
-					fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);
-					ERROR_STOP("H5Dopen failed");
-			}
-
-			dataspace_id = H5Dget_space(dataset_id);
-			rank = H5Sget_simple_extent_ndims(dataspace_id);
-			if (rank == 3)
-			{
-				snx = hdf[k]->sxf - hdf[k]->sx0 + 1; 
-				sny = hdf[k]->syf - hdf[k]->sy0 + 1;
-				snz = gzf - gz0 + 1;
-				offset_in[0] = gz0;
-				offset_in[1] = hdf[k]->sy0;
-				offset_in[2] = hdf[k]->sx0;
-				offset_out[0] = 0; //orf 6/30/10 gz0 was a bug? should always be 0?
-				offset_out[1] = hdf[k]->ay0;
-				offset_out[2] = hdf[k]->ax0;
-				count[0] = snz;
-				count[1] = sny;
-				count[2] = snx;
-			}
-			else if (rank == 2) // I haven't been using this code with 2D data for years...
-			{
-				snz = 1; //really a 2d array but need snz for malloc
 				snx = hdf[k]->sxf - hdf[k]->sx0 + 1;
 				sny = hdf[k]->syf - hdf[k]->sy0 + 1;
-				offset_in[0] = hdf[k]->sy0;
-				offset_in[1] = hdf[k]->sx0;
-				offset_out[0] = hdf[k]->ay0;
-				offset_out[1] = hdf[k]->ax0;
-				count[0] = sny;
-				count[1] = snx;
+				offset_in2[0] = hdf[k]->sy0;
+				offset_in2[1] = hdf[k]->sx0;
+				offset_out3[1] = hdf[k]->ay0;
+				offset_out3[2] = hdf[k]->ax0;
+				count2[0] = sny;
+				count2[1] = snx;
+				count3[0] = 1;
+				count3[1] = sny;
+				count3[2] = snx;
+
+				for (i2d = 0; i2d < n2dstatic; i2d++)
+				{
+					sprintf(datasetname,"/%05i/2D/static/%s",timeindex,twodvarname[i2d]);
+
+					if ((swath_dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
+					{
+							fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);
+							ERROR_STOP("H5Dopen failed");
+					}
+
+					swath_dataspace_id = H5Dget_space(swath_dataset_id);
+					rank = H5Sget_simple_extent_ndims(swath_dataspace_id);
+					if (rank != 2) ERROR_STOP("Rank has to equal 2 - something hideously fucked up, goodbye!");
+
+					offset_out3[0] = i2d;
+
+					if(i2d == 0) //seriously you want this
+					{
+						letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
+						printf ("%c",alph[letter]); fflush (stdout);
+					}
+
+					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
+					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("FUCK YOU");
+//					printf("DEBUG: %i %i %s gf[0]: %f\n",k,i2d,twodvarname[i2d],gf[i2d*count3[1]*count3[2]]);
+					H5Dclose (swath_dataset_id);
+					H5Sclose (swath_dataspace_id);
+				}
+
+//				printf("Made it to the end of static 2D swath arrays\n");
+
+				for (i2d = n2dstatic; i2d < n2d; i2d++)
+				{
+					sprintf(datasetname,"/%05i/2D/swath/%s",timeindex,twodvarname[i2d]);
+
+					if ((swath_dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
+					{
+							fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);
+							ERROR_STOP("H5Dopen failed");
+					}
+
+					swath_dataspace_id = H5Dget_space(swath_dataset_id);
+					rank = H5Sget_simple_extent_ndims(swath_dataspace_id);
+					if (rank != 2) ERROR_STOP("Rank has to equal 2 - something hideously fucked up, goodbye!");
+
+					offset_out3[0] = i2d;
+//					printf("DEBUG0: k=%i i2d=%i twodvarname=%s\n",k,i2d,twodvarname[i2d]);
+
+					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
+					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("FUCK YOU");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("FUCK YOU");
+					H5Dclose (swath_dataset_id);
+					H5Sclose (swath_dataspace_id);
+				}
 			}
-			else 
+			else
 			{
-				ERROR_STOP("Rank must be 2 or 3");
+				sprintf(datasetname,"/%05i/3D/%s",timeindex,varname);
+				if ((dataset_id = H5Dopen (file_id, datasetname, H5P_DEFAULT)) < 0)
+				{
+						fprintf(stderr,"Cannot open dataset %s in file %s\n",datasetname,nodefile[k]);
+						ERROR_STOP("H5Dopen failed");
+				}
+
+				dataspace_id = H5Dget_space(dataset_id);
+				rank = H5Sget_simple_extent_ndims(dataspace_id);
+				if (rank == 3)
+				{
+					snx = hdf[k]->sxf - hdf[k]->sx0 + 1; 
+					sny = hdf[k]->syf - hdf[k]->sy0 + 1;
+					snz = gzf - gz0 + 1;
+					offset_in3[0] = gz0;
+					offset_in3[1] = hdf[k]->sy0;
+					offset_in3[2] = hdf[k]->sx0;
+					offset_out3[0] = 0; //orf 6/30/10 gz0 was a bug? should always be 0?
+					offset_out3[1] = hdf[k]->ay0;
+					offset_out3[2] = hdf[k]->ax0;
+					count3[0] = snz;
+					count3[1] = sny;
+					count3[2] = snx;
+				}
+				else
+				{
+					ERROR_STOP("Rank should be 3, WTF?");
+				}
+				letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
+				printf ("%c",alph[letter]); fflush (stdout);
+				if ((H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in3,NULL,count3,NULL)) < 0)
+				{
+						fprintf(stderr,"\nCannot select hyperslab dataspace_id %i in file %s\n",dataspace_id,nodefile[k]);
+						H5Eprint(H5E_DEFAULT,NULL);
+						ERROR_STOP("H5Sselect_hyperslab failed");
+				}
+				if ((H5Sselect_hyperslab (memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL)) < 0)
+				{
+						fprintf(stderr,"\nCannot select hyperslab memoryspace_id %i in file %s\n",memoryspace_id,nodefile[k]);
+						H5Eprint(H5E_DEFAULT,NULL);
+						ERROR_STOP("H5Sselect_hyperslab failed");
+				}
+				if ((retval=H5Dread (dataset_id,H5T_NATIVE_FLOAT,memoryspace_id,dataspace_id,H5P_DEFAULT,gf)) < 0)
+				{
+						fprintf(stderr,"\nCannot read hyperslab for %s in %s\n",datasetname,nodefile[k]);
+						fprintf(stderr,"return value = %i\n",retval);
+						H5Eprint(H5E_DEFAULT,NULL);
+						ERROR_STOP("H5Dread failed");
+				}
+				
+				//ORF TEST
+				//printf("%f\n",gf[0]);
+				H5Dclose (dataset_id);
+				H5Sclose (dataspace_id);
 			}
-			letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
-			printf ("%c",alph[letter]); fflush (stdout);
-			if ((H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in,NULL,count,NULL)) < 0)
-			{
-					fprintf(stderr,"\nCannot select hyperslab dataspace_id %i in file %s\n",dataspace_id,nodefile[k]);
-					H5Eprint(H5E_DEFAULT,NULL);
-					ERROR_STOP("H5Sselect_hyperslab failed");
-			}
-			if ((H5Sselect_hyperslab (memoryspace_id,H5S_SELECT_SET,offset_out,NULL,count,NULL)) < 0)
-			{
-					fprintf(stderr,"\nCannot select hyperslab memoryspace_id %i in file %s\n",memoryspace_id,nodefile[k]);
-					H5Eprint(H5E_DEFAULT,NULL);
-					ERROR_STOP("H5Sselect_hyperslab failed");
-			}
-			if ((retval=H5Dread (dataset_id,H5T_NATIVE_FLOAT,memoryspace_id,dataspace_id,H5P_DEFAULT,gf)) < 0)
-			{
-					fprintf(stderr,"\nCannot read hyperslab for %s in %s\n",datasetname,nodefile[k]);
-					fprintf(stderr,"return value = %i\n",retval);
-					H5Eprint(H5E_DEFAULT,NULL);
-					ERROR_STOP("H5Dread failed");
-			}
-			
-			//ORF TEST
-			//printf("%f\n",gf[0]);
-			H5Dclose (dataset_id);
-			H5Sclose (dataspace_id);
 			H5Fclose (file_id);
 		}
 		printf("\n");
 	}
 	H5Sclose (memoryspace_id);
+	H5Sclose (swath_memoryspace_id);
 	/* free all pointers */
 	for (i = 0; i < numhdf; i++)
 	{

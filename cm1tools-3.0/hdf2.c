@@ -15,6 +15,8 @@
  * Cleaned a bunch of stuff up 3/18, see git log
  *
  * 4/18: added OMP loop directives for our calculation loops
+ *
+ * 4/30/19: Added 2D static/swath fields now that we save them in the 3D files
  */
 
 #include "lofs-read.h"
@@ -44,6 +46,7 @@ const float MISSING=0.0; //Ugh deal with these later
 
 int debug = 0;
 int yes2d = 0;
+int do_swaths = 0;
 int gzip = 0;
 int use_box_offset = 0;
 int filetype = NC_NETCDF4;
@@ -69,6 +72,34 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 
 extern char *optarg; /* This is handled by the getopt code */
 
+int n2d,i2d;
+const char **twodvarname;
+int *twodvarid;
+int ncid;
+int d2[3];
+
+// For the swath stuff, we iterate through all appropriate groups rather
+// than select them one by one, these two routines enable us to do that
+// along with the H5Giterate function
+
+herr_t twod_first_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
+{
+    H5G_stat_t statbuf;
+    H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
+    n2d++;
+    return 0;
+}
+
+herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
+{
+    H5G_stat_t statbuf;
+    H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
+    strcpy((char *)twodvarname[n2d],name);
+    nc_def_var (ncid, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
+    n2d++;
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	char *cptr;
@@ -79,6 +110,7 @@ int main(int argc, char *argv[])
 //	int we_are_hdf2v5d = FALSE;
 //	int we_are_linkfiles = FALSE;
 	int X0,Y0,X1,Y1,Z0,Z1;
+	int i2d;
 	double time;
 
 	strcpy(progname,argv[0]);
@@ -308,13 +340,16 @@ void grok_cm1hdf5_file_structure()
 	}
 }
 
+//hdf2ncdammit
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
+	float *twodbuffer,*twodbuf0;
 	float *writeptr;
 	float *dum0,*dumarray;
 	float *qc,*qi,*qs;
 	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
+	float *twodfield;
 	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
 	float *thrhopert;
 	double timearray[1];
@@ -329,7 +364,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	hid_t f_id;
 
 	int status;
-	int ncid;
 	int nxh_dimid,nyh_dimid,nzh_dimid;
 	int nxf_dimid,nyf_dimid,nzf_dimid,time_dimid,timeid;
 	int thsfcid,dbzsfcid;
@@ -338,7 +372,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	int xfid,yfid,zfid;
 	int varnameid[MAXVARIABLES];
 	int dims[4];
-	int d2[3];
 	size_t start[4],edges[4];
 	size_t s2[3],e2[3];
 	int ivar;
@@ -378,6 +411,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	{
 		strcpy(varname[i],argv[i+argc_hdf2nc_min+optcount]);
 		printf("%s ",varname[i]);
+// This is handled by a command like argument, mixing swaths with regular 3D fields
+// is kind of a hassle and I'll probably end up refactoring readmult a bit because of this
+//		if (!strcmp(varname[i],"swaths")) do_swaths = TRUE;
 	}
 	printf("\n");
 	sprintf(ncfilename,"%s.%012.6f.nc",base,t0);
@@ -385,6 +421,10 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NX = X1 - X0 + 1;
 	NY = Y1 - Y0 + 1;
 	NZ = Z1 - Z0 + 1;
+
+
+/* These are standards for on the scalar mesh and requesting 3D data */
+
 	start[0] = 0;
 	start[1] = 0;
 	start[2] = 0;
@@ -393,35 +433,22 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	edges[1] = NZ;
 	edges[2] = NY;
 	edges[3] = NX;
-	//For 2D surface slices
+
+//For 2D surface slices and swaths/static slices
+//See d2 definition and how itis used in iteration function
 	s2[0] = 0;
 	s2[1] = 0;
 	s2[2] = 0;
 	e2[0] = 1;
 	e2[1] = NY;
 	e2[2] = NX;
-/****** MOVE THIS DOWN PAST WHERE WE FIGURE OUT READAHEAD
-	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
-	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,1.0e-9*bufsize);
-	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((dum0 = dumarray  = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((xvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate 3D buffer");
-	//printf("NX = %i NY = %i NZ = %i Bufsize = %i\n",NX,NY,NZ,bufsize);
-	if (buffer == NULL) ERROR_STOP("Cannot allocate buffer");
-
-******/
 
 	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 	{
 		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
 		ERROR_STOP("Cannot open hdf file");
 	}
+
 	xhfull = (float *)malloc(nx * sizeof(float));
 	yhfull = (float *)malloc(ny * sizeof(float));
 	xffull = (float *)malloc((nx+1) * sizeof(float));
@@ -436,12 +463,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	zf = (float *)malloc(nz * sizeof(float));
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
-
-/* THIS NEEDS TO BE TESTED IN CM1 FIRST... we haven't been saving these */
-
-	/* NOTE FROM FUTURE: IT WORKS BEYOTCHES. REMOVING ALL CONDITIONAL
-	 * CRAPOLA. No more instances of "saved_staggered_mesh_params" */
-
 	get1dfloat (f_id,(char *)"mesh/xffull",xffull,0,nx+1);
 	get1dfloat (f_id,(char *)"mesh/yffull",yffull,0,ny+1);
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
@@ -457,13 +478,14 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	xhout = (float *)malloc(NX * sizeof(float));
 	yhout = (float *)malloc(NY * sizeof(float));
 	zhout = (float *)malloc(NZ * sizeof(float));
+/* Staggered mesh has one more value in each direction globally, but we're just not going
+ * to worry about it.... unless we need to */
 	xfout = (float *)malloc(NX * sizeof(float));
-	yfout = (float *)malloc(NY * sizeof(float)); // +1 when we do this right
-	zfout = (float *)malloc(NZ * sizeof(float)); // +1 when we do this right
+	yfout = (float *)malloc(NY * sizeof(float));
+	zfout = (float *)malloc(NZ * sizeof(float));
 
 	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
-	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz];     //NEED TO READ REAL ZF
-
+	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
 	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
 	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
 	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
@@ -547,6 +569,34 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
 	}
 
+	if (do_swaths)
+	{
+		bufsize = (long) (NX) * (long) (NY) * (long) sizeof(float);
+		if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+
+		n2d = 0;
+		H5Giterate(f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
+		H5Giterate(f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
+
+		twodvarname = (const char **)malloc(n2d*sizeof(char *));
+		twodvarid =   (int *)        malloc(n2d*sizeof(int));
+
+		printf("There are %i 2D static/swath fields (the former domain of the 2D files).\n",n2d);
+		bufsize = (long) (NX) * (long) (NY) * (long) (n2d) * (long) sizeof(float);
+		if ((twodbuf0 = twodbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+
+		for (i2d=0; i2d<n2d; i2d++)
+		{
+			twodvarname[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
+		}
+
+		n2d = 0;
+		H5Giterate(f_id, "/00000/2D/static",NULL,twod_second_pass_hdf2nc,NULL);
+		H5Giterate(f_id, "/00000/2D/swath",NULL,twod_second_pass_hdf2nc,NULL);
+
+		/* And, like magic, we have populated our netcdf index arrays for all the swath slices */
+	}
+
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		if(!strcmp(varname[ivar],"u"))
@@ -580,7 +630,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 //ORF I'm now going to create truly 2D files, otherwise
 //VisIt is dumb
-
 
 		if(X0==X1)
 		{
@@ -623,18 +672,19 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
 
+		if (status != NC_NOERR) 
+		{
+			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
+			ERROR_STOP("nc_def_var failed");
+		}
 
-// You know, netcdf folks, life would be a lot easier if you didn't have
-// this strange concept of "OK we are ending definitions. Now you can
-// actually do stuff, but you have to loop through all your shit again".
-// So this loop is in the "before we call nc_enddef" part of the code,
-// where we set all our lovely attributes.
 
-// So anyway here is where we just go through the different CM1 variable
-// names that George (and I) use, adding variable attributes merrily.
-// C really needs a 'case' statement with character data... instead
-// we will have to settle with the if-then-else ladder. I just don't
-// understand why the world just doesn't conform to all of my whims...
+// Here is where we just go through the different CM1 variable names
+// that George (and I) use, adding variable attributes merrily. C really
+// needs a 'case' statement with character data... instead we will have
+// to settle with the if-then-else ladder.
+//
+// We are still before the nc_enddef call, in case you are lost
 
 		if(!strcmp(varname[ivar],"uinterp"))
 		{
@@ -894,11 +944,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 		}
 // UGH FINALLY OVER
-		if (status != NC_NOERR) 
-		{
-			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, varname[ivar],status,nc_strerror(status));
-			ERROR_STOP("nc_def_var failed");
-		}
 //		ONLY DO THIS if I actually have missing values,
 //		it really degrades performance of Vapor (and pehraps other software)
 //		status = nc_put_att_float(ncid,varnameid[ivar],"missing_value",NC_FLOAT,1,&MISSING);
@@ -916,9 +961,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_def_var (ncid, "qv0", NC_FLOAT, 1, &nzh_dimid, &qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 
 	status = nc_enddef (ncid); if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
-
-
-// STOPPED HERE. IT COMPILES. NEED TO TEST.
 
 // WE HAVE ENDED OUR FREAKING DEFINITIONS
 // NOW LET'S DO A BUNCH OF ACTUAL CRAP
@@ -1001,16 +1043,28 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
 	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
 
-//	This is the one that is always guaranteed!
 	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
 
-	// First we do any requested 2d fields (Vapor likes 2D vars)
-	//
-	// Save surface thrhopert and dbz for easy viewing as 2D vars in Vapor
-	// Need also to get 2D data into cm1hdf5 files and then VisIt (TODO)
-	// This is now only enabled by a command line option - default
-	// is to not write any 2D fields.
+	//Grab stack o' swaths and blast them home
+	if (do_swaths)
+	{
+		printf("\nWorking on 2D static fields and swaths ("); 
 
+		//Note: nd2 is interpreted as the number of swaths when varname=="swaths"
+
+		// This is supposed to read all of them with n2d 2D slices. Holy crap it actually works. BEEEEERRRRR
+		read_hdf_mult_md(twodbuf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"swaths",X0,Y0,X1,Y1,0,n2d,nx,ny,nz,nodex,nodey);
+
+		for (i2d=0;i2d<n2d;i2d++)
+		{
+			for (iy=0; iy<NY; iy++) for (ix=0; ix<NX; ix++) twodfield[P2(ix,iy,NX)] = twodbuffer[P3(ix,iy,i2d,NX,NY)];
+//			printf("i2d = %i twodvarid[i2d] = %i twodvarname = %s %f\n",i2d,twodvarid[i2d],twodvarname[i2d],twodfield[0]);
+			writeptr = twodfield;
+			status = nc_put_vara_float (ncid, twodvarid[i2d], s2, e2, writeptr);
+		}
+		free(twodbuf0);
+		printf(")\n");
+	}
 	if (yes2d)
 	{
 		printf("\nWorking on surface 2D fields ("); //ORF change thrhopert to thpert here until fix
@@ -1081,8 +1135,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	{
 		printf("Working on %s (",varname[ivar]);
 		fflush(stdout);
-
-
 
 /************************** BEGINNING OF ROT VORT STUFF ************************/
 		if(!strcmp(varname[ivar],"rotvortmag")||!strcmp(varname[ivar],"roheldens")||!strcmp(varname[ivar],"nroheldens"))
@@ -1918,7 +1970,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_YES2D, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
+		OPT_DEBUG, OPT_YES2D, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1933,6 +1985,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"yes2d",    optional_argument, 0, OPT_YES2D},
+		{"swaths",   optional_argument, 0, OPT_SWATHS},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
@@ -2019,6 +2072,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_YES2D:
 				yes2d=1;
+				optcount++;
+				break;
+			case OPT_SWATHS:
+				do_swaths=1;
 				optcount++;
 				break;
 			case OPT_COMPRESS:

@@ -41,7 +41,6 @@ herr_t second_pass(hid_t loc_id, const char *name, void *opdata)
 }
 
 
-
 int main (int argc, char *argv[])
 {
 	/* hdf vars */

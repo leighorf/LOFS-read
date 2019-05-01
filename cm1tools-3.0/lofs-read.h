@@ -20,6 +20,7 @@
 #define ERROR_WARN(string) fprintf(stderr," *** Warning: %s line %i: %s\n",__FILE__,__LINE__,string);
 
 #define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
+#define P2(x,y,mx) (((y)*(mx))+(x))
 #define TRUE (1)
 #define FALSE (0)
 
