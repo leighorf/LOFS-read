@@ -47,6 +47,7 @@ const float MISSING=0.0; //Ugh deal with these later
 int debug = 0;
 int yes2d = 0;
 int do_swaths = 0;
+int do_allvars = 0;
 int gzip = 0;
 int use_box_offset = 0;
 int filetype = NC_NETCDF4;
@@ -98,6 +99,20 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     nc_def_var (ncid, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
     n2d++;
     return 0;
+}
+
+//Stolen from parsedir.c, should put these all in one file
+//or something.
+static int
+cmpstringp2 (const void *p1, const void *p2)
+{
+	return strcmp (*(char *const *) p1, *(char *const *) p2);
+}
+
+void
+sortchararray2 (char **strarray, int nel)
+{
+	qsort (strarray, nel, sizeof (char *), cmpstringp2);
 }
 
 int main(int argc, char *argv[])
@@ -356,12 +371,20 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 
 	int i,j,k,ix,iy,iz,nvar;
 	char varname[MAXVARIABLES][MAXSTR];
+	char varname_available[MAXVARIABLES][MAXSTR];
+	char varname_cmdline[MAXVARIABLES][MAXSTR];
+	char **varname_tmp;
 	char ncfilename[MAXSTR];
+	char groupname[MAXSTR];
 
 	extern int H5Z_zfp_initialize(void);
 
 	int NX,NY,NZ;
-	hid_t f_id;
+// 2019-05-01 new, for getting all 3d variables
+	hid_t f_id,g_id;
+	H5G_info_t group_info;
+	int nvar_available;
+	int nvar_cmdline;
 
 	int status;
 	int nxh_dimid,nyh_dimid,nzh_dimid;
@@ -402,18 +425,39 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	 * argument is. Since we have optional arguments, we keep track of
 	 * things and then peel off the file name strings */
 
-	nvar = argc - argc_hdf2nc_min - optcount;
+	nvar_cmdline = argc - argc_hdf2nc_min - optcount;
 
-	if (debug) printf("argc = %i, nvar = %i, optcount = %i\n",argc,nvar,optcount);
+	printf("argc = %i, nvar_cmdline = %i, optcount = %i\n",argc,nvar_cmdline,optcount);
+
+	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
+	{
+		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
+		ERROR_STOP("Cannot open hdf file");
+	}
+
+	// Get a list of all saved variables - and make it easy to just
+	// convert all available variables with another command line
+	// option. TODO: cache these
+
+
+	sprintf(groupname,"%05i/3D",0);//All vars in 3D group are available
+	g_id = H5Gopen(f_id,groupname,H5P_DEFAULT);
+	H5Gget_info(g_id,&group_info);
+	nvar_available = group_info.nlinks;
+	for (i = 0; i < nvar_available; i++)
+	{
+	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,varname_available[i],40,H5P_DEFAULT); //40 characters per varname
+	}
+	H5Gclose(g_id);
+
+	printf("Variables available: ");
+	for (i = 0; i < nvar_available; i++) printf("%s ",varname_available[i]);printf("\n");
 
 	printf("\nWe are requesting the following fields: ");
-	for (i=0; i<nvar; i++)
+	for (i=0; i<nvar_cmdline; i++)
 	{
-		strcpy(varname[i],argv[i+argc_hdf2nc_min+optcount]);
-		printf("%s ",varname[i]);
-// This is handled by a command like argument, mixing swaths with regular 3D fields
-// is kind of a hassle and I'll probably end up refactoring readmult a bit because of this
-//		if (!strcmp(varname[i],"swaths")) do_swaths = TRUE;
+		strcpy(varname_cmdline[i],argv[i+argc_hdf2nc_min+optcount]);//HERE IS WHERE WE POPULATE VARNAME
+		printf("%s ",varname_cmdline[i]);
 	}
 	printf("\n");
 	sprintf(ncfilename,"%s.%012.6f.nc",base,t0);
@@ -421,7 +465,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NX = X1 - X0 + 1;
 	NY = Y1 - Y0 + 1;
 	NZ = Z1 - Z0 + 1;
-
 
 /* These are standard for on the scalar mesh and requesting 3D data */
 
@@ -442,12 +485,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	e2[0] = 1;
 	e2[1] = NY;
 	e2[2] = NX;
-
-	if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-	{
-		fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
-		ERROR_STOP("Cannot open hdf file");
-	}
 
 	xhfull = (float *)malloc(nx * sizeof(float));
 	yhfull = (float *)malloc(ny * sizeof(float));
@@ -596,6 +633,63 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
+
+
+/* Construct new varname array and new nvar if we asked for --allvars, and add onto it any
+ * further derived fields. Then run that array through everything else.*/
+
+//OK we are going for simple here. We create a single varname array
+//that contains all available variables, plus any additional requested
+//variables. We then check for duplicates and remove them - this changes
+//the order of the variables, however, which could be annoying.
+
+	if (!do_allvars)
+	{
+		nvar = nvar_cmdline;
+		for (i=0;i<nvar;i++) strcpy(varname[i],varname_cmdline[i]);
+	}
+	else
+	{
+		int ndupes = 0;
+		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
+		for (i=0; i < MAXVARIABLES; i++) varname_tmp[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+		for (i=0; i<nvar_available; i++)
+		{
+			strcpy(varname_tmp[i],varname_available[i]);
+		}
+		for (i=0;i<nvar_cmdline; i++)
+		{
+			strcpy(varname_tmp[i+nvar_available],varname_cmdline[i]);
+		}
+
+		sortchararray2(varname_tmp,nvar_available+nvar_cmdline);
+
+		strcpy(varname[0],varname_tmp[0]);
+		j=1;
+		/* Get rid of accidental duplicates */
+		for (i=0; i<nvar_available+nvar_cmdline-1; i++)
+		{
+			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
+			{
+				strcpy(varname[j],varname_tmp[i+1]);
+				j++;
+			}
+		}
+		nvar = j;
+		ndupes = nvar_available+nvar_cmdline-nvar;
+		if(ndupes!=0)printf("We got rid of %i duplicate requested variables\n",ndupes);
+		for (i=0; i < MAXVARIABLES; i++) free(varname_tmp[i]);
+		free(varname_tmp);
+	}
+
+
+// This is our main "loop over all explicity requested variable names"
+// loop. Every variable requested at the command line goes through this
+// loop. TODO: Play nice with --allvars
+//
+// You know what I should do... just do some string magic where I put
+// all the variables in one long array and look for duplicates.
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
@@ -1050,15 +1144,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // array; plus, not everything supports missing value attributes and my
 // missing value is freaking huge
 
-	if (nvar != 0) // We could be just doing swaths, for instance
-	{
-		bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
-		bufsize_gb = 1.0e-9*bufsize;
-		printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
-		if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
-
-		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
-	}
+	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+	bufsize_gb = 1.0e-9*bufsize;
+	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
+	// You know what, we're just going to malloc this so we don't have
+	// to do a bunch of checks later on
+	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
 
 	//Grab stack o' swaths and blast them home
 	if (do_swaths)
@@ -1145,6 +1237,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // derivatives of these variables since they have already been interpolated to the scalar grid.
 
 //dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
+
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		printf("Working on %s (",varname[ivar]);
@@ -1984,7 +2077,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_YES2D, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
+		OPT_DEBUG, OPT_YES2D, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1999,6 +2092,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"yes2d",    optional_argument, 0, OPT_YES2D},
+		{"allvars",   optional_argument, 0, OPT_ALLVARS},
 		{"swaths",   optional_argument, 0, OPT_SWATHS},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
@@ -2090,6 +2184,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_SWATHS:
 				do_swaths=1;
+				optcount++;
+				break;
+			case OPT_ALLVARS:
+				do_allvars=1;
 				optcount++;
 				break;
 			case OPT_COMPRESS:

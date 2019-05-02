@@ -1,6 +1,6 @@
 CC = cc
 AR = ar
-CFLAGS = -O2 -fPIC
+CFLAGS = -fopenmp -g -fPIC
 #HDF5ZFP=/sw/bw/thg/h5zfp/1.8.18
 #ZFP=/sw/bw/thg/zfp/0.5.0
 #LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP)/lib -lh5zzfp -lzfp
@@ -10,7 +10,7 @@ LINKOPTS  = -lh5zzfp -lzfp
 all: hdf2 hdf2d2nc stash libcm.a
 
 hdf2: hdf2.o parsedir.o hdfio.o readmult.o
-	$(CC) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o $(LINKOPTS)
+	$(CC) $(CFLAGS) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o $(LINKOPTS)
 hdf2d2nc: hdf2d2nc.o hdfio.o
 	$(CC) $(CFLAGS) -o hdf2d2nc hdf2d2nc.o hdfio.o
 stash: stash.o
