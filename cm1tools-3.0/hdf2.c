@@ -646,9 +646,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	if (!do_allvars)
 	{
 		nvar = nvar_cmdline;
-		for (i=0;i<nvar;i++) strcpy(varname[i],varname_cmdline[i]);
+		nvar_available=0; /*trick, to just ignore those in below block... now we always check for dupes*/
 	}
-	else
 	{
 		int ndupes = 0;
 		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
