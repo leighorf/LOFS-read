@@ -640,14 +640,16 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 //OK we are going for simple here. We create a single varname array
 //that contains all available variables, plus any additional requested
-//variables. We then check for duplicates and remove them - this changes
-//the order of the variables, however, which could be annoying.
+//variables. We then check for duplicates and remove them - this
+//alphabetizes the order of the variables, however, which could be
+//annoying and/or useful
 
 	if (!do_allvars)
 	{
 		nvar = nvar_cmdline;
 		nvar_available=0; /*trick, to just ignore those in below block... now we always check for dupes*/
 	}
+	if (nvar !=0||do_allvars)
 	{
 		int ndupes = 0;
 		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
