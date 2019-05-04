@@ -6,6 +6,7 @@
 
 #define MAXSTR (512)
 
+extern int regenerate_cache;
 DIR *dip;
 struct dirent *dit;
 
@@ -114,7 +115,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 
 	FILE *fp;
 
-	if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
+	if (regenerate_cache||(fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
 	{
 		sprintf (timedir_full, "%s/%s", topdir, timedir);
 
@@ -136,6 +137,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
 
+//How about regeneratecache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",*dn);
@@ -149,6 +151,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 	}
 	else
 	{
+		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i\n",dn))==EOF)ERROR_STOP("fscanf failed");
@@ -174,7 +177,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 
 	FILE *fp;
 
-	if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	if (regenerate_cache||(fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
 		printf("Grabbing and caching metadata (only done once):");
 		j = 0;
@@ -254,6 +257,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 //		}
 		sortchararray (timedir, ntimedirs);
 		sortdoublearray (times, ntimedirs);
+//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","w")) != NULL) 
 		{
 			fprintf(fp,"%i\n",ntimedirs);
@@ -263,6 +267,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 	}
 	else
 	{
+		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
 		{
 			if((iret=fscanf(fp,"%i\n",&ntimedirs))==EOF)ERROR_STOP("fscanf failed");
@@ -285,7 +290,7 @@ get_num_time_dirs (char *basedir,int debug)
 	
 	FILE *fp;
 
-	if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	if (regenerate_cache||(fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
 		open_directory (basedir);
 		j = 0;
@@ -347,6 +352,7 @@ get_num_time_dirs (char *basedir,int debug)
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
+//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
@@ -359,6 +365,7 @@ get_num_time_dirs (char *basedir,int debug)
 	}
 	else
 	{
+		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
@@ -379,7 +386,7 @@ get_num_node_dirs (char *topdir, char *timedir,int debug)
 
 	FILE *fp;
 
-	if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
+	if (regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
 	{
 		sprintf (timedir_full, "%s/%s", topdir, timedir);
 		open_directory (timedir_full);
@@ -392,6 +399,7 @@ get_num_node_dirs (char *topdir, char *timedir,int debug)
 				j++;
 		}
 		close_directory();
+//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
@@ -400,6 +408,7 @@ get_num_node_dirs (char *topdir, char *timedir,int debug)
 	}
 	else
 	{
+		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
@@ -480,7 +489,7 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 	hdf5filename = (char *)malloc(512*sizeof(char));
 	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
 	nodedirmask = (int *)malloc(nnodedirs*sizeof(int));
-	if ((fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
+	if (regenerate_cache||(fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
 	{
 		*ntottimes = 0;
 		k = 0;
@@ -720,6 +729,7 @@ crave electrolytes.
 
 		}
 		printf("\n");
+//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",firstfilename);
@@ -734,6 +744,7 @@ crave electrolytes.
 	}
 	else
 	{
+		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
 			iret=fscanf(fp,"%s",firstfilename);

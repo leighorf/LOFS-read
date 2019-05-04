@@ -16,7 +16,10 @@
  *
  * 4/18: added OMP loop directives for our calculation loops
  *
- * 4/30/19: Added 2D static/swath fields now that we save them in the 3D files
+ * 4/30/19: Added --swaths flag to convert all the swaths (now saved in
+ * 3D files by CM1/LOFS)
+ *
+ * 5/1/10: Added --allvars flag to convert all the 3D fields
  */
 
 #include "lofs-read.h"
@@ -44,8 +47,8 @@ float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammi
 //const float MISSING=1.0E37;
 const float MISSING=0.0; //Ugh deal with these later
 
+int regenerate_cache = 0;
 int debug = 0;
-int yes2d = 0;
 int do_swaths = 0;
 int do_allvars = 0;
 int gzip = 0;
@@ -101,19 +104,9 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     return 0;
 }
 
-//Stolen from parsedir.c, should put these all in one file
-//or something.
-static int
-cmpstringp2 (const void *p1, const void *p2)
-{
-	return strcmp (*(char *const *) p1, *(char *const *) p2);
-}
-
-void
-sortchararray2 (char **strarray, int nel)
-{
-	qsort (strarray, nel, sizeof (char *), cmpstringp2);
-}
+// These are defined in parsedir.c
+extern int cmpstringp (const void *p1, const void *p2);
+extern void sortchararray (char **strarray, int nel);
 
 int main(int argc, char *argv[])
 {
@@ -144,23 +137,27 @@ int main(int argc, char *argv[])
 
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 	grok_cm1hdf5_file_structure();
-	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey);
+	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
-	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
+
+
+//Often I want to subset from already subsetted LOFS data to make a
+//netCDF file. Easiest way is to first make a full subsetted netcdf file
+//then use ncview to get the i,j indices for the subset (rather than
+//having to do the math by hand to find the new indices). This allows
+//that with the --offset option
+
 	if(use_box_offset)
 	{
-//Often I want to subset from already subsetted LOFS data
-//to make a netCDF file. Easiest way is to first make a full
-//subsetted netcdf file then use ncview to get the i,j
-//indices for the subset (rather than having to do the math
-//by hand to find the new indices; this allows that with the
-//--offset option
-//Implicit: X0,X1,Y0,Y1 specified on cmd line
+		if(X0<0||Y0<0||X1<0||Y1<0)
+			ERROR_STOP ("X0,Y0,X1,Y1 must be specified at command line with --offset option\n");
 		X0+=saved_X0;
 		X1+=saved_X0;
 		Y0+=saved_Y0;
 		Y1+=saved_Y0;
 	}
+
+/* If we didn't specify values at the command line, set them to values specifying all the saved data */
 	if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
 	if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
 
@@ -334,7 +331,7 @@ void grok_cm1hdf5_file_structure()
 
 	timedir = (char **)malloc(ntimedirs * sizeof(char *));
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
-	dirtimes = (double *)malloc(ntimedirs * sizeof(double)); // ORF NO LONGER INT, RIGHT???
+	dirtimes = (double *)malloc(ntimedirs * sizeof(double));//times are float not int
 
 	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base,debug);
 
@@ -437,10 +434,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 
 	// Get a list of all saved variables - and make it easy to just
 	// convert all available variables with another command line
-	// option. TODO: cache these
+	// option. TODO: cache these?
 
-
-	sprintf(groupname,"%05i/3D",0);//All vars in 3D group are available
+	sprintf(groupname,"%05i/3D",0);//All vars in 3D group 00000 are always available
 	g_id = H5Gopen(f_id,groupname,H5P_DEFAULT);
 	H5Gget_info(g_id,&group_info);
 	nvar_available = group_info.nlinks;
@@ -598,14 +594,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	d2[1] = nyh_dimid;
 	d2[2] = nxh_dimid;
 
-	/* Save some surface 2d slices? */
-	if (yes2d)
-	{//Something wrong with my CM1 calculated thrhopert, prob. a OMP thing
-//		status = nc_def_var (ncid, "thpert_sfc", NC_FLOAT, 3, d2, &thsfcid);
-		status = nc_def_var (ncid, "thrhopert_sfc", NC_FLOAT, 3, d2, &thsfcid);
-		status = nc_def_var (ncid, "dbz_sfc", NC_FLOAT, 3, d2, &dbzsfcid);
-	}
-
 	if (do_swaths)
 	{
 		bufsize = (long) (NX) * (long) (NY) * (long) sizeof(float);
@@ -635,21 +623,21 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	}
 
 
-/* Construct new varname array and new nvar if we asked for --allvars, and add onto it any
- * further derived fields. Then run that array through everything else.*/
-
-//OK we are going for simple here. We create a single varname array
-//that contains all available variables, plus any additional requested
-//variables. We then check for duplicates and remove them - this
-//alphabetizes the order of the variables, however, which could be
-//annoying and/or useful
+//OK we are going for simple here. We create a single varname
+//array that contains all available variables, plus any
+//additional requested variables. We then check for duplicates
+//and remove them - this alphabetizes the order of the variables,
+//however, which could be annoying and/or useful
 
 	if (!do_allvars)
 	{
 		nvar = nvar_cmdline;
-		nvar_available=0; /*trick, to just ignore those in below block... now we always check for dupes*/
+		nvar_available=0; /* liar! */
 	}
-	if (nvar !=0||do_allvars)
+//With faking nvar_available to zero this loop now sorts/uniqs
+//all possible variables lists (just command line, just allvars,
+//or a combination of the two)
+	if (nvar !=0||do_allvars) 
 	{
 		int ndupes = 0;
 		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
@@ -664,7 +652,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			strcpy(varname_tmp[i+nvar_available],varname_cmdline[i]);
 		}
 
-		sortchararray2(varname_tmp,nvar_available+nvar_cmdline);
+		sortchararray (varname_tmp,nvar_available+nvar_cmdline);
 
 		strcpy(varname[0],varname_tmp[0]);
 		j=1;
@@ -684,13 +672,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		free(varname_tmp);
 	}
 
-
-// This is our main "loop over all explicity requested variable names"
-// loop. Every variable requested at the command line goes through this
-// loop. TODO: Play nice with --allvars
-//
-// You know what I should do... just do some string magic where I put
-// all the variables in one long array and look for duplicates.
+// This is our main "loop over all requested variable names" loop.
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
@@ -1145,13 +1127,16 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // array; plus, not everything supports missing value attributes and my
 // missing value is freaking huge
 
-	bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
-	bufsize_gb = 1.0e-9*bufsize;
-	printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
-	if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
-	// You know what, we're just going to malloc this so we don't have
-	// to do a bunch of checks later on
-	if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+// We only malloc here if we are requesting at least one 3D field! */
+
+	if (nvar>0)
+	{
+		bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+		bufsize_gb = 1.0e-9*bufsize;
+		printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+		if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
+		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+	}
 
 	//Grab stack o' swaths and blast them home
 	if (do_swaths)
@@ -1165,23 +1150,16 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 		for (i2d=0;i2d<n2d;i2d++)
 		{
-			for (iy=0; iy<NY; iy++) for (ix=0; ix<NX; ix++) twodfield[P2(ix,iy,NX)] = twodbuffer[P3(ix,iy,i2d,NX,NY)];
+			for (iy=0; iy<NY; iy++)
+				for (ix=0; ix<NX; ix++)
+					twodfield[P2(ix,iy,NX)] = twodbuffer[P3(ix,iy,i2d,NX,NY)];
 			writeptr = twodfield;
 			status = nc_put_vara_float (ncid, twodvarid[i2d], s2, e2, writeptr);
 		}
 		free(twodbuf0);
 		printf(")\n");
 	}//So we are all done with swaths.
-	if (yes2d)
-	{
-		printf("\nWorking on surface 2D fields ("); //ORF change thrhopert to thpert here until fix
-//		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, thsfcid, s2, e2, buf0);
-		read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"dbz",X0,Y0,X1,Y1,0,0,nx,ny,nz,nodex,nodey);
-		status = nc_put_vara_float (ncid, dbzsfcid, s2, e2, buf0);
-		printf(")\n");
-	}//And other 2D fields
+
 	if (u_rh)
 	{
 		printf("\nAllocating %5.2f GB of memory and buffering uinterp:\n",bufsize_gb);
@@ -1233,11 +1211,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		break; //we only do this once!
 	}
 
-// Here is wher you can write your own code to calculate new fields based upon the fields you are reading in.
-// Note, if uinterp, vinterp, and winterp were saved but not u, v, w, then you will lose accuracy if calculating
-// derivatives of these variables since they have already been interpolated to the scalar grid.
-
-//dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
+// You could write your own code to calculate new fields based upon the
+// fields you are reading in. A bunch of examples follow.
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
@@ -2078,7 +2053,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_YES2D, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
+		OPT_DEBUG, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -2092,8 +2067,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
-		{"yes2d",    optional_argument, 0, OPT_YES2D},
-		{"allvars",   optional_argument, 0, OPT_ALLVARS},
+		{"recache",  optional_argument, 0, OPT_REGENERATECACHE},
+		{"allvars",  optional_argument, 0, OPT_ALLVARS},
 		{"swaths",   optional_argument, 0, OPT_SWATHS},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
@@ -2179,8 +2154,8 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				debug=1;
 				optcount++;
 				break;
-			case OPT_YES2D:
-				yes2d=1;
+			case OPT_REGENERATECACHE:
+				regenerate_cache=1;
 				optcount++;
 				break;
 			case OPT_SWATHS:

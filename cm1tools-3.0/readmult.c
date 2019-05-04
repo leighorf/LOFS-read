@@ -116,6 +116,8 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 // To avoid accidental weirdness, I make a buffer exclusively for the 3D
 // swath stack rather than reusing the 3D one
+//
+extern int debug;
 
 void
 read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
@@ -123,7 +125,6 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
 		int nx, int ny, int nz, int nodex, int nodey)
 {
-	int dbg = 0; // Not the command line debug. If you are debugging here you must set this to 1 and recompile
 	int tid;//ORF openmp test
 	int i, tb;
 	int maxfilelength = 512;
@@ -202,14 +203,14 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 			ERROR_STOP("Requested time not within range\n");
 		}
 	}
-	if(dbg)
+	if(debug)
 	{
 		for (i=0; i < ntimedirs; i++)
 			printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
 	}
 	for (i=0; i < ntimedirs-1; i++)
 	{
-		if(dbg) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
+		if(debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
 		if (is_between_fuzzy(dirtimes[i],dirtimes[i+1],dtime)) break;
 	}
 	tb = i;
@@ -256,7 +257,7 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
 		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
 		hdf[ihdf]->yf = (hdf[ihdf]->myj + 1) * numj - 1;
-		if (dbg)
+		if (debug)
 			fprintf (stderr, "myj = %i myi =%i x0 = %i xf = %i y0 = %i yf = %i\n",
 				 hdf[ihdf]->myj, hdf[ihdf]->myi, hdf[ihdf]->x0, hdf[ihdf]->xf, hdf[ihdf]->y0, hdf[ihdf]->yf);
 	}
@@ -277,13 +278,13 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 		{
 			fx0 = hdf[i]->myi;
 			fy0 = hdf[i]->myj;
-			if (dbg) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
+			if (debug) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
 		}
 		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gxf) && is_between_int (hdf[i]->y0, hdf[i]->yf, gyf))
 		{
 			fxf = hdf[i]->myi;
 			fyf = hdf[i]->myj;
-			if (dbg) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
+			if (debug) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
 		}
 	}
 
@@ -430,6 +431,7 @@ really. See P3 macro in lofs-read.h */
 		{
 			k = ixnode + iynode * nxnode;
 
+			if (debug) printf("Working on %s\n",nodefile[k]);
 			if ((file_id = H5Fopen (nodefile[k], H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 			{
 				fprintf (stderr, "\n\nread_hdf_mult: Could not start to read %s!\n", nodefile[k]);
@@ -441,7 +443,7 @@ really. See P3 macro in lofs-read.h */
 				fprintf (stderr, "\nExiting.\n");
 				exit (-1);
 			}
-			if (dbg) printf("Varname = %s\n",varname);
+			if (debug) printf("Varname = %s\n",varname);
 
 //			printf("DEBUG: nodefile = %s\n",nodefile[k]);
 
