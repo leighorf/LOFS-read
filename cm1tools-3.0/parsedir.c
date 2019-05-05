@@ -167,10 +167,11 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 }
 
 void
-get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, char *filebase,int debug)
+get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug)
 {
 	int i, j, k, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
+	char filebase[MAXSTR];
 	char firstbase[MAXSTR], base[MAXSTR],dstring[MAXSTR];
 	char rhsstr[8];
 	char lhsstr[6];
@@ -213,7 +214,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				{
 					ERROR_STOP("Something is wrong with our timedir format");
 				}
-// Sicne we sometimes use . in the base, we will work backwards and
+// Since we sometimes use . in the base, we will work backwards and
 // choose the stuff *before* the second dot *from the right*
 				i = ns - 1;
 				while (tmpstr[i--]!='.');

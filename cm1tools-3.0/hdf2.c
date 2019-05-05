@@ -37,7 +37,6 @@ double *dirtimes;
 int ntimedirs;
 int nx,ny,nz,nodex,nodey;
 char firstfilename[MAXSTR];
-char base[MAXSTR];
 int nnodedirs;
 double *alltimes;
 int ntottimes;
@@ -110,6 +109,7 @@ extern void sortchararray (char **strarray, int nel);
 
 int main(int argc, char *argv[])
 {
+	char base[MAXSTR];
 	char *cptr;
 	char progname[MAXSTR];
 	char histpath[MAXSTR];
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	else if (we_are_makevisit) parse_cmdline_makevisit(argc, argv, histpath, base, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
 
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-	grok_cm1hdf5_file_structure();
+	grok_cm1hdf5_file_structure(base);
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
@@ -323,7 +323,7 @@ saving subdomains. */
 		printf("Succesfully wrote %s which can now be read by VisIt using the cm1visit plugin.\n",visitfile);
 }
 
-void grok_cm1hdf5_file_structure()
+void grok_cm1hdf5_file_structure(char *base)
 {
 	int i;
 	ntimedirs = get_num_time_dirs(topdir,debug); printf("ntimedirs: %i\n",ntimedirs);
@@ -333,7 +333,7 @@ void grok_cm1hdf5_file_structure()
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dirtimes = (double *)malloc(ntimedirs * sizeof(double));//times are float not int
 
-	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,base,debug);
+	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,debug);
 
 	nnodedirs =  get_num_node_dirs(topdir,timedir[0],debug);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
