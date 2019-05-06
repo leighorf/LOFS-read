@@ -356,9 +356,9 @@ void grok_cm1hdf5_file_structure(char *base)
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ustag,*vstag,*wstag,*xvort,*yvort,*zvort;
+	float *dum0,*dum00;
 	float *twodbuffer,*twodbuf0;
 	float *writeptr;
-	float *dum0,*dumarray;
 	float *qc,*qi,*qs;
 	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
 	float *twodfield;
@@ -1110,9 +1110,11 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"vinterp")) {v_rh=1;}
 		if(!strcmp(varname[ivar],"winterp")) {w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
-		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
-		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
+		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
+		if(!strcmp(varname[ivar],"zvort")) {u_rh=1;v_rh=1;}
+// THESE DO NOT WORK, pop up as they do
+		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"rotvortx")) {v_rh=w_rh=xvort_rh=1;}
 		if(!strcmp(varname[ivar],"rotvorty")) {u_rh=w_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"rotvortz")) {u_rh=v_rh=zvort_rh=1;}
@@ -1159,11 +1161,12 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 	if (nvar>0)
 	{
-		bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
+		bufsize = (long) (NX+2) * (long) (NY+2) * (long) (NZ+1) * (long) sizeof(float);
 		bufsize_gb = 1.0e-9*bufsize;
 		printf("\nAllocating %8.5f GB of memory for our main 3D variable array\n",bufsize_gb);
-		if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
 		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+		printf("\nAllocating %8.5f GB of memory for our main 3D variable array\n",bufsize_gb);
+		if ((dum00 = dum0 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D temp calculation array");
 	}
 
 	//Grab stack o' swaths and blast them home
@@ -1192,16 +1195,16 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	{
 		printf("\nAllocating %8.5f GB of memory and buffering ustag:\n",bufsize_gb);
 		if ((ustag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate ustag");
-// ORF we should just require u v w now, no interp
-//		read_hdf_mult_md(ustag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-		read_hdf_mult_md(ustag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		read_hdf_mult_md(ustag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0-1,Y0-1,X1+1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (v_rh)
 	{
 		printf("\nAllocating %8.5f GB of memory and buffering vstag:\n",bufsize_gb);
 		if ((vstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate vstag");
-//		read_hdf_mult_md(vstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-		read_hdf_mult_md(vstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);
+// OK we need to be careful, assume we are far enough from lateral
+// boundaries here. Cannot combine --allvars with diagnostics if not
+// careful.
+		read_hdf_mult_md(vstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0-1,Y0-1,X1+1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (w_rh)
 	{
@@ -1239,12 +1242,12 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	}
 // for our microphysics "a+b" stuff we just use a generic dum0 array,
 // could probably re-use one of the other variables but oh well
-	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
-	{
-		printf("\nAllocating %8.5f GB of memory and buffering dum0:\n",bufsize_gb);
-		if ((dum0 = dumarray = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate dum0 array");
-		break; //we only do this once!
-	}
+//	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
+//	{
+//		printf("\nAllocating %8.5f GB of memory and buffering dum0:\n",bufsize_gb);
+//		if ((dum0 = dumarray = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate dum0 array");
+//		break; //we only do this once!
+//	}
 
 // You could write your own code to calculate new fields based upon the
 // fields you are reading in. A bunch of examples follow.
@@ -1379,6 +1382,88 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
+		else if(!strcmp(varname[ivar],"zvort")) // uses staggered velocity variables!
+		{
+
+// 2019-05-06 THIS LOOKS GOOD but should be tested against CM1 zvort!
+//
+// I have copied George's approach here for doing vorticity. See
+// misclibs/calcvort in cm1r16. The "trick" is to read in "ghost
+// zones" of ustag and vstag since to calculate vortz on the scalar
+// mesh you must first calcluate zeta (using "upwind" nearest-neighbor
+// differencing) but those calculations go a bit to the left and a
+// bit to the right of where we would prefer. So we have one extra
+// point to the west(south) and one extra point to the east(north)
+// for ustag(vstag). Because C does not have the "handy" way to index
+// negative values like Fortran, we just start with zero as usual such
+// that the smallest index is always 0.
+//
+// Here is the CM1 Fortran version.
+//
+// Keep in mind the ghost zones are actual ghost zones for the model;
+// for us they are "lateral boundaries" for the full cube, and we are
+// staying away from the model's true boundaries. So the idea is,
+// horizntally, we should always be requesting data with enough padding
+// to the left and right so as to not fail. We will eventually probably
+// want to do this right someday.
+
+/* CM1 fortran:
+
+      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
+
+	ngxy=3 (number of ghost zones in x and y)
+	ib=1-ngxy
+	jb=1-ngxy
+	kb=1-ngz
+
+	ie=ni+ngxy
+	je=nj+ngxy
+	ke=nk+ngz
+
+So, CM1 can safely reference ua(-2:ni+3,-2:nj+2,0:nz+1) whereas I am
+only reading in ustag(0:nx+2,0:ny+2,0:0:nz+1) [in C-ese]. So the array
+indexing will be different in the C code than with George's. I am
+keeping the same loop bounds and just changing the indexing.
+
+        do k=1,nk
+          do j=1,nj+1
+          do i=1,ni+1
+            tem(i,j,k) = (va(i,j,k)-va(i-1,j,k))*rdx*uf(i)   &
+                        -(ua(i,j,k)-ua(i,j-1,k))*rdy*vf(j)
+          enddo
+          enddo
+          do j=1,nj
+          do i=1,ni
+            zvort(i,j,k) = 0.25*(tem(i,j,k)+tem(i+1,j,k)+tem(i,j+1,k)+tem(i+1,j+1,k))
+          enddo
+          enddo
+        enddo
+*/
+
+#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
+			for(iz=0; iz<NZ; iz++)
+			{
+				for(iy=0; iy<NY+1; iy++)
+				{
+					dyi=1.0/(yffull[iy-Y0]-yffull[iy-Y0-1]);
+					for(ix=0; ix<NX+1; ix++)
+					{
+						dxi=1.0/(xffull[ix-X0]-xffull[ix-X0-1]);
+						dum0[P3(ix,iy,iz,NX+1,NY+1)] =
+							(vstag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-vstag[P3(ix,iy+1,iz,NX+2,NY+2)])*dxi
+						     -(ustag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-ustag[P3(ix+1,iy,iz,NX+2,NY+2)])*dyi;
+					}
+				}
+			}
+#pragma omp parallel for private(ix,iy,iz)
+			for(iz=0; iz<NZ; iz++)
+				for(iy=0; iy<NY; iy++)
+					for(ix=0; ix<NX; ix++)
+						buf0[P3(ix,iy,iz,NX,NY)] = 0.25 * (dum0[P3(ix,iy,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy,iz,NX+1,NY+1)]
+											    +dum0[P3(ix,iy+1,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy+1,iz,NX+1,NY+1)]);
+			writeptr=buffer;
+
+		}
 //		else if(!strcmp(varname[ivar],"zvort_stretch")) 
 //		else if(!strcmp(varname[ivar],"zvort_tilt")) 
 //		else if(!strcmp(varname[ivar],"xvort_baro")) 
@@ -1414,25 +1499,25 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		else if(!strcmp(varname[ivar],"yvort"))
 //		else if(!strcmp(varname[ivar],"zvort"))
 //		else if(!strcmp(varname[ivar],"thrhopert"))
-		else if(!strcmp(varname[ivar],"qcloud"))
-		{
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-			buffer=buf0; dumarray=dum0;
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"qprecip"))
-		{
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-			buffer=buf0; dumarray=dum0;
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-			buffer=buf0; dumarray=dum0;
-			writeptr = buffer;
-		}
+//		else if(!strcmp(varname[ivar],"qcloud"))
+//		{
+//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+//			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+//			buffer=buf0; dumarray=dum0;
+//			writeptr = buffer;
+//		}
+//		else if(!strcmp(varname[ivar],"qprecip"))
+//		{
+//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+//			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+//			buffer=buf0; dumarray=dum0;
+//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
+//			buffer=buf0; dumarray=dum0;
+//			writeptr = buffer;
+//		}
 //		else if(!strcmp(varname[ivar],"qvstupid"))
 		else // We have (hopefully) requested a variable that has been saved
 		{
