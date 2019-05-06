@@ -355,7 +355,7 @@ void grok_cm1hdf5_file_structure(char *base)
 //hdf2ncdammit
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
-	float *buffer,*buf0,*ubuffer,*vbuffer,*wbuffer,*xvort,*yvort,*zvort;
+	float *buffer,*buf0,*ustag,*vstag,*wstag,*xvort,*yvort,*zvort;
 	float *twodbuffer,*twodbuf0;
 	float *writeptr;
 	float *dum0,*dumarray;
@@ -463,7 +463,9 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NZ = Z1 - Z0 + 1;
 
 /* These are standard for on the scalar mesh and requesting 3D data */
+	/* Set below in loop not here anymore */
 
+	/*
 	start[0] = 0;
 	start[1] = 0;
 	start[2] = 0;
@@ -472,6 +474,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	edges[1] = NZ;
 	edges[2] = NY;
 	edges[3] = NX;
+	*/
 
 //For 2D surface slices and swaths/static slices
 //See d2 definition and how it is used in iteration function
@@ -511,18 +514,26 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	xhout = (float *)malloc(NX * sizeof(float));
 	yhout = (float *)malloc(NY * sizeof(float));
 	zhout = (float *)malloc(NZ * sizeof(float));
-/* Staggered mesh has one more value in each direction globally, but we're just not going
- * to worry about it.... unless we need to */
-	xfout = (float *)malloc(NX * sizeof(float));
-	yfout = (float *)malloc(NY * sizeof(float));
-	zfout = (float *)malloc(NZ * sizeof(float));
 
-	for (iz=Z0; iz<=Z1; iz++) zhout[iz-Z0] = 0.001*zh[iz];
-	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
-	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
-	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
-	for (iy=Y0; iy<=Y1; iy++) yhout[iy-Y0] = 0.001*yhfull[iy];
-	for (ix=X0; ix<=X1; ix++) xhout[ix-X0] = 0.001*xhfull[ix];
+/* Staggered mesh has one more value in each direction globally, but we're just not going to worry about it.... unless we need to */
+
+	/* WE FUCKING NEED TO NOW... no more reading in ?interp values
+	 * because we need to maintain accuracy with the staggered native
+	 * velocity variables for diagnostics etc.... */
+
+	/* Wait... no... it's just that the shared point will not be * shared */
+
+	xfout = (float *)malloc((NX+1) * sizeof(float));
+	yfout = (float *)malloc((NY+1) * sizeof(float));
+	zfout = (float *)malloc((NZ+1) * sizeof(float));
+
+	for (iz=Z0; iz<=Z1+1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
+	for (iy=Y0; iy<=Y1+1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
+	for (ix=X0; ix<=X1+1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
+
+	for (iz=Z0; iz<=Z1; iz++)   zhout[iz-Z0] = 0.001*zh[iz];
+	for (iy=Y0; iy<=Y1; iy++)   yhout[iy-Y0] = 0.001*yhfull[iy];
+	for (ix=X0; ix<=X1; ix++)   xhout[ix-X0] = 0.001*xhfull[ix];
 
 	H5Z_zfp_initialize();
 
@@ -551,9 +562,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_def_dim (ncid, "xh", NX, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", NY, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", NZ, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "xf", NX, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
-	status = nc_def_dim (ncid, "yf", NY, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "zf", NZ, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "xf", NX+1, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
+	status = nc_def_dim (ncid, "yf", NY+1, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "zf", NZ+1, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yh", NC_FLOAT, 1, &nyh_dimid, &yhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -672,11 +683,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		free(varname_tmp);
 	}
 
-// This is our main "loop over all requested variable names" loop.
+// This is our main "loop over all requested variable names" loop that
+// sets all the metadata shit.
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
 		/* u v and w live on their own mesh (Arakawa C grid)*/
+
+		/* Recommend, however, for making netcdf files, to just
+		 * request uinterp vinterp winterp which NOW are cacluated
+		 * HERE rather than saved in LOFS */
+
+		/* We are going to preserve u v w with the extra point for
+		 * saving u v and w easily while facilitating averaging
+		 * which requires 1 fewer point */
 
 		if(!strcmp(varname[ivar],"u"))
 		{
@@ -750,6 +770,11 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 3, dims, &(varnameid[ivar]));
 		}
 		else status = nc_def_var (ncid, varname[ivar], NC_FLOAT, 4, dims, &(varnameid[ivar]));
+
+//		printf("dims:  %5i %5i %5i %5i %s\n",dims[0],dims[1],dims[2],dims[3],varname[ivar]);
+//		printf("start: %5i %5i %5i %5i %s\n",start[0],start[1],start[2],start[3],varname[ivar]);
+//		printf("edges: %5i %5i %5i %5i %s\n",edges[0],edges[1],edges[2],edges[3],varname[ivar]);
+//		printf("\n");
 
 		if (status != NC_NOERR) 
 		{
@@ -1081,6 +1106,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	 * ahead of time (read ahead) */
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
+		if(!strcmp(varname[ivar],"uinterp")) {u_rh=1;}
+		if(!strcmp(varname[ivar],"vinterp")) {v_rh=1;}
+		if(!strcmp(varname[ivar],"winterp")) {w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
@@ -1133,7 +1161,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	{
 		bufsize = (long) (NX+1) * (long) (NY+1) * (long) (NZ+1) * (long) sizeof(float);
 		bufsize_gb = 1.0e-9*bufsize;
-		printf("\nAllocating %5.2f GB of memory for our main 3D variable array\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory for our main 3D variable array\n",bufsize_gb);
 		if(debug) fprintf(stdout,"X0=%i Y0=%i X1=%i Y1=%i Z0=%i Z1=%i bufsize = %f GB\n",X0,Y0,X1,Y1,Z0,Z1,bufsize_gb);
 		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
 	}
@@ -1162,43 +1190,50 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 	if (u_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering uinterp:\n",bufsize_gb);
-		if ((ubuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate ubuffer");
-		read_hdf_mult_md(ubuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		printf("\nAllocating %8.5f GB of memory and buffering ustag:\n",bufsize_gb);
+		if ((ustag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate ustag");
+// ORF we should just require u v w now, no interp
+//		read_hdf_mult_md(ustag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"uinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		read_hdf_mult_md(ustag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"u",X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (v_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering vinterp:\n",bufsize_gb);
-		if ((vbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate vbuffer");
-		read_hdf_mult_md(vbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		printf("\nAllocating %8.5f GB of memory and buffering vstag:\n",bufsize_gb);
+		if ((vstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate vstag");
+//		read_hdf_mult_md(vstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"vinterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		read_hdf_mult_md(vstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"v",X0,Y0,X1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (w_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering winterp:\n",bufsize_gb);
-		if ((wbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate wbuffer");
-		read_hdf_mult_md(wbuffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		printf("\nAllocating %8.5f GB of memory and buffering wstag:\n",bufsize_gb);
+		if ((wstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate wstag");
+//		read_hdf_mult_md(wstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+		read_hdf_mult_md(wstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"w",X0,Y0,X1,Y1,Z0,Z1+1,nx,ny,nz,nodex,nodey);
 	}
+//We are going to have to get rid of the read command here and
+//instead cacluate it as we are not saving vorticity 3D fields anymore
+//as a rule
 	if (xvort_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering xvort:\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory and buffering xvort:\n",bufsize_gb);
 		if ((xvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(xvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"xvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (yvort_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering yvort:\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory and buffering yvort:\n",bufsize_gb);
 		if ((yvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(yvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"yvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (zvort_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering zvort:\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory and buffering zvort:\n",bufsize_gb);
 		if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
 	if (thrhopert_rh)
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering thrhopert:\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory and buffering thrhopert:\n",bufsize_gb);
 		if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate thrhopert");
 		read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
@@ -1206,7 +1241,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 // could probably re-use one of the other variables but oh well
 	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
 	{
-		printf("\nAllocating %5.2f GB of memory and buffering dum0:\n",bufsize_gb);
+		printf("\nAllocating %8.5f GB of memory and buffering dum0:\n",bufsize_gb);
 		if ((dum0 = dumarray = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate dum0 array");
 		break; //we only do this once!
 	}
@@ -1216,263 +1251,80 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
+		// Default; only change edges if u, v, w. Note, dims is
+		// linked via the variable id, set in the first-pass
+		// metadata/before nc_enddef loop, but start and edges are
+		// passed to nc_writef, and must be adjustd within this loop
+		// for any staggered variables (u, v, w which I call ustag,
+		// vstag, wstag in this code, not just u, v, w in cm1)
+
+		start[0]=0;start[1]=0;start[2]=0;start[3]=0;
+		edges[0]=1;edges[1]=NZ;edges[2]=NY;edges[3]=NX;
+
+		// 2019-05-06: All diagnostic calculations that used
+		// [uvw] interp variables with centered differences for
+		// derivates have been nuked below.
+		//
+		// TODO: recalculate these things properly using the
+		// staggered velocity variables, with same approach as
+		// native CM1
+
 		printf("Working on %s (",varname[ivar]);
 		fflush(stdout);
 
 /************************** BEGINNING OF ROT VORT STUFF ************************/
-		if(!strcmp(varname[ivar],"rotvortmag")||!strcmp(varname[ivar],"roheldens")||!strcmp(varname[ivar],"nroheldens"))
-		{
-			float sign,a1,a2,b1,b2,c1,c2;
-			float rvx,rvy,rvz,rotvortmag,roheldens,nroheldens,rhnorm,windmag;
-			int do_rotvortmag=0,do_roheldens=0,do_nroheldens=0;
-			if(!strcmp(varname[ivar],"rotvortmag"))do_rotvortmag=1;
-			if(!strcmp(varname[ivar],"roheldens"))do_roheldens=1;
-			if(!strcmp(varname[ivar],"nroheldens"))do_nroheldens=1;
-			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,dudz,dwdx,dvdx,dudy,a1,a2,b1,b2,c1,c2,rvx,rvy,rvz,rotvortmag,roheldens,nroheldens,windmag,rhnorm,sign)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
-					for(ix=1; ix<NX-1; ix++)
-					{
-						rvx=rvy=rvz=0.0;
-// X
-						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
-
-						a1 = dwdy-dvdz; a1*=a1;
-						a2 = dwdy+dvdz; a2*=a2;
-						sign = (xvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (a1>a2) rvx=sqrt(a1-a2)*sign;
-// Y
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
-
-						b1 = dudz-dwdx; b1*=b1;
-						b2 = dudz+dwdx; b2*=b2;
-						sign = (yvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (b1>b2) rvy=sqrt(b1-b2)*sign;
-// Z
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
-
-						c1 = dvdx-dudy; c1*=c1;
-						c2 = dvdx+dudy; c2*=c2;
-						sign = (zvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (c1>c2) rvz=sqrt(c1-c2)*sign;
-
-						rotvortmag=sqrt(rvx*rvx+rvy*rvy+rvz*rvz);
-						roheldens=ubuffer[P3(ix,iy,iz,NX,NY)]*rvx+vbuffer[P3(ix,iy,iz,NX,NY)]*rvy+wbuffer[P3(ix,iy,iz,NX,NY)]*rvz;
-						windmag=sqrt(
-								(ubuffer[P3(ix,iy,iz,NX,NY)]*ubuffer[P3(ix,iy,iz,NX,NY)])+
-								(vbuffer[P3(ix,iy,iz,NX,NY)]*vbuffer[P3(ix,iy,iz,NX,NY)])+
-								(wbuffer[P3(ix,iy,iz,NX,NY)]*wbuffer[P3(ix,iy,iz,NX,NY)])
-								);
-						rhnorm=windmag*rotvortmag;
-						if(do_rotvortmag)
-						{
-							buffer[P3(ix,iy,iz,NX,NY)] = rotvortmag;
-						}
-						if(do_roheldens)
-						{
-							buffer[P3(ix,iy,iz,NX,NY)] = roheldens;
-						}
-						if(do_nroheldens)
-						{
-							nroheldens=(rotvortmag > 1e-10 && windmag >1e-1)? roheldens/rhnorm : 0.0;
-							buffer[P3(ix,iy,iz,NX,NY)] = nroheldens;
-						}
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"rotvortx")) 
-		{
-			float sign,a1,a2;
-			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dwdy,dvdz,a1,a2,sign)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
-
-						a1 = dwdy-dvdz; a1*=a1;
-						a2 = dwdy+dvdz; a2*=a2;
-						sign = (xvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (a1>a2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(a1-a2)*sign;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"rotvorty")) 
-		{
-			float sign,b1,b2;
-			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dudz,dwdx,b1,b2,sign)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
-
-						b1 = dudz-dwdx; b1*=b1;
-						b2 = dudz+dwdx; b2*=b2;
-						sign = (yvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (b1>b2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(b1-b2)*sign;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"rotvortz"))
-		{
-			float sign,c1,c2;
-			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(ix,iy,iz,dzi,dyi,dxi,dvdx,dudy,c1,c2,sign)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
-
-						c1 = dvdx-dudy; c1*=c1;
-						c2 = dvdx+dudy; c2*=c2;
-						sign = (zvort[P3(ix,iy,iz,NX,NY)] < 0.0 ) ? -1.0:1.0;
-
-						if (c1>c2) buffer[P3(ix,iy,iz,NX,NY)]=sqrt(c1-c2)*sign;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"isquared")||!strcmp(varname[ivar],"vorheldens")||!strcmp(varname[ivar],"nvorheldens"))
-		{
-			float sign,c1,c2;
-			float term[12],isquared;
-			float vcurvx,vcurvy,vcurvz,vcurvmag,vorheldens,nvorheldens,csum,windmag;
-			int do_isquared=0,do_vorheldens=0,do_nvorheldens=0,no_thresh;
-			if(!strcmp(varname[ivar],"isquared"))do_isquared=1;
-			if(!strcmp(varname[ivar],"vorheldens"))do_vorheldens=1;
-			if(!strcmp(varname[ivar],"nvorheldens"))do_nvorheldens=1;
-			for (i=0; i<NX*NY*NZ; i++) *buffer++ = 0.0; buffer = buf0;
-#pragma omp parallel for private(i,ix,iy,iz,no_thresh,term,dzi,dyi,dxi,dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz,\
-							csum,windmag,vcurvx,vcurvy,vcurvz,vcurvmag,vorheldens,nvorheldens,isquared)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz+Z0+1]-zh[iz+Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy+Y0+1]-yhfull[iy+Y0-1]);
-					for(ix=1; ix<NX-1; ix++)
-					{
-						dxi=0.5/(xhfull[ix+X0+1]-xhfull[ix+X0-1]);
-
-						dudx = ubuffer[P3(ix+1,iy,iz,NX,NY)]-ubuffer[P3(ix-1,iy,iz,NX,NY)]; dudx *= dxi;
-						dudy = ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,iz,NX,NY)]; dudy *= dyi;
-						dudz = ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]; dudz *= dzi;
-
-						dvdx = vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix-1,iy,iz,NX,NY)]; dvdx *= dxi;
-						dvdy = vbuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]; dvdy *= dyi;
-						dvdz = vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]; dvdz *= dzi;
-
-						dwdx = wbuffer[P3(ix+1,iy,iz,NX,NY)]-wbuffer[P3(ix-1,iy,iz,NX,NY)]; dwdx *= dxi;
-						dwdy = wbuffer[P3(ix,iy+1,iz,NX,NY)]-wbuffer[P3(ix,iy-1,iz,NX,NY)]; dwdy *= dyi;
-						dwdz = wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]; dwdz *= dzi;
-
-						term[ 0] = dwdy-dvdz; term[ 0]*=term[ 0]*0.50;
-						term[ 1] = dwdy+dvdz; term[ 1]*=term[ 1]*0.50*(-1.0);
-						term[ 2] = dwdz;      term[ 2]*=term[ 2]*0.25*(-1.0);
-						term[ 3] = dvdy;      term[ 3]*=term[ 3]*0.25*(-1.0);
-						term[ 4] = dudz-dwdx; term[ 4]*=term[ 4]*0.50;
-						term[ 5] = dudz+dwdx; term[ 5]*=term[ 5]*0.50*(-1.0);
-						term[ 6] = dwdz;      term[ 6]*=term[ 6]*0.25*(-1.0);
-						term[ 7] = dudx;      term[ 7]*=term[ 7]*0.25*(-1.0);
-						term[ 8] = dvdx-dudy; term[ 8]*=term[ 8]*0.50;
-						term[ 9] = dvdx+dudy; term[ 9]*=term[ 9]*0.50*(-1.0);
-						term[10] = dudx;      term[10]*=term[10]*0.25*(-1.0);
-						term[11] = dvdy;      term[11]*=term[11]*0.25*(-1.0);
-
-						if(do_isquared)
-						{
-							isquared = 0.0; for (i=0;i<12;i++) isquared += term[i];
-							buffer[P3(ix,iy,iz,NX,NY)]=isquared;
-						}
-
-						if(do_vorheldens||do_nvorheldens)
-						{
-							csum = term[0]+term[1]+term[2]+term[3]; sign = (term[0]<0.0)?-1.0:1.0;
-							vcurvx = (csum < 0)? 0.0 : sqrt(csum)*sign;
-
-							csum = term[4]+term[5]+term[6]+term[7]; sign = (term[4]<0.0)?-1.0:1.0;
-							vcurvy = (csum < 0)? 0.0 : sqrt(csum)*sign;
-
-							csum = term[8]+term[9]+term[10]+term[11]; sign = (term[8]<0.0)?-1.0:1.0;
-							vcurvz = (csum < 0)? 0.0 : sqrt(csum)*sign;
-
-							vcurvmag=sqrt(vcurvx*vcurvx+vcurvy*vcurvy+vcurvz*vcurvz);
-
-							windmag=sqrt(
-								(ubuffer[P3(ix,iy,iz,NX,NY)]*ubuffer[P3(ix,iy,iz,NX,NY)])+
-								(vbuffer[P3(ix,iy,iz,NX,NY)]*vbuffer[P3(ix,iy,iz,NX,NY)])+
-								(wbuffer[P3(ix,iy,iz,NX,NY)]*wbuffer[P3(ix,iy,iz,NX,NY)])
-									);
-
-							no_thresh=(vcurvmag<0.001||windmag<0.01);
-
-							vorheldens = no_thresh?0.0:
-								(ubuffer[P3(ix,iy,iz,NX,NY)]*vcurvx+
-								 vbuffer[P3(ix,iy,iz,NX,NY)]*vcurvy+
-								 wbuffer[P3(ix,iy,iz,NX,NY)]*vcurvz);
-								
-							buffer[P3(ix,iy,iz,NX,NY)]= do_vorheldens?vorheldens:no_thresh?0.0:vorheldens/(windmag*vcurvmag);
-						}
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-
+//		if(!strcmp(varname[ivar],"rotvortmag")||!strcmp(varname[ivar],"roheldens")||!strcmp(varname[ivar],"nroheldens"))
+//		else if(!strcmp(varname[ivar],"rotvortx")) 
+//		else if(!strcmp(varname[ivar],"rotvorty")) 
+//		else if(!strcmp(varname[ivar],"rotvortz"))
+//		else if(!strcmp(varname[ivar],"isquared")||!strcmp(varname[ivar],"vorheldens")||!strcmp(varname[ivar],"nvorheldens"))
 /************************** END OF ROT VORT STUFF ************************/
 
+		if(!strcmp(varname[ivar],"uinterp")) //We now calculate this, do not save it any more
+		{
+#pragma omp parallel for private(ix,iy,iz)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
+			{
+				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+			}
+			writeptr = buffer;
+		}
+		else if(!strcmp(varname[ivar],"vinterp")) //We now calculate this, do not save it any more
+		{
+#pragma omp parallel for private(ix,iy,iz)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
+			{
+				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+			}
+			writeptr = buffer;
+		}
+		else if(!strcmp(varname[ivar],"winterp")) //We now calculate this, do not save it any more
+		{
+#pragma omp parallel for private(ix,iy,iz)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
+			{
+				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+wstag[P3(ix,iy,iz+1,NX,NY)]);
+			}
+			writeptr = buffer;
+		}
 		else if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
-#pragma omp parallel for private(i,usr,vsr)
-			for(i=0; i<NX*NY*NZ; i++)
+#pragma omp parallel for private(ix,iy,iz,usr,vsr)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
 			{
-				usr = ubuffer[i];
-				vsr = vbuffer[i];
-				buffer[i] = sqrt(usr*usr+vsr*vsr);
+				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+				buffer[P3(ix,iy,iz,NX,NY)] = sqrt(usr*usr+vsr*vsr);
+//				printf("%f\n",buffer[i]);
 			}
 			writeptr = buffer;
 		}
@@ -1482,377 +1334,86 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #pragma omp parallel for private(i,usr,vsr,wsr)
 			for(i=0; i<NX*NY*NZ; i++)
 			{
-				usr = ubuffer[i];
-				vsr = vbuffer[i];
-				wsr = wbuffer[i];
+				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+				wsr = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+vstag[P3(ix,iy,iz+1,NX,NY)]);
 				buffer[i] = sqrt(usr*usr+vsr*vsr+wsr*wsr);
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
-		{
-			float usr,vsr;
-			//TODO: put umove and vmove in the got dammed hdf5
-			//files
+//		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
+//		{
+//			float usr,vsr;
+//			//TODO: put umove and vmove in the got dammed hdf5
+//			//files
 //			float umove=15.2;
 //			float vmove=10.5;
 //			These are now command line options until we store
 //			these in the cm1hdf5 files
-#pragma omp parallel for private(i,usr,vsr)
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				usr = ubuffer[i]+umove;
-				vsr = vbuffer[i]+vmove;
-				buffer[i] = sqrt(usr*usr+vsr*vsr);
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"hdiv")) // need to save this, more accurate with staggered vel. vars
+//#pragma omp parallel for private(i,usr,vsr)
+//			for(i=0; i<NX*NY*NZ; i++)
+//			{
+//				usr = ustag[i]+umove;
+//				vsr = vstag[i]+vmove;
+//				buffer[i] = sqrt(usr*usr+vsr*vsr);
+//			}
+//			writeptr = buffer;
+//		}
+		else if(!strcmp(varname[ivar],"hdiv")) // uses staggered velocity variables!
 		{
-
-			/* set edges to zero - should fill with missing (TODO)*/
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
-
-			for(iz=0; iz<NZ; iz++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,0,iz,NX,NY)] = 
-				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
-
 #pragma omp parallel for private(ix,iy,iz,dxi,dyi)
 			for(iz=0; iz<NZ; iz++)
 			{
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(ix=1; ix<NX-1; ix++)
-					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] =
-						dxi * (ubuffer[P3(ix+1,iy,iz,NX,NY)] - ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
-						dyi * (vbuffer[P3(ix,iy+1,iz,NX,NY)] - vbuffer[P3(ix,iy-1,iz,NX,NY)]) ;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"zvort_stretch")) 
-		{
-
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
-
-			for(iz=0; iz<NZ; iz++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,0,iz,NX,NY)] = 
-				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dyi,dxi)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] =
-							-1000.0*zvort[P3(ix,iy,iz,NX,NY)] *
-						(dxi * (ubuffer[P3(ix+1,iy,iz,NX,NY)] - ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
-						dyi * (vbuffer[P3(ix,iy+1,iz,NX,NY)] - vbuffer[P3(ix,iy-1,iz,NX,NY)])) ;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"zvort_tilt")) 
-		{
-
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
-
-			for(iz=0; iz<NZ; iz++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,0,iz,NX,NY)] = 
-				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] =
-							1000.0*(xvort[P3(ix,iy,iz,NX,NY)] * dxi * (wbuffer[P3(ix+1,iy,iz,NX,NY)] - wbuffer[P3(ix-1,iy,iz,NX,NY)]) +
-						        yvort[P3(ix,iy,iz,NX,NY)] * dyi * (wbuffer[P3(ix,iy+1,iz,NX,NY)] - wbuffer[P3(ix,iy-1,iz,NX,NY)])) ;
-					}
-				}
-			}
-
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"xvort_baro")) // need to save this, more accurate with staggered vel. vars
-		{
-//			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
-			float coeff;
-			/* BUG:  Needs to be theta_bar[iz] */
-
-			/* set edges to zero - should fill with missing (TODO)*/
-
-			for(k=0; k<NZ; k++)
-			for(i=0; i<NX; i++)
-				buffer[P3(i,0,k,NX,NY)] = 
-				buffer[P3(i,NY-1,k,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,coeff,dyi)
-			for(iz=0; iz<NZ; iz++)
-			{
-				coeff = 1000.0 * 9.81 / (th0[iz]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
-				for(iy=1; iy<NY-1; iy++)
-				{
-					for(ix=0; ix<NX; ix++)
-					{
-						dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] =
-							coeff * dyi * (thrhopert[P3(ix,iy+1,iz,NX,NY)] - thrhopert[P3(ix,iy-1,iz,NX,NY)]) ;
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"yvort_baro")) // need to save this, more accurate with staggered vel. vars
-		{
-//			float coeff = 1000.0 * 9.8/304.86; /* UGLY I know... this should be saved in hist files */
-			float coeff;
-			/* BUG:  Needs to be theta_bar[iz] */
-
-			/* set edges to zero - should fill with missing (TODO)*/
-
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,coeff,dxi)
-			for(iz=0; iz<NZ; iz++)
-			{
-				coeff = 1000.0 * 9.81 / (th0[iz]*(1.0+reps*qv0[iz]/(1.0+qv0[iz])));
 				for(iy=0; iy<NY; iy++)
 				{
-					for(ix=1; ix<NX-1; ix++)
+					dyi=1.0/(yffull[iy-Y0+1]-yffull[iy-Y0]);
+					for(ix=0; ix<NX; ix++)
 					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
+						dxi=1.0/(xffull[ix-X0+1]-xffull[ix-X0]);
 						buffer[P3(ix,iy,iz,NX,NY)] =
-							-coeff * dxi * (thrhopert[P3(ix+1,iy,iz,NX,NY)] - thrhopert[P3(ix-1,iy,iz,NX,NY)]) ;
+						dxi * (ustag[P3(ix+1,iy,iz,NX+1,NY)] - ustag[P3(ix,iy,iz,NX+1,NY)]) +
+						dyi * (vstag[P3(ix,iy+1,iz,NX,NY+1)] - vstag[P3(ix,iy,iz,NX,NY+1)]) ;
+//						printf("buffer = %f\n",buffer[P3(ix,iy,iz,NX,NY)]);
 					}
 				}
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"yvort_stretch")) // need to save this, more accurate with staggered vel. vars
-		{
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
+//		else if(!strcmp(varname[ivar],"zvort_stretch")) 
+//		else if(!strcmp(varname[ivar],"zvort_tilt")) 
+//		else if(!strcmp(varname[ivar],"xvort_baro")) 
+//		else if(!strcmp(varname[ivar],"yvort_baro")) 
+//		else if(!strcmp(varname[ivar],"yvort_stretch"))
+//		else if(!strcmp(varname[ivar],"yvort_tilt"))
+//		else if(!strcmp(varname[ivar],"xvort_stretch"))
+//		else if(!strcmp(varname[ivar],"xvort_tilt"))
+//		else if(!strcmp(varname[ivar],"hvort"))
+//		else if(!strcmp(varname[ivar],"vortmag"))
+//		else if(!strcmp(varname[ivar],"streamvort"))
+//		else if(!strcmp(varname[ivar],"streamfrac"))
 
-			for(iy=0; iy<NY; iy++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,iy,0,NX,NY)] = 
-				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dzi,dxi)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(iy=0; iy<NY; iy++)
-				{
-					for(ix=1; ix<NX-1; ix++)
-					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] = -1000.0 * yvort[P3(ix,iy,iz,NX,NY)]*(dxi*(ubuffer[P3(ix+1,iy,iz,NX,NY)]-ubuffer[P3(ix-1,iy,iz,NX,NY)]) +
-												dzi*(wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]));
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"yvort_tilt")) // need to save this, more accurate with staggered vel. vars
-		{
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-				buffer[P3(0,iy,iz,NX,NY)] = 
-				buffer[P3(NX-1,iy,iz,NX,NY)] = MISSING;
-
-			for(iy=0; iy<NY; iy++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,iy,0,NX,NY)] = 
-				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dxi,dzi)
-			for(iz=1; iz<NZ; iz++)
-			{
-				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(iy=0; iy<NY; iy++)
-				{
-					for(ix=1; ix<NX-1; ix++)
-					{
-						dxi=0.5/(xhfull[ix-X0+1]-xhfull[ix-X0-1]);
-						buffer[P3(ix,iy,iz,NX,NY)] = 1000.0 * (xvort[P3(ix,iy,iz,NX,NY)]*dxi*(vbuffer[P3(ix+1,iy,iz,NX,NY)]-vbuffer[P3(ix+1,iy,iz,NX,NY)]) +
-										    zvort[P3(ix,iy,iz,NX,NY)]*dzi*(vbuffer[P3(ix,iy,iz+1,NX,NY)]-vbuffer[P3(ix,iy,iz-1,NX,NY)]));
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"xvort_stretch")) // need to save this, more accurate with staggered vel. vars
-		{
-			for(iz=0; iz<NZ; iz++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,0,iz,NX,NY)] = 
-				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
-
-			for(iy=0; iy<NY; iy++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,iy,0,NX,NY)] = 
-				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						buffer[P3(ix,iy,iz,NX,NY)] = -1000.0 * xvort[P3(ix,iy,iz,NX,NY)]*(dyi*(vbuffer[P3(ix,iy+1,iz,NX,NY)]-vbuffer[P3(ix,iy-1,iz,NX,NY)]) +
-												dzi*(wbuffer[P3(ix,iy,iz+1,NX,NY)]-wbuffer[P3(ix,iy,iz-1,NX,NY)]));
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"xvort_tilt")) // need to save this, more accurate with staggered vel. vars
-		{
-			for(iz=0; iz<NZ; iz++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,0,iz,NX,NY)] = 
-				buffer[P3(ix,NY-1,iz,NX,NY)] = MISSING;
-
-			for(iy=0; iy<NY; iy++)
-			for(ix=0; ix<NX; ix++)
-				buffer[P3(ix,iy,0,NX,NY)] = 
-				buffer[P3(ix,iy,NZ-1,NX,NY)] = MISSING;
-
-#pragma omp parallel for private(ix,iy,iz,dyi,dzi)
-			for(iz=1; iz<NZ-1; iz++)
-			{
-				dzi=0.5/(zh[iz-Z0+1]-zh[iz-Z0-1]);
-				for(iy=1; iy<NY-1; iy++)
-				{
-					dyi=0.5/(yhfull[iy-Y0+1]-yhfull[iy-Y0-1]);
-					for(ix=0; ix<NX; ix++)
-					{
-						buffer[P3(ix,iy,ix,NX,NY)] = 1000.0 * (yvort[P3(ix,iy,ix,NX,NY)]*dyi*(ubuffer[P3(ix,iy+1,iz,NX,NY)]-ubuffer[P3(ix,iy-1,ix,NX,NY)]) +
-										    zvort[P3(ix,iy,iz,NX,NY)]*dzi*(ubuffer[P3(ix,iy,iz+1,NX,NY)]-ubuffer[P3(ix,iy,iz-1,NX,NY)]));
-					}
-				}
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"hvort")) //horizontal vorticity magnitude
-		{
-#pragma omp parallel for private(i)
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]);
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"vortmag")) //3D vorticity magnitude
-		{
-#pragma omp parallel for private(i)
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] = sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]);
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"streamvort")) // streamwise vorticity
-		{
-//			clock_t start = clock(), diff;
-#pragma omp parallel for private(i)
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
-					sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i]);
-			}
-//			diff = clock() - start;
-//			int msec=diff*1000/CLOCKS_PER_SEC;
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"streamfrac")) // streamwise vorticity fraction
-		{
-#pragma omp parallel for private(i)
-			for(i=0; i<NX*NY*NZ; i++)
-			{
-				buffer[i] = (ubuffer[i]*xvort[i]+vbuffer[i]*yvort[i]+wbuffer[i]*zvort[i])/
-					(sqrt(ubuffer[i]*ubuffer[i]+vbuffer[i]*vbuffer[i]+wbuffer[i]*wbuffer[i])*
-					sqrt(xvort[i]*xvort[i]+yvort[i]*yvort[i]+zvort[i]*zvort[i]));
-			}
-			writeptr = buffer;
-		}
-		else if(!strcmp(varname[ivar],"uinterp"))
+		else if(!strcmp(varname[ivar],"u"))
 		{
 			if (!u_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=ubuffer;
+					varname[ivar],X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=ustag;
 		}
-		else if(!strcmp(varname[ivar],"vinterp"))
+		else if(!strcmp(varname[ivar],"v"))
 		{
-			if (!v_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=vbuffer;
+			if (!v_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=vstag;
 		}
-		else if(!strcmp(varname[ivar],"winterp"))
+		else if(!strcmp(varname[ivar],"w"))
 		{
 			if (!w_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=wbuffer;
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1+1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else writeptr=wstag;
 		}
-		else if(!strcmp(varname[ivar],"xvort"))
-		{
-			if (!xvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=xvort;
-		}
-		else if(!strcmp(varname[ivar],"yvort"))
-		{
-			if (!yvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=yvort;
-		}
-		else if(!strcmp(varname[ivar],"zvort"))
-		{
-			if (!zvort_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=zvort;
-		}
-		else if(!strcmp(varname[ivar],"thrhopert"))
-		{
-			if (!thrhopert_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=thrhopert;
-		}
+//		else if(!strcmp(varname[ivar],"xvort"))
+//		else if(!strcmp(varname[ivar],"yvort"))
+//		else if(!strcmp(varname[ivar],"zvort"))
+//		else if(!strcmp(varname[ivar],"thrhopert"))
 		else if(!strcmp(varname[ivar],"qcloud"))
 		{
 			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -1872,41 +1433,23 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			buffer=buf0; dumarray=dum0;
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"qvstupid"))
-		{
-			float *theta;
-			if ((theta = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate theta");
-			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"theta",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			//Note, this is already allocated above
-			read_hdf_mult_md(theta,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhoprime",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
-			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++; buffer=buf0; dumarray=dum0;
-			for(i=0; i<NX*NY*NZ; i++) *dumarray++ = *buffer++; buffer=buf0; dumarray=dum0;
-			/* dumarray now contains qc+qi+qr+qs+qg (what I call
-			 * qa in my derivation) */
-
-			// stopped here
-			// We have thetaprime, thetarhoprime, and qa. Need to
-			// calculate thetbar and thetarhoprimebar from the
-			// initial sounding for qv. Then we can subtract qv0
-			// from qv and hopefully what remains isn't shiznit.
-
-		}
+//		else if(!strcmp(varname[ivar],"qvstupid"))
 		else // We have (hopefully) requested a variable that has been saved
 		{
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			writeptr = buf0;
 		}
+		if(!strcmp(varname[ivar],"u")) edges[3] = NX+1;
+		if(!strcmp(varname[ivar],"v")) edges[2] = NY+1;
+		if(!strcmp(varname[ivar],"w")) edges[1] = NZ+1;
 dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
+			printf("dims:  %5i %5i %5i %5i %s\n",dims[0],dims[1],dims[2],dims[3],varname[ivar]);
+			printf("start: %5i %5i %5i %5i %s\n",start[0],start[1],start[2],start[3],varname[ivar]);
+			printf("edges: %5i %5i %5i %5i %s\n",edges[0],edges[1],edges[2],edges[3],varname[ivar]);
+			printf("\n");
+
 			printf("Could not write variable %s at time %f to %s\n", varname[ivar],t0,ncfilename);
 			ERROR_STOP("Write to netcdf file failed");
 		}

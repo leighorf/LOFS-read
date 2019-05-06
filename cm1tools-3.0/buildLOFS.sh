@@ -16,5 +16,6 @@ else
     module load szip
     #module load cray-netcdf
     module load cray-netcdf-hdf5parallel
+    module swap PrgEnv-cray PrgEnv-gnu
     make -f Makefile.bw install
 fi
