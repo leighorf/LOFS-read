@@ -1440,6 +1440,17 @@ keeping the same loop bounds and just changing the indexing.
         enddo
 */
 
+//#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
+
+// OK being a bit clever here but maybe not
+// This will make the code a lot easier to read
+// and will make it easier to compare to CM1 code
+
+#define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
+#define DUM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
+#define US(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define VS(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
+
 #pragma omp parallel for private(ix,iy,iz,dxi,dyi)
 			for(iz=0; iz<NZ; iz++)
 			{
@@ -1449,9 +1460,14 @@ keeping the same loop bounds and just changing the indexing.
 					for(ix=0; ix<NX+1; ix++)
 					{
 						dxi=1.0/(xffull[ix-X0]-xffull[ix-X0-1]);
+						DUM(ix,iy,iz) =
+							(VS(ix,iy,iz)-VS(ix-1,iy,iz))*dxi
+						     -(US(ix,iy,iz)-US(ix,iy-1,iz))*dyi;
+/*
 						dum0[P3(ix,iy,iz,NX+1,NY+1)] =
 							(vstag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-vstag[P3(ix,iy+1,iz,NX+2,NY+2)])*dxi
 						     -(ustag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-ustag[P3(ix+1,iy,iz,NX+2,NY+2)])*dyi;
+*/
 					}
 				}
 			}
@@ -1459,8 +1475,14 @@ keeping the same loop bounds and just changing the indexing.
 			for(iz=0; iz<NZ; iz++)
 				for(iy=0; iy<NY; iy++)
 					for(ix=0; ix<NX; ix++)
+						BUF(ix,iy,iz) = 0.25 * (DUM(ix,iy,iz)+DUM(ix+1,iy,iz)+DUM(ix,iy+1,iz)+DUM(ix+1,iy+1,iz));
+/*
+			for(iz=0; iz<NZ; iz++)
+				for(iy=0; iy<NY; iy++)
+					for(ix=0; ix<NX; ix++)
 						buf0[P3(ix,iy,iz,NX,NY)] = 0.25 * (dum0[P3(ix,iy,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy,iz,NX+1,NY+1)]
 											    +dum0[P3(ix,iy+1,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy+1,iz,NX+1,NY+1)]);
+*/
 			writeptr=buffer;
 
 		}
