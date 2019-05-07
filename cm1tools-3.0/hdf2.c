@@ -46,7 +46,6 @@ float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammi
 //const float MISSING=1.0E37;
 const float MISSING=0.0; //Ugh deal with these later
 
-int regenerate_cache = 0;
 int debug = 0;
 int do_swaths = 0;
 int do_allvars = 0;
@@ -67,7 +66,7 @@ void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,in
 
 void parse_cmdline_hdf2nc(int argc, char *argv[],
 		char *histpath, char *base,
-		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
+		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache);
 
 void parse_cmdline_makevisit(int argc, char *argv[],
 		char *histpath, char *base,
@@ -120,6 +119,7 @@ int main(int argc, char *argv[])
 	int X0,Y0,X1,Y1,Z0,Z1;
 	int i2d;
 	double time;
+	int regenerate_cache = 0; //We pass this to our parsedir routines in the case that we want to force cache file refreshing for whatever reason
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
@@ -132,11 +132,11 @@ int main(int argc, char *argv[])
 
 	X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
 	time=0.0;
-	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1 );
+	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1, &regenerate_cache );
 	else if (we_are_makevisit) parse_cmdline_makevisit(argc, argv, histpath, base, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
 
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-	grok_cm1hdf5_file_structure(base);
+	grok_cm1hdf5_file_structure(base,regenerate_cache);
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
@@ -323,27 +323,27 @@ saving subdomains. */
 		printf("Succesfully wrote %s which can now be read by VisIt using the cm1visit plugin.\n",visitfile);
 }
 
-void grok_cm1hdf5_file_structure(char *base)
+void grok_cm1hdf5_file_structure(char *base,int regenerate_cache)
 {
 	int i;
-	ntimedirs = get_num_time_dirs(topdir,debug); printf("ntimedirs: %i\n",ntimedirs);
+	ntimedirs = get_num_time_dirs(topdir,debug,regenerate_cache); printf("ntimedirs: %i\n",ntimedirs);
 	if (ntimedirs == 0) ERROR_STOP("No cm1 hdf5 files found");
 
 	timedir = (char **)malloc(ntimedirs * sizeof(char *));
 	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dirtimes = (double *)malloc(ntimedirs * sizeof(double));//times are float not int
 
-	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,debug);
+	get_sorted_time_dirs(topdir,timedir,dirtimes,ntimedirs,debug,regenerate_cache);
 
-	nnodedirs =  get_num_node_dirs(topdir,timedir[0],debug);
+	nnodedirs =  get_num_node_dirs(topdir,timedir[0],debug,regenerate_cache);
 	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
 	// ORF 8 == 7 zero padded node number directory name plus 1 end of string char
 	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
-	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug);
+	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug,regenerate_cache);
 
 	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,
-			&saved_X0,&saved_Y0,&saved_X1,&saved_Y1,debug);
+			&saved_X0,&saved_Y0,&saved_X1,&saved_Y1,debug,regenerate_cache);
 	if(debug)
 	{
 		printf("All available times: ");
@@ -366,7 +366,7 @@ void grok_cm1hdf5_file_structure(char *base)
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ustag,*vstag,*wstag,*xvort,*yvort,*zvort;
-	float *dum0,*dum00;
+	float *dum0,*dum00,*dum1,*dum10;
 	float *twodbuffer,*twodbuf0;
 	float *writeptr;
 	float *qc,*qi,*qs;
@@ -1155,6 +1155,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"zvort")) {u_rh=1;v_rh=1;}
+//		if(!strcmp(varname[ivar],"thrhopert")) {q_liq_solid_rh=1;thpert_rh=1;}
 // THESE DO NOT WORK, pop up as they do
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"rotvortx")) {v_rh=w_rh=xvort_rh=1;}
@@ -1207,8 +1208,11 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		bufsize_gb = 1.0e-9*bufsize;
 		printf("\nAllocating %8.5f GB of memory for our main 3D variable array\n",bufsize_gb);
 		if ((buf0 = buffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
-		printf("\nAllocating %8.5f GB of memory for our main 3D variable array\n",bufsize_gb);
-		if ((dum00 = dum0 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D temp calculation array");
+		printf("\nAllocating %8.5f GB of memory for our main 3D temporary array\n",bufsize_gb);
+		// TODO We should eventually test for only variables that need
+		// these extra arrays and only allocate if necessary
+		if ((dum00 = dum0 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our first 3D temp calculation array");
+		if ((dum10 = dum1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 	}
 
 	//Grab stack o' swaths and blast them home
@@ -1276,12 +1280,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if ((zvort = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate xvort");
 		read_hdf_mult_md(zvort,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"zvort",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 	}
-	if (thrhopert_rh)
-	{
-		printf("\nAllocating %8.5f GB of memory and buffering thrhopert:\n",bufsize_gb);
-		if ((thrhopert = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate thrhopert");
-		read_hdf_mult_md(thrhopert,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thrhopert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-	}
 // for our microphysics "a+b" stuff we just use a generic dum0 array,
 // could probably re-use one of the other variables but oh well
 //	for (ivar=0;ivar<nvar;ivar++) if((!strcmp(varname[ivar],"qcloud"))||(!strcmp(varname[ivar],"qprecip")))
@@ -1325,45 +1323,55 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		else if(!strcmp(varname[ivar],"isquared")||!strcmp(varname[ivar],"vorheldens")||!strcmp(varname[ivar],"nvorheldens"))
 /************************** END OF ROT VORT STUFF ************************/
 
+/*
+#define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
+#define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
+#define UA(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define VA(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
+*/
 		if(!strcmp(varname[ivar],"uinterp")) //We now calculate this, do not save it any more
 		{
+#define UINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
 			for(iz=0; iz<NZ; iz++)
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-//				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
-				BUF(ix,iy,iz) = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
+				UINTERP(ix,iy,iz) = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 			}
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"vinterp")) //We now calculate this, do not save it any more
 		{
+#define VINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
 			for(iz=0; iz<NZ; iz++)
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
 //				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
-				BUF(ix,iy,iz) = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
+				VINTERP(ix,iy,iz) = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 			}
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"winterp")) //We now calculate this, do not save it any more
 		{
+#define WINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
 			for(iz=0; iz<NZ; iz++)
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
 //				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+wstag[P3(ix,iy,iz+1,NX,NY)]);
-				BUF(ix,iy,iz) = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
+				WINTERP(ix,iy,iz) = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
 			}
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"hwin_sr")) //storm relative horizontal wind speed
 		{
 			float usr,vsr;
+#define HWIN_SR BUF
 #pragma omp parallel for private(ix,iy,iz,usr,vsr)
 			for(iz=0; iz<NZ; iz++)
 			for(iy=0; iy<NY; iy++)
@@ -1371,13 +1379,14 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			{
 				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
-				BUF(ix,iy,iz) = sqrt(usr*usr+vsr*vsr);
+				HWIN_SR(ix,iy,iz) = sqrt(usr*usr+vsr*vsr);
 			}
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"windmag_sr")) //storm relative 3D wind speed
 		{
 			float usr,vsr,wsr; //wsr is dumb but whatevah
+#define WINDMAG_SR BUF
 #pragma omp parallel for private(ix,iy,iz,usr,vsr,wsr)
 			for(iz=0; iz<NZ; iz++)
 			for(iy=0; iy<NY; iy++)
@@ -1386,7 +1395,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 				wsr = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
-				BUF(ix,iy,iz) = sqrt(usr*usr+vsr*vsr+wsr*wsr);
+				WINDMAG_SR(ix,iy,iz) = sqrt(usr*usr+vsr*vsr+wsr*wsr);
 			}
 			writeptr = buffer;
 		}
@@ -1411,20 +1420,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"hdiv")) // uses staggered velocity variables!
 		{
 #define HDIV BUF
-#pragma omp parallel for private(ix,iy,iz)
-			for(iz=0; iz<NZ; iz++)
-			for(iy=0; iy<NY; iy++)
-			for(ix=0; ix<NX; ix++)
+#pragma omp parallel for private(i,j,k,dudx,dvdy)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
 			{
-				dudx=(UA(ix+1,iy,iz)-UA(ix,iy,iz))*rdx*UH(ix);
-				dvdy=(VA(ix,iy+1,iz)-VA(ix,iy,iz))*rdy*VH(iy);
-				HDIV(ix,iy,iz) = dudx + dvdy;
+				dudx = (UA(i+1,j,k)-UA(i,j,k))*rdx*UH(i);
+				dvdy = (VA(i,j+1,k)-VA(i,j,k))*rdy*VH(j);
+				HDIV(i,j,k) = dudx + dvdy;
 			}
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort")) // uses staggered velocity variables!
 		{
-#pragma omp parallel for private(i,j,k)
+#pragma omp parallel for private(i,j,k,dvdx,dudy)
 			for(k=0; k<nk; k++)
 			for(j=0; j<nj+1; j++)
 			for(i=0; i<ni+1; i++)
@@ -1441,6 +1450,19 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				ZVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j+1,k)+TEM(i+1,j+1,k));
 
 			writeptr=buffer;
+
+		}
+		else if(!strcmp(varname[ivar],"thrhopert")) //We now calcluate here
+		{
+			read_hdf_mult_md(dum0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qtot",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+			read_hdf_mult_md(dum0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
+#pragma omp parallel for private(i,j,k,dvdx,dudy)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+			{
+
+			}
 
 		}
 //		else if(!strcmp(varname[ivar],"zvort_stretch")) 
@@ -1477,7 +1499,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		else if(!strcmp(varname[ivar],"xvort"))
 //		else if(!strcmp(varname[ivar],"yvort"))
 //		else if(!strcmp(varname[ivar],"zvort"))
-//		else if(!strcmp(varname[ivar],"thrhopert"))
 //		else if(!strcmp(varname[ivar],"qcloud"))
 //		{
 //			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -1656,7 +1677,7 @@ void parse_cmdline_makevisit(int argc, char *argv[],
 
 void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	char *histpath, char *base, double *time,
-	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1 )
+	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache )
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
@@ -1762,7 +1783,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				optcount++;
 				break;
 			case OPT_REGENERATECACHE:
-				regenerate_cache=1;
+				*regenerate_cache=1;
 				optcount++;
 				break;
 			case OPT_SWATHS:

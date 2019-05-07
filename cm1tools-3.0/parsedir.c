@@ -6,7 +6,7 @@
 
 #define MAXSTR (512)
 
-extern int regenerate_cache;
+//extern int regenerate_cache;
 DIR *dip;
 struct dirent *dit;
 
@@ -107,7 +107,7 @@ sortdoublearray (double *floatarray, int nel)
 }
 
 void
-get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug)
+get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug,int regenerate_cache)
 {
 	int i,j,iret,ns;
 	char tmpstr[256]; //size of dit->d_name
@@ -137,7 +137,6 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
 
-//How about regeneratecache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",*dn);
@@ -167,7 +166,7 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 }
 
 void
-get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug)
+get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug, int regenerate_cache)
 {
 	int i, j, k, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -258,7 +257,6 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 //		}
 		sortchararray (timedir, ntimedirs);
 		sortdoublearray (times, ntimedirs);
-//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","w")) != NULL) 
 		{
 			fprintf(fp,"%i\n",ntimedirs);
@@ -280,7 +278,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 }
 
 int
-get_num_time_dirs (char *basedir,int debug)
+get_num_time_dirs (char *basedir,int debug, int regenerate_cache)
 {
 	int i, j, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -353,7 +351,6 @@ get_num_time_dirs (char *basedir,int debug)
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
-//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
@@ -379,7 +376,7 @@ get_num_time_dirs (char *basedir,int debug)
 }
 
 int
-get_num_node_dirs (char *topdir, char *timedir,int debug)
+get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
 {
 	int j, ns,iret;
 	char timedir_full[MAXSTR];
@@ -400,7 +397,6 @@ get_num_node_dirs (char *topdir, char *timedir,int debug)
 				j++;
 		}
 		close_directory();
-//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
@@ -471,7 +467,7 @@ void get_unsorted_file_list(char** cm1hdf5file)
 
 double *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
-		int *saved_X0, int *saved_Y0, int *saved_X1, int *saved_Y1, int debug)
+		int *saved_X0, int *saved_Y0, int *saved_X1, int *saved_Y1, int debug,int regenerate_cache)
 {
 	int i, j, k, iret, itime;
 	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
@@ -730,7 +726,6 @@ crave electrolytes.
 
 		}
 		printf("\n");
-//recache		if (!regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",firstfilename);
