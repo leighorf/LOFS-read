@@ -354,7 +354,7 @@ void grok_cm1hdf5_file_structure(char *base)
 
 // OK being a bit clever here ... fun with macros. This will make the
 // code a lot easier to compare to native CM1 Fortran90 code that we are
-// copying anyway
+// copying anyway. I adopt TEM for his tem array, UA for ua etc.
 
 #define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
 #define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
@@ -1369,13 +1369,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-//				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
-//				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
-//				buffer[P3(ix,iy,iz,NX,NY)] = sqrt(usr*usr+vsr*vsr);
 				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 				BUF(ix,iy,iz) = sqrt(usr*usr+vsr*vsr);
-//				printf("%f\n",buffer[i]);
 			}
 			writeptr = buffer;
 		}
@@ -1387,10 +1383,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-//				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
-//				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
-//				wsr = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+vstag[P3(ix,iy,iz+1,NX,NY)]);
-//				buffer[i] = sqrt(usr*usr+vsr*vsr+wsr*wsr);
 				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 				wsr = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
@@ -1418,128 +1410,36 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		}
 		else if(!strcmp(varname[ivar],"hdiv")) // uses staggered velocity variables!
 		{
+#define HDIV BUF
 #pragma omp parallel for private(ix,iy,iz)
 			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
 			{
-				for(iy=0; iy<NY; iy++)
-				{
-					for(ix=0; ix<NX; ix++)
-					{
-						BUF(ix,iy,iz) = 
-							(UA(ix+1,iy,iz)-UA(ix,iy,iz))*rdx*UH(ix) +
-							(VA(ix,iy+1,iz)-VA(ix,iy,iz))*rdy*VH(iy);
-					}
-				}
+				dudx=(UA(ix+1,iy,iz)-UA(ix,iy,iz))*rdx*UH(ix);
+				dvdy=(VA(ix,iy+1,iz)-VA(ix,iy,iz))*rdy*VH(iy);
+				HDIV(ix,iy,iz) = dudx + dvdy;
 			}
-			/* OLD
-			for(iz=0; iz<NZ; iz++)
-			{
-				for(iy=0; iy<NY; iy++)
-				{
-					dyi=1.0/(yffull[iy-Y0+1]-yffull[iy-Y0]);
-					for(ix=0; ix<NX; ix++)
-					{
-						dxi=1.0/(xffull[ix-X0+1]-xffull[ix-X0]);
-						buffer[P3(ix,iy,iz,NX,NY)] =
-						dxi * (ustag[P3(ix+1,iy,iz,NX+1,NY)] - ustag[P3(ix,iy,iz,NX+1,NY)]) +
-						dyi * (vstag[P3(ix,iy+1,iz,NX,NY+1)] - vstag[P3(ix,iy,iz,NX,NY+1)]) ;
-					}
-				}
-			} */
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort")) // uses staggered velocity variables!
 		{
-
-// 2019-05-06 THIS LOOKS GOOD but should be tested against CM1 zvort!
-//
-// I have copied George's approach here for doing vorticity. See
-// misclibs/calcvort in cm1r16. The "trick" is to read in "ghost
-// zones" of ustag and vstag since to calculate vortz on the scalar
-// mesh you must first calcluate zeta (using "upwind" nearest-neighbor
-// differencing) but those calculations go a bit to the left and a
-// bit to the right of where we would prefer. So we have one extra
-// point to the west(south) and one extra point to the east(north)
-// for ustag(vstag). Because C does not have the "handy" way to index
-// negative values like Fortran, we just start with zero as usual such
-// that the smallest index is always 0.
-//
-// Here is the CM1 Fortran version.
-//
-// Keep in mind the ghost zones are actual ghost zones for the model;
-// for us they are "lateral boundaries" for the full cube, and we are
-// staying away from the model's true boundaries. So the idea is,
-// horizntally, we should always be requesting data with enough padding
-// to the left and right so as to not fail. We will eventually probably
-// want to do this right someday.
-
-/* CM1 fortran:
-
-      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
-
-	ngxy=3 (number of ghost zones in x and y)
-	ib=1-ngxy
-	jb=1-ngxy
-	kb=1-ngz
-
-	ie=ni+ngxy
-	je=nj+ngxy
-	ke=nk+ngz
-
-So, CM1 can safely reference ua(-2:ni+3,-2:nj+2,0:nz+1) whereas I am
-only reading in ustag(0:nx+2,0:ny+2,0:0:nz+1) [in C-ese]. So the array
-indexing will be different in the C code than with George's. I am
-keeping the same loop bounds and just changing the indexing.
-
-        do k=1,nk
-          do j=1,nj+1
-          do i=1,ni+1
-            tem(i,j,k) = (va(i,j,k)-va(i-1,j,k))*rdx*uf(i)   &
-                        -(ua(i,j,k)-ua(i,j-1,k))*rdy*vf(j)
-          enddo
-          enddo
-          do j=1,nj
-          do i=1,ni
-            zvort(i,j,k) = 0.25*(tem(i,j,k)+tem(i+1,j,k)+tem(i,j+1,k)+tem(i+1,j+1,k))
-          enddo
-          enddo
-        enddo
-*/
-
-//#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
-
-#define ZVORT BUF
-
 #pragma omp parallel for private(i,j,k)
 			for(k=0; k<nk; k++)
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni+1; i++)
 			{
-				for(j=0; j<nj+1; j++)
-				{
-					for(i=0; i<ni+1; i++)
-					{
-						TEM(i,j,k) =
-							(VA(i,j,k)-VA(i-1,j,k))*rdx*UF(i)
-						     -(UA(i,j,k)-UA(i,j-1,k))*rdy*VF(j);
-/*
-						dum0[P3(ix,iy,iz,NX+1,NY+1)] =
-							(vstag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-vstag[P3(ix,iy+1,iz,NX+2,NY+2)])*dxi
-						     -(ustag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-ustag[P3(ix+1,iy,iz,NX+2,NY+2)])*dyi;
-*/
-					}
-				}
+				dvdx = (VA(i,j,k)-VA(i-1,j,k))*rdx*UF(i);
+				dudy = (UA(i,j,k)-UA(i,j-1,k))*rdy*VF(j);
+				TEM(i,j,k) = dvdx - dudy;
 			}
+#define ZVORT BUF
 #pragma omp parallel for private(i,j,k)
 			for(k=0; k<nk; k++)
-				for(j=0; j<nj; j++)
-					for(i=0; i<ni; i++)
-						ZVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j+1,k)+TEM(i+1,j+1,k));
-/*
-			for(iz=0; iz<NZ; iz++)
-				for(iy=0; iy<NY; iy++)
-					for(ix=0; ix<NX; ix++)
-						buf0[P3(ix,iy,iz,NX,NY)] = 0.25 * (dum0[P3(ix,iy,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy,iz,NX+1,NY+1)]
-											    +dum0[P3(ix,iy+1,iz,NX+1,NY+1)]+dum0[P3(ix+1,iy+1,iz,NX+1,NY+1)]);
-*/
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				ZVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j+1,k)+TEM(i+1,j+1,k));
+
 			writeptr=buffer;
 
 		}
@@ -1919,3 +1819,61 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 
 		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
+//Some comments that I had higher up describing our methodology with calculating things like zvort
+//
+// 2019-05-06 THIS LOOKS GOOD but should be tested against CM1 zvort!
+//
+// I have copied George's approach here for doing vorticity. See
+// misclibs/calcvort in cm1r16. The "trick" is to read in "ghost
+// zones" of ustag and vstag since to calculate vortz on the scalar
+// mesh you must first calcluate zeta (using "upwind" nearest-neighbor
+// differencing) but those calculations go a bit to the left and a
+// bit to the right of where we would prefer. So we have one extra
+// point to the west(south) and one extra point to the east(north)
+// for ustag(vstag). Because C does not have the "handy" way to index
+// negative values like Fortran, we just start with zero as usual such
+// that the smallest index is always 0.
+//
+// Here is the CM1 Fortran version.
+//
+// Keep in mind the ghost zones are actual ghost zones for the model;
+// for us they are "lateral boundaries" for the full cube, and we are
+// staying away from the model's true boundaries. So the idea is,
+// horizntally, we should always be requesting data with enough padding
+// to the left and right so as to not fail. We will eventually probably
+// want to do this right someday.
+
+/* CM1 fortran:
+
+      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
+
+	ngxy=3 (number of ghost zones in x and y)
+	ib=1-ngxy
+	jb=1-ngxy
+	kb=1-ngz
+
+	ie=ni+ngxy
+	je=nj+ngxy
+	ke=nk+ngz
+
+So, CM1 can safely reference ua(-2:ni+3,-2:nj+2,0:nz+1) whereas I am
+only reading in ustag(0:nx+2,0:ny+2,0:0:nz+1) [in C-ese]. So the array
+indexing will be different in the C code than with George's. I am
+keeping the same loop bounds and just changing the indexing.
+
+        do k=1,nk
+          do j=1,nj+1
+          do i=1,ni+1
+            tem(i,j,k) = (va(i,j,k)-va(i-1,j,k))*rdx*uf(i)   &
+                        -(ua(i,j,k)-ua(i,j-1,k))*rdy*vf(j)
+          enddo
+          enddo
+          do j=1,nj
+          do i=1,ni
+            zvort(i,j,k) = 0.25*(tem(i,j,k)+tem(i+1,j,k)+tem(i,j+1,k)+tem(i+1,j+1,k))
+          enddo
+          enddo
+        enddo
+*/
+
+//#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
