@@ -1373,6 +1373,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //				buffer[P3(ix,iy,iz,NX,NY)] = sqrt(usr*usr+vsr*vsr);
 				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
+				BUF(ix,iy,iz) = sqrt(usr*usr+vsr*vsr);
 //				printf("%f\n",buffer[i]);
 			}
 			writeptr = buffer;
