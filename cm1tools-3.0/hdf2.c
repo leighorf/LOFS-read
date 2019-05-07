@@ -352,6 +352,16 @@ void grok_cm1hdf5_file_structure(char *base)
 	}
 }
 
+// OK being a bit clever here ... fun with macros. This will make the
+// code a lot easier to compare to native CM1 Fortran90 code that we are
+// copying anyway
+
+#define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
+#define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
+#define UA(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define VA(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
+
 //hdf2ncdammit
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
@@ -377,6 +387,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	extern int H5Z_zfp_initialize(void);
 
 	int NX,NY,NZ;
+	int ni,nj,nk; //For cm1-like code
 // 2019-05-01 new, for getting all 3d variables
 	hid_t f_id,g_id;
 	H5G_info_t group_info;
@@ -398,6 +409,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	long int bufsize;
 	float bufsize_gb;
 	float *xhfull,*yhfull,*xffull,*yffull,*zh,*zf;
+	float *uh,*uf,*vh,*vf,*mh,*mf;
 	float *xhout,*yhout,*zhout,*xfout,*yfout,*zfout;
 	FILE *fp;
 	char cmdfilename[512];
@@ -408,12 +420,14 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
 	int qc_rh=0,qi_rh=0,qr_rh=0,qs_rh=0,qg_rh=0;
 
+	float dx,dy,dz,rdx,rdy,rdz; // reproduce CM1 approach
 	float dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz;
-	float dxi,dyi,dzi;
 
 	float rv = 461.5;
 	float rd = 287.04;
 	float reps;
+
+	nk=NZ;nj=NY;ni=NX; //For cm1-like code
 
 	reps = rv/rd;
 
@@ -462,6 +476,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NY = Y1 - Y0 + 1;
 	NZ = Z1 - Z0 + 1;
 
+
 /* These are standard for on the scalar mesh and requesting 3D data */
 	/* Set below in loop not here anymore */
 
@@ -495,8 +510,13 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	v0 = (float *)malloc(nz * sizeof(float));
 	pres0 = (float *)malloc(nz * sizeof(float));
 	pi0 = (float *)malloc(nz * sizeof(float));
-	zh = (float *)malloc(nz * sizeof(float));
-	zf = (float *)malloc(nz * sizeof(float));
+	zh = (float *)malloc((nz+2) * sizeof(float));
+	zf = (float *)malloc((nz+2) * sizeof(float));
+	get0dfloat (f_id,(char *)"mesh/dx",&dx); rdx=1.0/dx;
+	get0dfloat (f_id,(char *)"mesh/dy",&dy); rdy=1.0/dy;
+//	well hell we need to store this
+//	get0dfloat (f_id,(char *)"mesh/dz",&dz); rdz=1.0/dz;
+	dz=dx;rdz=rdx;
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 	get1dfloat (f_id,(char *)"mesh/xffull",xffull,0,nx+1);
@@ -509,23 +529,44 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	get1dfloat (f_id,(char *)"basestate/v0",v0,0,nz);
 	get1dfloat (f_id,(char *)"basestate/pres0",pres0,0,nz);
 	get1dfloat (f_id,(char *)"basestate/pi0",pi0,0,nz);
-	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 
 	xhout = (float *)malloc(NX * sizeof(float));
 	yhout = (float *)malloc(NY * sizeof(float));
 	zhout = (float *)malloc(NZ * sizeof(float));
 
-/* Staggered mesh has one more value in each direction globally, but we're just not going to worry about it.... unless we need to */
-
-	/* WE FUCKING NEED TO NOW... no more reading in ?interp values
-	 * because we need to maintain accuracy with the staggered native
-	 * velocity variables for diagnostics etc.... */
-
-	/* Wait... no... it's just that the shared point will not be * shared */
-
 	xfout = (float *)malloc((NX+1) * sizeof(float));
 	yfout = (float *)malloc((NY+1) * sizeof(float));
 	zfout = (float *)malloc((NZ+1) * sizeof(float));
+
+// We recreate George's mesh/derivative calculation paradigm even though
+// we are usually isotropic. We need to have our code here match what
+// CM1 does internally for stretched and isotropic meshes.
+//
+// Becuase C cannot do have negative array indices (i.e., uh[-1]) like
+// F90 can, we have to offset everything to keep the same CM1-like code
+// We malloc enough space for the "ghost zones" and then make sure we
+// offset by the correct amount on each side. The macros take care of
+// the offsetting.
+
+	uh = (float *)malloc((NX+2) * sizeof(float));
+	uf = (float *)malloc((NX+2) * sizeof(float));
+	vh = (float *)malloc((NY+2) * sizeof(float));
+	vf = (float *)malloc((NY+2) * sizeof(float));
+	mh = (float *)malloc((NZ+2) * sizeof(float));
+	mf = (float *)malloc((NZ+2) * sizeof(float));
+#define UH(ix) uh[ix+1]
+#define UF(ix) uf[ix+1]
+#define VH(iy) vh[iy+1]
+#define VF(iy) vf[iy+1]
+#define MH(iz) mh[iz+1]
+#define MF(iz) mf[iz+1]
+	for (ix=X0-1; ix<X1+1; ix++) UH(ix-X0) = dx/(xffull[ix+1]-xffull[ix]);
+	for (ix=X0-1; ix<X1+1; ix++) UF(ix-X0) = dx/(xhfull[ix]-xhfull[ix-1]);
+	for (iy=Y0-1; iy<Y1+1; iy++) VH(iy-Y0) = dy/(yffull[iy+1]-yffull[iy]);
+	for (iy=Y0-1; iy<Y1+1; iy++) VF(iy-Y0) = dy/(yhfull[iy]-yhfull[iy-1]);
+	zf[0] = -zf[2]; //param.F
+	for (iz=Z0-1; iz<Z1+1; iz++) MH(iz-Z0) = dz/(zf[iz+1]-zf[iz]);
+	for (iz=Z0-1; iz<Z1+1; iz++) MF(iz-Z0) = dz/(zh[iz]-zf[iz-1]);
 
 	for (iz=Z0; iz<=Z1+1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
 	for (iy=Y0; iy<=Y1+1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
@@ -1211,7 +1252,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		printf("\nAllocating %8.5f GB of memory and buffering wstag:\n",bufsize_gb);
 		if ((wstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate wstag");
 //		read_hdf_mult_md(wstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"winterp",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-		read_hdf_mult_md(wstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"w",X0,Y0,X1,Y1,Z0,Z1+1,nx,ny,nz,nodex,nodey);
+		read_hdf_mult_md(wstag,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"w",X0-1,Y0-1,X1+1,Y1+1,Z0,Z1+1,nx,ny,nz,nodex,nodey);
 	}
 //We are going to have to get rid of the read command here and
 //instead cacluate it as we are not saving vorticity 3D fields anymore
@@ -1290,7 +1331,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+//				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+				BUF(ix,iy,iz) = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
 			}
 			writeptr = buffer;
 		}
@@ -1301,7 +1343,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+//				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+				BUF(ix,iy,iz) = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 			}
 			writeptr = buffer;
 		}
@@ -1312,7 +1355,8 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+wstag[P3(ix,iy,iz+1,NX,NY)]);
+//				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+wstag[P3(ix,iy,iz+1,NX,NY)]);
+				BUF(ix,iy,iz) = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
 			}
 			writeptr = buffer;
 		}
@@ -1324,9 +1368,11 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(iy=0; iy<NY; iy++)
 			for(ix=0; ix<NX; ix++)
 			{
-				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
-				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
-				buffer[P3(ix,iy,iz,NX,NY)] = sqrt(usr*usr+vsr*vsr);
+//				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+//				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+//				buffer[P3(ix,iy,iz,NX,NY)] = sqrt(usr*usr+vsr*vsr);
+				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
+				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
 //				printf("%f\n",buffer[i]);
 			}
 			writeptr = buffer;
@@ -1334,13 +1380,19 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		else if(!strcmp(varname[ivar],"windmag_sr")) //storm relative 3D wind speed
 		{
 			float usr,vsr,wsr; //wsr is dumb but whatevah
-#pragma omp parallel for private(i,usr,vsr,wsr)
-			for(i=0; i<NX*NY*NZ; i++)
+#pragma omp parallel for private(ix,iy,iz,usr,vsr,wsr)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
 			{
-				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
-				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
-				wsr = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+vstag[P3(ix,iy,iz+1,NX,NY)]);
-				buffer[i] = sqrt(usr*usr+vsr*vsr+wsr*wsr);
+//				usr = 0.5*(ustag[P3(ix,iy,iz,NX+1,NY)]+ustag[P3(ix+1,iy,iz,NX+1,NY)]);
+//				vsr = 0.5*(vstag[P3(ix,iy,iz,NX,NY+1)]+vstag[P3(ix,iy+1,iz,NX,NY+1)]);
+//				wsr = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+vstag[P3(ix,iy,iz+1,NX,NY)]);
+//				buffer[i] = sqrt(usr*usr+vsr*vsr+wsr*wsr);
+				usr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz));
+				vsr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz));
+				wsr = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
+				BUF(ix,iy,iz) = sqrt(usr*usr+vsr*vsr+wsr*wsr);
 			}
 			writeptr = buffer;
 		}
@@ -1364,7 +1416,20 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		}
 		else if(!strcmp(varname[ivar],"hdiv")) // uses staggered velocity variables!
 		{
-#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
+#pragma omp parallel for private(ix,iy,iz)
+			for(iz=0; iz<NZ; iz++)
+			{
+				for(iy=0; iy<NY; iy++)
+				{
+					for(ix=0; ix<NX; ix++)
+					{
+						BUF(ix,iy,iz) = 
+							(UA(ix+1,iy,iz)-UA(ix,iy,iz))*rdx*UH(ix) +
+							(VA(ix,iy+1,iz)-VA(ix,iy,iz))*rdy*VH(iy);
+					}
+				}
+			}
+			/* OLD
 			for(iz=0; iz<NZ; iz++)
 			{
 				for(iy=0; iy<NY; iy++)
@@ -1376,10 +1441,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 						buffer[P3(ix,iy,iz,NX,NY)] =
 						dxi * (ustag[P3(ix+1,iy,iz,NX+1,NY)] - ustag[P3(ix,iy,iz,NX+1,NY)]) +
 						dyi * (vstag[P3(ix,iy+1,iz,NX,NY+1)] - vstag[P3(ix,iy,iz,NX,NY+1)]) ;
-//						printf("buffer = %f\n",buffer[P3(ix,iy,iz,NX,NY)]);
 					}
 				}
-			}
+			} */
 			writeptr = buffer;
 		}
 		else if(!strcmp(varname[ivar],"zvort")) // uses staggered velocity variables!
@@ -1442,27 +1506,18 @@ keeping the same loop bounds and just changing the indexing.
 
 //#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
 
-// OK being a bit clever here but maybe not
-// This will make the code a lot easier to read
-// and will make it easier to compare to CM1 code
+#define ZVORT BUF
 
-#define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
-#define DUM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
-#define US(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
-#define VS(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
-
-#pragma omp parallel for private(ix,iy,iz,dxi,dyi)
-			for(iz=0; iz<NZ; iz++)
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
 			{
-				for(iy=0; iy<NY+1; iy++)
+				for(j=0; j<nj+1; j++)
 				{
-					dyi=1.0/(yffull[iy-Y0]-yffull[iy-Y0-1]);
-					for(ix=0; ix<NX+1; ix++)
+					for(i=0; i<ni+1; i++)
 					{
-						dxi=1.0/(xffull[ix-X0]-xffull[ix-X0-1]);
-						DUM(ix,iy,iz) =
-							(VS(ix,iy,iz)-VS(ix-1,iy,iz))*dxi
-						     -(US(ix,iy,iz)-US(ix,iy-1,iz))*dyi;
+						TEM(ix,iy,iz) =
+							(VA(ix,iy,iz)-VA(ix-1,iy,iz))*rdx*UF(i)
+						     -(UA(ix,iy,iz)-UA(ix,iy-1,iz))*rdy*VF(j);
 /*
 						dum0[P3(ix,iy,iz,NX+1,NY+1)] =
 							(vstag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-vstag[P3(ix,iy+1,iz,NX+2,NY+2)])*dxi
@@ -1475,7 +1530,7 @@ keeping the same loop bounds and just changing the indexing.
 			for(iz=0; iz<NZ; iz++)
 				for(iy=0; iy<NY; iy++)
 					for(ix=0; ix<NX; ix++)
-						BUF(ix,iy,iz) = 0.25 * (DUM(ix,iy,iz)+DUM(ix+1,iy,iz)+DUM(ix,iy+1,iz)+DUM(ix+1,iy+1,iz));
+						ZVORT(ix,iy,iz) = 0.25 * (TEM(ix,iy,iz)+TEM(ix+1,iy,iz)+TEM(ix,iy+1,iz)+TEM(ix+1,iy+1,iz));
 /*
 			for(iz=0; iz<NZ; iz++)
 				for(iy=0; iy<NY; iy++)
