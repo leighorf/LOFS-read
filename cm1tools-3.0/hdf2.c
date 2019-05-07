@@ -427,7 +427,6 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float rd = 287.04;
 	float reps;
 
-	nk=NZ;nj=NY;ni=NX; //For cm1-like code
 
 	reps = rv/rd;
 
@@ -475,6 +474,8 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	NX = X1 - X0 + 1;
 	NY = Y1 - Y0 + 1;
 	NZ = Z1 - Z0 + 1;
+
+	nk=NZ;nj=NY;ni=NX; //For cm1-like code
 
 
 /* These are standard for on the scalar mesh and requesting 3D data */
@@ -1516,9 +1517,9 @@ keeping the same loop bounds and just changing the indexing.
 				{
 					for(i=0; i<ni+1; i++)
 					{
-						TEM(ix,iy,iz) =
-							(VA(ix,iy,iz)-VA(ix-1,iy,iz))*rdx*UF(i)
-						     -(UA(ix,iy,iz)-UA(ix,iy-1,iz))*rdy*VF(j);
+						TEM(i,j,k) =
+							(VA(i,j,k)-VA(i-1,j,k))*rdx*UF(i)
+						     -(UA(i,j,k)-UA(i,j-1,k))*rdy*VF(j);
 /*
 						dum0[P3(ix,iy,iz,NX+1,NY+1)] =
 							(vstag[P3(ix+1,iy+1,iz,NX+2,NY+2)]-vstag[P3(ix,iy+1,iz,NX+2,NY+2)])*dxi
@@ -1527,11 +1528,11 @@ keeping the same loop bounds and just changing the indexing.
 					}
 				}
 			}
-#pragma omp parallel for private(ix,iy,iz)
-			for(iz=0; iz<NZ; iz++)
-				for(iy=0; iy<NY; iy++)
-					for(ix=0; ix<NX; ix++)
-						ZVORT(ix,iy,iz) = 0.25 * (TEM(ix,iy,iz)+TEM(ix+1,iy,iz)+TEM(ix,iy+1,iz)+TEM(ix+1,iy+1,iz));
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+				for(j=0; j<nj; j++)
+					for(i=0; i<ni; i++)
+						ZVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j+1,k)+TEM(i+1,j+1,k));
 /*
 			for(iz=0; iz<NZ; iz++)
 				for(iy=0; iy<NY; iy++)
