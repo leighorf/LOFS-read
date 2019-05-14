@@ -693,8 +693,10 @@ really. See P3 macro in lofs-read.h */
 		}
 		printf("\n");
 	}
-	H5Sclose (memoryspace_id);
-	H5Sclose (swath_memoryspace_id);
+    if (!strcmp(varname,"swaths")) {
+	    H5Sclose (swath_memoryspace_id);
+    }
+    H5Sclose (memoryspace_id);
 	/* free all pointers */
 	for (i = 0; i < numhdf; i++)
 	{
