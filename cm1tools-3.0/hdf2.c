@@ -1610,6 +1610,81 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 //		else if(!strcmp(varname[ivar],"vortmag"))
 //		else if(!strcmp(varname[ivar],"streamvort"))
 //		else if(!strcmp(varname[ivar],"streamfrac"))
+		else if(!strcmp(varname[ivar],"hvort"))
+		{
+#pragma omp parallel for private(i,j,k,dwdy,dvdz)
+			for(k=1; k<nk; k++)
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni; i++)
+			{
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
+				TEM(i,j,k) = dwdy - dvdz;
+			}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni; i++)
+			{
+				TEM(i,j,0)=TEM(i,j,1);
+				TEM(i,j,nk)=TEM(i,j,nk-1);
+			}
+
+#define XVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				XVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i,j+1,k)+TEM(i,j,k+1)+TEM(i,j+1,k+1));
+
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				TEM1(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
+
+
+//		}
+//		{
+#pragma omp parallel for private(i,j,k,dudz,dwdx)
+			for(k=1; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni+1; i++)
+			{
+				dudz = (UA(i,j,k)-UA(i,j,k-1))*rdz*MF(k);
+				dwdx = (WA(i,j,k)-WA(i-1,j,k))*rdx*UF(i);
+				TEM(i,j,k) = dudz - dwdx;
+			}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni+1; i++)
+			{
+				TEM(i,j,0)=TEM(i,j,1);
+				TEM(i,j,nk)=TEM(i,j,nk-1);
+			}
+#define YVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				YVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j,k+1)+TEM(i+1,j,k+1));
+
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				TEM1(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
+
+#define HVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				HVORT(i,j,k) = sqrt(TEM1(i,j,k));
+
+			writeptr=buffer;
+
+		}
 
 		else if(!strcmp(varname[ivar],"u"))
 		{
