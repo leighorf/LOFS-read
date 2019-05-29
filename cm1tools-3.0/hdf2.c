@@ -50,6 +50,7 @@ int debug = 0;
 int do_swaths = 0;
 int do_allvars = 0;
 int gzip = 0;
+int use_interp = 0;
 int use_box_offset = 0;
 int filetype = NC_NETCDF4;
 int nthreads = 1;
@@ -1149,9 +1150,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	 * ahead of time (read ahead) */
 	for (ivar = 0; ivar < nvar; ivar++)
 	{
-		if(!strcmp(varname[ivar],"uinterp")) {u_rh=1;}
-		if(!strcmp(varname[ivar],"vinterp")) {v_rh=1;}
-		if(!strcmp(varname[ivar],"winterp")) {w_rh=1;}
+		if(!strcmp(varname[ivar],"uinterp")&&!use_interp) {u_rh=1;}
+		if(!strcmp(varname[ivar],"vinterp")&&!use_interp) {v_rh=1;}
+		if(!strcmp(varname[ivar],"winterp")&&!use_interp) {w_rh=1;}
 		if(!strcmp(varname[ivar],"hwin_sr")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"hdiv")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"windmag_sr")) {u_rh=v_rh=w_rh=1;}
@@ -1305,7 +1306,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 #define VA(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
 #define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
 */
-		if(!strcmp(varname[ivar],"uinterp")) //We now calculate this, do not save it any more
+		if(!strcmp(varname[ivar],"uinterp")&&!use_interp) //We now calculate this, do not save it any more
 		{
 #define UINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
@@ -1317,7 +1318,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"vinterp")) //We now calculate this, do not save it any more
+		else if(!strcmp(varname[ivar],"vinterp")&&!use_interp) //We now calculate this, do not save it any more
 		{
 #define VINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
@@ -1330,7 +1331,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-		else if(!strcmp(varname[ivar],"winterp")) //We now calculate this, do not save it any more
+		else if(!strcmp(varname[ivar],"winterp")&&!use_interp) //We now calculate this, do not save it any more
 		{
 #define WINTERP BUF
 #pragma omp parallel for private(ix,iy,iz)
@@ -1889,7 +1890,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 {
 	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET };
+		OPT_DEBUG, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET, OPT_INTERP };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
@@ -1912,6 +1913,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{"umove", optional_argument, 0, OPT_UMOVE},
 		{"vmove", optional_argument, 0, OPT_VMOVE},
 		{"offset", optional_argument, 0, OPT_OFFSET},
+		{"interp", optional_argument, 0, OPT_INTERP},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -2004,6 +2006,10 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_COMPRESS:
 				gzip=1;
+				optcount++;
+				break;
+			case OPT_INTERP:
+				use_interp=1;
 				optcount++;
 				break;
 			case OPT_OFFSET:
