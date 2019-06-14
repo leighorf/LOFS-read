@@ -421,6 +421,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	/* readahead flags */
 	int u_rh=0,v_rh=0,w_rh=0,xvort_rh=0,yvort_rh=0,zvort_rh=0,thrhopert_rh=0;
 	int qc_rh=0,qi_rh=0,qr_rh=0,qs_rh=0,qg_rh=0;
+	int twodslice=0;
 
 	float dx,dy,dz,rdx,rdy,rdz; // reproduce CM1 approach
 	float dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz;
@@ -428,6 +429,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	float rv = 461.5;
 	float rd = 287.04;
 	float reps;
+
 
 
 	reps = rv/rd;
@@ -776,6 +778,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 		if(X0==X1)
 		{
+			twodslice = TRUE;
 			dims[0] = time_dimid;
 			dims[1] = nzh_dimid;
 			dims[2] = nyh_dimid;
@@ -789,6 +792,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(Y0==Y1)
 		{
+			twodslice = TRUE;
 			dims[0] = time_dimid;
 			dims[1] = nzh_dimid;
 			dims[2] = nxh_dimid;
@@ -802,6 +806,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		}
 		else if(Z0==Z1)
 		{
+			twodslice = TRUE;
 			dims[0] = time_dimid;
 			dims[1] = nyh_dimid;
 			dims[2] = nxh_dimid;
@@ -1276,9 +1281,17 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		// passed to nc_writef, and must be adjustd within this loop
 		// for any staggered variables (u, v, w which I call ustag,
 		// vstag, wstag in this code, not just u, v, w in cm1)
+		//
+		// 2019-05-29 Added twodslice boolean for dealing with XY XZ
+		// YZ slices. Only works with non-derived variables. If you
+		// pass --interp and have uinterp vinterp winterp then you
+		// get the desired result. TODO: Make 2D slices work with
+		// ustag vstag wstag
 
-		start[0]=0;start[1]=0;start[2]=0;start[3]=0;
-		edges[0]=1;edges[1]=NZ;edges[2]=NY;edges[3]=NX;
+		if (!twodslice){
+			start[0]=0;start[1]=0;start[2]=0;start[3]=0;
+			edges[0]=1;edges[1]=NZ;edges[2]=NY;edges[3]=NX;
+		}
 
 		// 2019-05-06: All diagnostic calculations that used
 		// [uvw] interp variables with centered differences for
@@ -1340,6 +1353,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(ix=0; ix<NX; ix++)
 			{
 //				buffer[P3(ix,iy,iz,NX,NY)] = 0.5*(wstag[P3(ix,iy,iz,NX,NY)]+wstag[P3(ix,iy,iz+1,NX,NY)]);
+//		bufsize = (long) (NX+2) * (long) (NY+2) * (long) (NZ+1) * (long) sizeof(float);
+// #define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
+// #define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))
+
 				WINTERP(ix,iy,iz) = 0.5*(WA(ix,iy,iz)+WA(ix,iy,iz+1));
 			}
 			writeptr = buffer;
