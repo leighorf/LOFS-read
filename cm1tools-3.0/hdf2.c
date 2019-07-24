@@ -509,31 +509,53 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	yhfull = (float *)malloc(ny * sizeof(float));
 	xffull = (float *)malloc((nx+1) * sizeof(float));
 	yffull = (float *)malloc((ny+1) * sizeof(float));
-	th0 = (float *)malloc(nz * sizeof(float));
-	qv0 = (float *)malloc(nz * sizeof(float));
-	u0 = (float *)malloc(nz * sizeof(float));
-	v0 = (float *)malloc(nz * sizeof(float));
-	pres0 = (float *)malloc(nz * sizeof(float));
-	pi0 = (float *)malloc(nz * sizeof(float));
+	th0 = (float *)malloc(NZ * sizeof(float));
+	qv0 = (float *)malloc(NZ * sizeof(float));
+	u0 = (float *)malloc(NZ * sizeof(float));
+	v0 = (float *)malloc(NZ * sizeof(float));
+	pres0 = (float *)malloc(NZ * sizeof(float));
+	pi0 = (float *)malloc(NZ * sizeof(float));
+	//ORF 2019-07-10 See comments below about how we treat the
+	//vertical mesh different than the sounding data that lies on this
+	//mesh - we read in the full vertical mesh always, and then
+	//calculate the output mesh for the netcdf files later.
+	//
+	//And what the hell with the +2? I think this is a relic of the
+	//centered difference derivatives but is still wrong because nz is
+	//the total number of vertical points in the domain.
 	zh = (float *)malloc((nz+2) * sizeof(float));
 	zf = (float *)malloc((nz+2) * sizeof(float));
 	get0dfloat (f_id,(char *)"mesh/dx",&dx); rdx=1.0/dx;
 	get0dfloat (f_id,(char *)"mesh/dy",&dy); rdy=1.0/dy;
-//	well hell we need to store this
+//	well hell we need to store this!!!! MUST FIX BIG ASSUMPTION
 //	get0dfloat (f_id,(char *)"mesh/dz",&dz); rdz=1.0/dz;
 	dz=dx;rdz=rdx;
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
 	get1dfloat (f_id,(char *)"mesh/xffull",xffull,0,nx+1);
 	get1dfloat (f_id,(char *)"mesh/yffull",yffull,0,ny+1);
+
+// ORF 2019-07-10
+// With AACP work we will often be looking only at the anvil, meaning we
+// cannot assume z0=0 as we usually do. So make these all go from Z0 to
+// Z0+NZ, not 0 to NZ (and having NZ and nz is kind of dumb of me but oh
+// well)
+//
+// Further, why do we read in the entire zh array, but only the slab for
+// the sounding variable? Kind of inconsistent here. Look down and
+// notice that we do zhout and zfout (but there is no qv0out th0out
+// etc). I think it's to be consistent with reading in the full domain mesh
+// data. But be friggin careful here. Note where we calculate the zfout
+// and zhout arrays below - these are what is written to the netcdf
+// file, and for an AACP slab will correspond to the actual heights AGL.
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
-	get1dfloat (f_id,(char *)"basestate/qv0",qv0,0,nz);
-	get1dfloat (f_id,(char *)"basestate/th0",th0,0,nz);
-	get1dfloat (f_id,(char *)"basestate/u0",u0,0,nz);
-	get1dfloat (f_id,(char *)"basestate/v0",v0,0,nz);
-	get1dfloat (f_id,(char *)"basestate/pres0",pres0,0,nz);
-	get1dfloat (f_id,(char *)"basestate/pi0",pi0,0,nz);
+	get1dfloat (f_id,(char *)"basestate/qv0",qv0,Z0,NZ);
+	get1dfloat (f_id,(char *)"basestate/th0",th0,Z0,NZ);
+	get1dfloat (f_id,(char *)"basestate/u0",u0,Z0,NZ);
+	get1dfloat (f_id,(char *)"basestate/v0",v0,Z0,NZ);
+	get1dfloat (f_id,(char *)"basestate/pres0",pres0,Z0,NZ);
+	get1dfloat (f_id,(char *)"basestate/pi0",pi0,Z0,NZ);
 
 	xhout = (float *)malloc(NX * sizeof(float));
 	yhout = (float *)malloc(NY * sizeof(float));
@@ -1164,6 +1186,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"zvort")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"xvort")) {v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"yvort")) {u_rh=w_rh=1;}
+		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {u_rh=v_rh=w_rh=1;}
 //		if(!strcmp(varname[ivar],"thrhopert")) {q_liq_solid_rh=1;thpert_rh=1;}
 // THESE DO NOT WORK, pop up as they do
@@ -1177,7 +1200,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"vorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"nvorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"isquared")) {u_rh=v_rh=w_rh=1;}
-		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
@@ -1603,6 +1625,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			writeptr=buffer;
 
 		}
+/*
 		else if(!strcmp(varname[ivar],"thrhopert")) //We now calcluate here
 		{
 			read_hdf_mult_md(dum0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qtot",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -1616,6 +1639,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 
 		}
+*/
 //		else if(!strcmp(varname[ivar],"zvort_stretch")) 
 //		else if(!strcmp(varname[ivar],"zvort_tilt")) 
 //		else if(!strcmp(varname[ivar],"xvort_baro")) 
