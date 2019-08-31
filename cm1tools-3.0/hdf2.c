@@ -19,7 +19,7 @@
  * 4/30/19: Added --swaths flag to convert all the swaths (now saved in
  * 3D files by CM1/LOFS)
  *
- * 5/1/10: Added --allvars flag to convert all the 3D fields
+ * 5/1/19: Added --allvars flag to convert all the 3D fields
  */
 
 #include "lofs-read.h"
