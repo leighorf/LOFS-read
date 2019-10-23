@@ -35,6 +35,7 @@ install: snd2cm1 cm12snd hdf2 hdf2d2nc stash
 	install -m 0755 snd2cm1 $(HOME)/bin
 	install -m 0755 cm12snd $(HOME)/bin
 	cd $(HOME)/bin  && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin  && ln -fs hdf2 lofs2nc
 	cd $(HOME)/bin  && ln -fs hdf2 makevisit
 
 .PHONY: install

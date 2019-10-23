@@ -37,6 +37,7 @@ install: hdf2 hdf2d2nc stash
 	install -m 0755 hdf2d2nc $(HOME)/bin
 	install -m 0755 stash $(HOME)/bin
 	cd $(HOME)/bin  && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin  && ln -fs hdf2 lofs2nc
 	cd $(HOME)/bin  && ln -fs hdf2 makevisit
 
 .PHONY: install
