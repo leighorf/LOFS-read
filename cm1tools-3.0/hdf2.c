@@ -1188,20 +1188,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"yvort")) {u_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {u_rh=v_rh=w_rh=1;}
+		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=1;}
 //		if(!strcmp(varname[ivar],"thrhopert")) {q_liq_solid_rh=1;thpert_rh=1;}
 // THESE DO NOT WORK, pop up as they do
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
-		if(!strcmp(varname[ivar],"rotvortx")) {v_rh=w_rh=xvort_rh=1;}
-		if(!strcmp(varname[ivar],"rotvorty")) {u_rh=w_rh=yvort_rh=1;}
-		if(!strcmp(varname[ivar],"rotvortz")) {u_rh=v_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"rotvortmag")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"roheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"nroheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"vorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"nvorheldens")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"isquared")) {u_rh=v_rh=w_rh=1;}
-		if(!strcmp(varname[ivar],"vortmag")) {xvort_rh=yvort_rh=zvort_rh=1;}
-		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
 		if(!strcmp(varname[ivar],"yvort_baro")) {thrhopert_rh=1;}
@@ -1326,14 +1316,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		printf("Working on %s (",varname[ivar]);
 		fflush(stdout);
 
-/************************** BEGINNING OF ROT VORT STUFF ************************/
-//		if(!strcmp(varname[ivar],"rotvortmag")||!strcmp(varname[ivar],"roheldens")||!strcmp(varname[ivar],"nroheldens"))
-//		else if(!strcmp(varname[ivar],"rotvortx")) 
-//		else if(!strcmp(varname[ivar],"rotvorty")) 
-//		else if(!strcmp(varname[ivar],"rotvortz"))
-//		else if(!strcmp(varname[ivar],"isquared")||!strcmp(varname[ivar],"vorheldens")||!strcmp(varname[ivar],"nvorheldens"))
-/************************** END OF ROT VORT STUFF ************************/
-
 /*
 #define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
 #define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
@@ -1414,24 +1396,21 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			}
 			writeptr = buffer;
 		}
-//		else if(!strcmp(varname[ivar],"hwin_gr")) //ground relative horizontal wind speed
-//		{
-//			float usr,vsr;
-//			//TODO: put umove and vmove in the got dammed hdf5
-//			//files
-//			float umove=15.2;
-//			float vmove=10.5;
-//			These are now command line options until we store
-//			these in the cm1hdf5 files
-//#pragma omp parallel for private(i,usr,vsr)
-//			for(i=0; i<NX*NY*NZ; i++)
-//			{
-//				usr = ustag[i]+umove;
-//				vsr = vstag[i]+vmove;
-//				buffer[i] = sqrt(usr*usr+vsr*vsr);
-//			}
-//			writeptr = buffer;
-//		}
+		else if(!strcmp(varname[ivar],"hwin_gr")) //storm relative 3D wind speed
+		{
+			float ugr,vgr;
+#define HWIN_GR BUF
+#pragma omp parallel for private(ix,iy,iz,ugr,vgr)
+			for(iz=0; iz<NZ; iz++)
+			for(iy=0; iy<NY; iy++)
+			for(ix=0; ix<NX; ix++)
+			{
+				ugr = 0.5*(UA(ix,iy,iz)+UA(ix+1,iy,iz)) + umove;
+				vgr = 0.5*(VA(ix,iy,iz)+VA(ix,iy+1,iz)) + vmove;
+				HWIN_GR(ix,iy,iz) = sqrt(ugr*ugr+vgr*vgr);
+			}
+			writeptr = buffer;
+		}
 		else if(!strcmp(varname[ivar],"hdiv")) // uses staggered velocity variables!
 		{
 #define HDIV BUF
@@ -1480,8 +1459,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				TEM1(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
 
 
-//		}
-//		{
 #pragma omp parallel for private(i,j,k,dudz,dwdx)
 			for(k=1; k<nk; k++)
 			for(j=0; j<nj; j++)
@@ -1511,8 +1488,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(i=0; i<ni; i++)
 				TEM1(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
 
-//		}
-//		{
 #pragma omp parallel for private(i,j,k,dvdx,dudy)
 			for(k=0; k<nk; k++)
 			for(j=0; j<nj+1; j++)
@@ -1541,6 +1516,106 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(j=0; j<nj; j++)
 			for(i=0; i<ni; i++)
 				VORTMAG(i,j,k) = sqrt(TEM1(i,j,k));
+
+			writeptr=buffer;
+
+		}
+		else if(!strcmp(varname[ivar],"streamvort"))
+		{
+			float uinterp,vinterp,winterp;
+#pragma omp parallel for private(i,j,k,dwdy,dvdz)
+			for(k=1; k<nk; k++)
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni; i++)
+			{
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
+				TEM(i,j,k) = dwdy - dvdz;
+			}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni; i++)
+			{
+				TEM(i,j,0)=TEM(i,j,1);
+				TEM(i,j,nk)=TEM(i,j,nk-1);
+			}
+
+#define XVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				XVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i,j+1,k)+TEM(i,j,k+1)+TEM(i,j+1,k+1));
+
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				TEM1(i,j,k) = XVORT(i,j,k)*0.5*(UA(i,j,k)+UA(i+1,j,k));
+
+#pragma omp parallel for private(i,j,k,dudz,dwdx)
+			for(k=1; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni+1; i++)
+			{
+				dudz = (UA(i,j,k)-UA(i,j,k-1))*rdz*MF(k);
+				dwdx = (WA(i,j,k)-WA(i-1,j,k))*rdx*UF(i);
+				TEM(i,j,k) = dudz - dwdx;
+			}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni+1; i++)
+			{
+				TEM(i,j,0)=TEM(i,j,1);
+				TEM(i,j,nk)=TEM(i,j,nk-1);
+			}
+#define YVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				YVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j,k+1)+TEM(i+1,j,k+1));
+
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				TEM1(i,j,k) += YVORT(i,j,k)*0.5*(VA(i,j,k)+VA(i,j+1,k));
+
+#pragma omp parallel for private(i,j,k,dvdx,dudy)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj+1; j++)
+			for(i=0; i<ni+1; i++)
+			{
+				dvdx = (VA(i,j,k)-VA(i-1,j,k))*rdx*UF(i);
+				dudy = (UA(i,j,k)-UA(i,j-1,k))*rdy*VF(j);
+				TEM(i,j,k) = dvdx - dudy;
+			}
+#define ZVORT BUF
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				ZVORT(i,j,k) = 0.25 * (TEM(i,j,k)+TEM(i+1,j,k)+TEM(i,j+1,k)+TEM(i+1,j+1,k));
+
+#pragma omp parallel for private(i,j,k)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+				TEM1(i,j,k) += ZVORT(i,j,k)*0.5*(WA(i,j,k)+WA(i,j,k+1));
+#define STREAMVORT BUF
+#pragma omp parallel for private(i,j,k,uinterp,vinterp,winterp)
+			for(k=0; k<nk; k++)
+			for(j=0; j<nj; j++)
+			for(i=0; i<ni; i++)
+			{
+				uinterp=0.5*(UA(i,j,k)+UA(i+1,j,k));
+				vinterp=0.5*(VA(i,j,k)+VA(i,j+1,k));
+				winterp=0.5*(WA(i,j,k)+WA(i,j,k+1));
+				STREAMVORT(i,j,k) = TEM1(i,j,k)/(sqrt(uinterp*uinterp+vinterp*vinterp+winterp*winterp));
+			}
 
 			writeptr=buffer;
 
