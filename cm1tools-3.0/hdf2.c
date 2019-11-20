@@ -139,6 +139,8 @@ int main(int argc, char *argv[])
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 	grok_cm1hdf5_file_structure(base,regenerate_cache);
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
+	//ORF 2019-11-20 could tweak saved_X0 etc to avoid out of bounds errors...?
+	saved_X0+=1; saved_X1-=1; saved_Y0+=1; saved_Y1-=1; // saved_Z1-=1; <---- WE FREAKING NEED THIS
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
 
