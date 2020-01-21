@@ -553,6 +553,7 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
 	get1dfloat (f_id,(char *)"mesh/zf",zf,0,nz);
 	get1dfloat (f_id,(char *)"basestate/qv0",qv0,Z0,NZ);
+	for (k=0; k<NZ; k++) qv0[k] *= 1000.0; // g/kg now
 	get1dfloat (f_id,(char *)"basestate/th0",th0,Z0,NZ);
 	get1dfloat (f_id,(char *)"basestate/u0",u0,Z0,NZ);
 	get1dfloat (f_id,(char *)"basestate/v0",v0,Z0,NZ);
