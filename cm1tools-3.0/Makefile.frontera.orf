@@ -1,6 +1,8 @@
-#module load gcc
-#module load hdf5
-#module load netcdf
+
+#Do this first:
+#   module load hdf5
+#   module load netcdf
+
 CC = h5cc
 AR = ar
 CFLAGS = -fopenmp -O2 -fPIC -I$(TACC_NETCDF_INC) -I/work/06618/orf/frontera/build/git/H5Z-ZFP/src -I$(TACC_HDF5_INC)
