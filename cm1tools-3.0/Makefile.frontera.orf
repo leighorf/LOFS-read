@@ -1,0 +1,40 @@
+#module load gcc
+#module load hdf5
+#module load netcdf
+CC = h5cc
+AR = ar
+CFLAGS = -fopenmp -O2 -fPIC -I$(TACC_NETCDF_INC) -I/work/06618/orf/frontera/build/git/H5Z-ZFP/src -I$(TACC_HDF5_INC)
+ZFP=/work/06618/orf/frontera/build/git/zfp/build
+#HDF5ZFP=/work/06618/orf/frontera/hdf5plugins
+HDF5ZFP=/home1/06618/orf/work/build/git/H5Z-ZFP/src
+LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP) -L$(TACC_HDF5_LIB) -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
+
+all: hdf2 stash libcm.a
+
+hdf2: hdf2.o parsedir.o hdfio.o readmult.o
+	$(CC) $(CFLAGS) -o hdf2 hdf2.o parsedir.o hdfio.o readmult.o $(LINKOPTS)
+stash: stash.o
+	$(CC) $(CFLAGS) -o stash stash.o 
+libcm.a: parsedir.o hdfio.o readmult.o
+	$(AR) cr libcm.a parsedir.o hdfio.o readmult.o
+readmult.o: readmult.c
+	$(CC) $(CFLAGS) -c readmult.c
+hdfio.o: hdfio.c
+	$(CC) $(CFLAGS) -c hdfio.c
+parsedir.o: parsedir.c
+	$(CC) $(CFLAGS) -c parsedir.c
+hdf2.o: hdf2.c
+	$(CC) $(CFLAGS) -c hdf2.c
+stash.o: stash.c
+	$(CC) $(CFLAGS) -c stash.c
+clean:
+	rm -rf *.o hdf2 libcm.a stash
+install: hdf2 stash
+	install -m 0755 hdf2 $(HOME)/bin
+	install -m 0755 stash $(HOME)/bin
+	install -m 0755 snd2cm1 $(HOME)/bin
+	cd $(HOME)/bin  && ln -fs hdf2 hdf2nc
+	cd $(HOME)/bin  && ln -fs hdf2 lofs2nc
+	cd $(HOME)/bin  && ln -fs hdf2 makevisit
+
+.PHONY: install
