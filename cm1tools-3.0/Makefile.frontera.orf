@@ -1,5 +1,4 @@
-
-#Do this first:
+#Do this first on Frontera:
 #   module load hdf5
 #   module load netcdf
 
@@ -9,7 +8,8 @@ CFLAGS = -fopenmp -O2 -fPIC -I$(TACC_NETCDF_INC) -I/work/06618/orf/frontera/buil
 ZFP=/work/06618/orf/frontera/build/git/zfp/build
 #HDF5ZFP=/work/06618/orf/frontera/hdf5plugins
 HDF5ZFP=/home1/06618/orf/work/build/git/H5Z-ZFP/src
-LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP) -L$(TACC_HDF5_LIB) -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
+#LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP) -L$(TACC_HDF5_LIB) -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
+LINKOPTS  = -L$(ZFP)/lib -L$(HDF5ZFP) -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
 all: hdf2 stash libcm.a
 
