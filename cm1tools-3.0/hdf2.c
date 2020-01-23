@@ -1189,13 +1189,13 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 		if(!strcmp(varname[ivar],"zvort")) {u_rh=v_rh=1;}
 		if(!strcmp(varname[ivar],"xvort")) {v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"yvort")) {u_rh=w_rh=1;}
-		if(!strcmp(varname[ivar],"hvort")) {xvort_rh=yvort_rh=1;}
+		if(!strcmp(varname[ivar],"hvort")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"vortmag")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"streamvort")) {u_rh=v_rh=w_rh=1;}
 //		if(!strcmp(varname[ivar],"thrhopert")) {q_liq_solid_rh=1;thpert_rh=1;}
 // THESE DO NOT WORK, pop up as they do
 		if(!strcmp(varname[ivar],"hwin_gr")) {u_rh=v_rh=1;}
-		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=xvort_rh=yvort_rh=zvort_rh=1;}
+		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=1;}
 		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
 		if(!strcmp(varname[ivar],"yvort_baro")) {thrhopert_rh=1;}
 		if(!strcmp(varname[ivar],"yvort_stretch")) {u_rh=w_rh=yvort_rh=1;}
@@ -1435,7 +1435,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(j=0; j<nj+1; j++)
 			for(i=0; i<ni; i++)
 			{
-				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(j); //was i
 				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
 				TEM(i,j,k) = dwdy - dvdz;
 			}
@@ -1531,7 +1531,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(j=0; j<nj+1; j++)
 			for(i=0; i<ni; i++)
 			{
-				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(j);//was i
 				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
 				TEM(i,j,k) = dwdy - dvdz;
 			}
@@ -1630,7 +1630,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(j=0; j<nj+1; j++)
 			for(i=0; i<ni; i++)
 			{
-				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(j);//was i
 				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
 				TEM(i,j,k) = dwdy - dvdz;
 			}
@@ -1737,7 +1737,7 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			for(j=0; j<nj+1; j++)
 			for(i=0; i<ni; i++)
 			{
-				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(i);
+				dwdy = (WA(i,j,k)-WA(i,j-1,k))*rdy*VF(j);//was i
 				dvdz = (VA(i,j,k)-VA(i,j,k-1))*rdz*MF(k);
 				TEM(i,j,k) = dwdy - dvdz;
 			}
