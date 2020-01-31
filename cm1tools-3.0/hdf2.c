@@ -20,6 +20,9 @@
  * 3D files by CM1/LOFS)
  *
  * 5/1/19: Added --allvars flag to convert all the 3D fields
+ *
+ * 1/30/20: Got rid of makevisit; we will only use netCDF files from now
+ * on with VisIt so I don't have to maintain their bizarre plugin code
  */
 
 #include "lofs-read.h"
@@ -63,15 +66,10 @@ int optcount=0;
 
 void grok_cm1hdf5_file_structure();
 void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
-void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,int Z0,int Z1);
 
 void parse_cmdline_hdf2nc(int argc, char *argv[],
 		char *histpath, char *base,
 		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache);
-
-void parse_cmdline_makevisit(int argc, char *argv[],
-		char *histpath, char *base,
-		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1);
 
 extern char *optarg; /* This is handled by the getopt code */
 
@@ -114,7 +112,6 @@ int main(int argc, char *argv[])
 	char progname[MAXSTR];
 	char histpath[MAXSTR];
 	int we_are_hdf2nc = FALSE;
-	int we_are_makevisit = FALSE;
 //	int we_are_hdf2v5d = FALSE;
 //	int we_are_linkfiles = FALSE;
 	int X0,Y0,X1,Y1,Z0,Z1;
@@ -124,23 +121,21 @@ int main(int argc, char *argv[])
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
-	else if (strspn("makevisit",progname) == 9) we_are_makevisit = TRUE;
 	else
 	{
 		fprintf(stderr,"progname = %s\n",progname);
-		ERROR_STOP("Must call program as either hdf2nc or makevisit");
+		ERROR_STOP("Must call program as either hdf2nc or hdf2nc LOL");
 	}
 
 	X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
 	time=0.0;
 	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1, &regenerate_cache );
-	else if (we_are_makevisit) parse_cmdline_makevisit(argc, argv, histpath, base, &X0, &Y0, &X1, &Y1, &Z0, &Z1);
 
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
 	grok_cm1hdf5_file_structure(base,regenerate_cache);
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
 	//ORF 2019-11-20 could tweak saved_X0 etc to avoid out of bounds errors...?
-	saved_X0+=1; saved_X1-=1; saved_Y0+=1; saved_Y1-=1; // saved_Z1-=1; <---- WE FREAKING NEED THIS
+	saved_X0+=1; saved_X1-=1; saved_Y0+=1; saved_Y1-=1; //saved_Z1-=1; //<---- WE FREAKING NEED THIS
 	if(debug) printf("DEBUG: nx = %i ny = %i nz = %i nodex = %i nodey = %i\n", nx,ny,nz,nodex,nodey);
 
 
@@ -162,7 +157,7 @@ int main(int argc, char *argv[])
 
 /* If we didn't specify values at the command line, set them to values specifying all the saved data */
 	if(X0<0)X0=saved_X0; if(Y0<0)Y0=saved_Y0; if(Z0<0)Z0=0;
-	if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-1;
+	if(X1<0)X1=saved_X1; if(Y1<0)Y1=saved_Y1; if(Z1<0)Z1=nz-2; //ORF -2 not -1 now
 
 	/* If our supplied indices are outside of the saved data,
 	 * warn and adjust accordingly */
@@ -197,133 +192,7 @@ int main(int argc, char *argv[])
 	}
 
 	if(we_are_hdf2nc)             hdf2nc(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1,time);
-	else if (we_are_makevisit) makevisit(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1);
 	exit(0);
-}
-
-void makevisit(int argc, char *argv[], char *base,int X0,int Y0,int X1,int Y1,int Z0,int Z1)
-{
-		int i,rank,nvars;
-		hid_t f_id,g_id,strtype;
-		H5G_info_t group_info;
-		hsize_t dims[1];
-		char visitfile[MAXSTR];
-		char groupname[MAXSTR];
-		char varname[MAXVARIABLES][40]; //Yeah I know also hardcoded in avtcm1visitFileFormat.h
-
-		float *xhfull,*yhfull,*zh;
-
-		sprintf(visitfile,"%s.cm1visit",base);
-		printf("visitfile = %s\n",visitfile);
-		printf("topdir = %s\n",topdir);
-		printf("ntimedirs = %i\n",ntimedirs);
-		if (debug) {for (i=0; i<ntimedirs; i++)printf("%s ",timedir[i]);printf("\n");}
-		if (debug) {for (i=0; i<ntimedirs; i++)printf("%f ",dirtimes[i]);printf("\n");}
-		printf("nnodedirs = %i\n",nnodedirs);
-		if (debug) {for (i=0; i<nnodedirs; i++)printf("%s ",nodedir[i]);printf("\n");}
-		printf("dn = %i\n",dn);
-		printf("ntottimes = %i\n",ntottimes);
-		if(debug) {for (i=0; i<ntottimes; i++)printf("%f ",alltimes[i]);printf("\n");}
-		printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",nx,ny,nz,nodex,nodey);
-
-		// Done with file layout and basic metadata, now get mesh
-		// and variable names
-
-		if ((f_id = H5Fopen (firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-		{
-			fprintf(stderr,"Cannot open firstfilename which is %s, even though we have alredy opened it!\n",firstfilename);
-			ERROR_STOP("Cannot open hdf file");
-		}
-
-// Get full mesh data
-
-		xhfull = (float *)malloc(nx * sizeof(float));
-		yhfull = (float *)malloc(ny * sizeof(float));
-		zh = (float *)malloc(nz * sizeof(float));
-		get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
-		get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
-		get1dfloat (f_id,(char *)"mesh/zh",zh,0,nz);
-		sprintf(groupname,"%05i/3D",0); //is now last since we no longer have get_first_hdf_file_name routine;
-
-/* first file name is the last "fist file name" from sweeping through
-all times, so now "first file name" is from last time direcotry. This is
-a little convoluted now that I have to deal with empty node dirs from
-saving subdomains. */
-
-		printf("firstfilename = %s\n",firstfilename);
-		printf("groupname = %s\n",groupname);
-		g_id = H5Gopen(f_id,groupname,H5P_DEFAULT);
-		H5Gget_info(g_id,&group_info);
-		nvars = group_info.nlinks;
-		for (i = 0; i < nvars; i++)
-		{
-		    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,varname[i],40,H5P_DEFAULT); //40 characters per varname
-		}
-		H5Gclose(g_id);
-		H5Fclose(f_id);
-
-		printf("Variables retrieved: ");
-		for (i = 0; i < nvars; i++) printf("%s ",varname[i]);printf("\n");
-
-		// OK now we have everything, time to make hdf file
-
-		if ((f_id = H5Fcreate (visitfile, H5F_ACC_TRUNC,H5P_DEFAULT,H5P_DEFAULT)) < 0)
-		{
-			fprintf(stderr,"Cannot create visit metadata hdf5 file %s\n",visitfile);
-			ERROR_STOP("Cannot create hdf file");
-		}
-
-		// Try the lite interface
-		H5LTmake_dataset_string(f_id,"/topdir",topdir);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/ntimedirs", rank, dims, &ntimedirs);
-		strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,H5T_VARIABLE); rank=1;dims[0]=ntimedirs;
-		H5LTmake_dataset (f_id, "/timedir", rank, dims, strtype, timedir);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nnodedirs", rank, dims, &nnodedirs);
-		strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,H5T_VARIABLE); rank=1;dims[0]=nnodedirs;
-		H5LTmake_dataset (f_id, "/nodedir", rank, dims, strtype, nodedir);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/dn", rank, dims, &dn);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/ntottimes", rank, dims, &ntottimes);
-// ORF: 2017-01-25 old format was int, now we are float
-//		rank=1;dims[0]=ntottimes; H5LTmake_dataset_int (f_id, "/alltimes", rank, dims, alltimes);
-//		rank=1;dims[0]=ntimedirs; H5LTmake_dataset_int (f_id, "/dirtimes", rank, dims, dirtimes);
-		rank=1;dims[0]=ntottimes; H5LTmake_dataset_double (f_id, "/alltimes", rank, dims, alltimes);
-		rank=1;dims[0]=ntimedirs; H5LTmake_dataset_double (f_id, "/dirtimes", rank, dims, dirtimes);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nx", rank, dims, &nx);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/ny", rank, dims, &ny);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nz", rank, dims, &nz);
-
-//ORF: 2018-03-15 I have finally gotten rid of snx0 etc. and replaced
-//with X0 etc. For reasons I no longer remember I used one variable name
-//approach with hdf2nc and one with makevisit. However so I don't break
-//things when reading old cm1visit files I will still write snx0 etc. so
-//I don't have to deal with breakage. May never remove this, who knows :)
-//Since I'm using the lite interface I can't do a link, so we just
-//duplicate.
-
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X0",   rank, dims, &X0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx0", rank, dims, &X0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/X1",   rank, dims, &X1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snx1", rank, dims, &X1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y0",   rank, dims, &Y0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny0", rank, dims, &Y0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Y1",   rank, dims, &Y1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/sny1", rank, dims, &Y1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z0",   rank, dims, &Z0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz0", rank, dims, &Z0);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/Z1",   rank, dims, &Z1);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/snz1", rank, dims, &Z1);
-
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodex", rank, dims, &nodex);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nodey", rank, dims, &nodey);
-		rank=1;dims[0]=nx; H5LTmake_dataset_float (f_id, "/xhfull", rank, dims, xhfull);
-		rank=1;dims[0]=ny; H5LTmake_dataset_float (f_id, "/yhfull", rank, dims, yhfull);
-		rank=1;dims[0]=nz; H5LTmake_dataset_float (f_id, "/zh", rank, dims, zh);
-		rank=1;dims[0]=1; H5LTmake_dataset_int (f_id, "/nvars", rank, dims, &nvars);
-		//char varname[MAXVARIABLES][40]; Making these fixed makes H5Lget_name_by_idx above easier
-		strtype=H5Tcopy(H5T_C_S1); H5Tset_size(strtype,40); rank=1;dims[0]=nvars;
-		H5LTmake_dataset (f_id, "/varname", rank, dims, strtype, varname[0]);
-		if (H5Fclose(f_id) < 0) ERROR_STOP("Cannot close visit metadata hdf5 file");
-		printf("Succesfully wrote %s which can now be read by VisIt using the cm1visit plugin.\n",visitfile);
 }
 
 void grok_cm1hdf5_file_structure(char *base,int regenerate_cache)
@@ -525,12 +394,15 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	//And what the hell with the +2? I think this is a relic of the
 	//centered difference derivatives but is still wrong because nz is
 	//the total number of vertical points in the domain.
-	zh = (float *)malloc((nz+2) * sizeof(float));
-	zf = (float *)malloc((nz+2) * sizeof(float));
+	//
+	//ORF removed +2
+	zh = (float *)malloc((nz) * sizeof(float));
+	zf = (float *)malloc((nz) * sizeof(float));
 	get0dfloat (f_id,(char *)"mesh/dx",&dx); rdx=1.0/dx;
 	get0dfloat (f_id,(char *)"mesh/dy",&dy); rdy=1.0/dy;
 //	well hell we need to store this!!!! MUST FIX BIG ASSUMPTION
 //	get0dfloat (f_id,(char *)"mesh/dz",&dz); rdz=1.0/dz;
+//	ORF TODO FIX
 	dz=dx;rdz=rdx;
 	get1dfloat (f_id,(char *)"mesh/xhfull",xhfull,0,nx);
 	get1dfloat (f_id,(char *)"mesh/yhfull",yhfull,0,ny);
@@ -564,9 +436,10 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	yhout = (float *)malloc(NY * sizeof(float));
 	zhout = (float *)malloc(NZ * sizeof(float));
 
-	xfout = (float *)malloc((NX+1) * sizeof(float));
-	yfout = (float *)malloc((NY+1) * sizeof(float));
-	zfout = (float *)malloc((NZ+1) * sizeof(float));
+	//ORF got rid of NZ+1 etc
+	xfout = (float *)malloc((NX) * sizeof(float));
+	yfout = (float *)malloc((NY) * sizeof(float));
+	zfout = (float *)malloc((NZ) * sizeof(float));
 
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
@@ -594,21 +467,22 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 	for (ix=X0-1; ix<X1+1; ix++) UF(ix-X0) = dx/(xhfull[ix]-xhfull[ix-1]);
 	for (iy=Y0-1; iy<Y1+1; iy++) VH(iy-Y0) = dy/(yffull[iy+1]-yffull[iy]);
 	for (iy=Y0-1; iy<Y1+1; iy++) VF(iy-Y0) = dy/(yhfull[iy]-yhfull[iy-1]);
-	zf[0] = -zf[2]; //param.F... WE NEED TO LOOK VERY CLOSELY AT NEAR SFC CALCS/DERIVATIVES
+	//THIS was dumb and fucked things up. But we do need to be
+	//careful about near sfc calcs/derivatives
+	//zf[0] = -zf[2]; //see param.F
 	for (iz=Z0-1; iz<Z1+1; iz++) MH(iz-Z0) = dz/(zf[iz+1]-zf[iz]);
 	for (iz=Z0-1; iz<Z1+1; iz++) MF(iz-Z0) = dz/(zh[iz]-zf[iz-1]);
 
-	for (iz=Z0; iz<=Z1+1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
-	for (iy=Y0; iy<=Y1+1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
-	for (ix=X0; ix<=X1+1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
+	//ORF removed Z1+1 etc
+	for (iz=Z0; iz<=Z1; iz++) zfout[iz-Z0] = 0.001*zf[iz]; 
+	for (iy=Y0; iy<=Y1; iy++) yfout[iy-Y0] = 0.001*yffull[iy];
+	for (ix=X0; ix<=X1; ix++) xfout[ix-X0] = 0.001*xffull[ix];
 
 	for (iz=Z0; iz<=Z1; iz++)   zhout[iz-Z0] = 0.001*zh[iz];
 	for (iy=Y0; iy<=Y1; iy++)   yhout[iy-Y0] = 0.001*yhfull[iy];
 	for (ix=X0; ix<=X1; ix++)   xhout[ix-X0] = 0.001*xhfull[ix];
 
 	H5Z_zfp_initialize();
-
-
 /*
 
 netCDF files come in several flavors... This is mostly due to the
@@ -633,9 +507,10 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 	status = nc_def_dim (ncid, "xh", NX, &nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (ncid, "yh", NY, &nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "zh", NZ, &nzh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "xf", NX+1, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
-	status = nc_def_dim (ncid, "yf", NY+1, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
-	status = nc_def_dim (ncid, "zf", NZ+1, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	//ORF shave off one point (was NX+1 etc.)
+	status = nc_def_dim (ncid, "xf", NX, &nxf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
+	status = nc_def_dim (ncid, "yf", NY, &nyf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
+	status = nc_def_dim (ncid, "zf", NZ, &nzf_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_dim (ncid, "time", NC_UNLIMITED, &time_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
 	status = nc_def_var (ncid, "xh", NC_FLOAT, 1, &nxh_dimid, &xhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (ncid, "yh", NC_FLOAT, 1, &nyh_dimid, &yhid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -1806,23 +1681,54 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 
 		}
 
+//#define UA(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
+	//ORF shaved off one point
 		else if(!strcmp(varname[ivar],"u"))
 		{
 			if (!u_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1+1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=ustag;
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else
+			{
+#pragma omp parallel for private(ix,iy,iz)
+				for(iz=0; iz<NZ; iz++)
+				for(iy=0; iy<NY; iy++)
+				for(ix=0; ix<NX; ix++)
+				{
+					buffer[P3(ix,iy,iz,NX,NY)] = UA(ix,iy,iz);
+				}
+				writeptr=buffer;
+			}
 		}
 		else if(!strcmp(varname[ivar],"v"))
 		{
-			if (!v_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1+1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=vstag;
+			if (!u_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			else
+			{
+#pragma omp parallel for private(ix,iy,iz)
+				for(iz=0; iz<NZ; iz++)
+				for(iy=0; iy<NY; iy++)
+				for(ix=0; ix<NX; ix++)
+				{
+					buffer[P3(ix,iy,iz,NX,NY)] = VA(ix,iy,iz);
+				}
+				writeptr=buffer;
+			}
 		}
 		else if(!strcmp(varname[ivar],"w"))
 		{
 			if (!w_rh){read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,
-					varname[ivar],X0,Y0,X1,Y1,Z0,Z1+1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
-			else writeptr=wstag;
+					varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);writeptr=buffer;}
+			{
+#pragma omp parallel for private(ix,iy,iz)
+				for(iz=0; iz<NZ; iz++)
+				for(iy=0; iy<NY; iy++)
+				for(ix=0; ix<NX; ix++)
+				{
+					buffer[P3(ix,iy,iz,NX,NY)] = WA(ix,iy,iz);
+				}
+				writeptr=buffer;
+			}
 		}
 //		else if(!strcmp(varname[ivar],"xvort"))
 //		else if(!strcmp(varname[ivar],"yvort"))
@@ -1852,9 +1758,9 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
 			writeptr = buf0;
 		}
-		if(!strcmp(varname[ivar],"u")) edges[3] = NX+1;
-		if(!strcmp(varname[ivar],"v")) edges[2] = NY+1;
-		if(!strcmp(varname[ivar],"w")) edges[1] = NZ+1;
+		if(!strcmp(varname[ivar],"u")) edges[3] = NX;//ORF shaved off one
+		if(!strcmp(varname[ivar],"v")) edges[2] = NY;//ORF shaved off one
+		if(!strcmp(varname[ivar],"w")) edges[1] = NZ;//ORF shaved off one
 dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writeptr);
 		if (status != NC_NOERR) 
 		{
@@ -1888,120 +1794,6 @@ dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writept
 		fclose(fp);
 	}
 }
-
-void parse_cmdline_makevisit(int argc, char *argv[],
-		char *histpath, char *base,
-		int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1)
-{
-
-	int got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	int got_histpath,got_base;
-	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1, OPT_DEBUG };
-	static struct option long_options[] =
-	{
-		{"histpath", required_argument, 0, OPT_HISTPATH},
-		{"base",     required_argument, 0, OPT_BASE},
-		{"x0",       optional_argument, 0, OPT_X0},
-		{"y0",       optional_argument, 0, OPT_Y0},
-		{"x1",       optional_argument, 0, OPT_X1},
-		{"y1",       optional_argument, 0, OPT_Y1},
-		{"z0",       optional_argument, 0, OPT_Z0},
-		{"z1",       optional_argument, 0, OPT_Z1},
-		{"debug",    optional_argument, 0, OPT_DEBUG},
-		{0, 0, 0, 0}//sentinel, needed!
-	};
-
-	int bail = 0;
-	got_histpath=got_base=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
-
-	if (argc == 1)
-	{
-		fprintf(stderr,
-		"Usage: %s --histpath=[histpath] --base=[base] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --z0=[Z0] --z1=[Z1]\n",argv[0]);
-		exit(0);
-	}
-
-	while (1)
-	{
-		int r;
-		int option_index = 0;
-		r = getopt_long_only (argc, argv,"",long_options,&option_index);
-//		printf("optarg = %s\n",optarg);
-		if (r == -1) break;
-
-		switch(r)
-		{
-			case OPT_HISTPATH:
-				strcpy(histpath,optarg);
-				got_histpath=1;
-				printf("histpath = %s\n",histpath);
-				break;
-			case OPT_BASE:
-				strcpy(base,optarg);
-				got_base=1;
-				printf("base = %s\n",base);
-				break;
-			case OPT_X0:
-				*X0 = atoi(optarg);
-				got_X0 = 1;
-				optcount++;
-				printf("X0 = %i\n",*X0);
-				break;
-			case OPT_Y0:
-				*Y0 = atoi(optarg);
-				got_Y0 = 1;
-				optcount++;
-				printf("Y0 = %i\n",*Y0);
-				break;
-			case OPT_X1:
-				*X1 = atoi(optarg);
-				got_X1 = 1;
-				optcount++;
-				printf("X1 = %i\n",*X1);
-				break;
-			case OPT_Y1:
-				*Y1 = atoi(optarg);
-				got_Y1 = 1;
-				optcount++;
-				printf("Y1 = %i\n",*Y1);
-				break;
-			case OPT_Z0:
-				*Z0 = atoi(optarg);
-				got_Z0 = 1;
-				optcount++;
-				printf("Z0 = %i\n",*Z0);
-				break;
-			case OPT_Z1:
-				*Z1 = atoi(optarg);
-				got_Z1 = 1;
-				optcount++;
-				printf("Z1 = %i\n",*Z1);
-				break;
-			case OPT_DEBUG:
-				debug=1;
-				optcount++;
-				printf("debug = %i\n",debug);
-				break;
-			case '?':
-				fprintf(stderr,"Exiting: unknown command line option.\n");
-				exit(0);
-				break;
-		}
-	}
-
-		if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
-		if (!got_base)   { fprintf(stderr,"--base not specified\n"); bail = 1; }
-
-/* These are optional */
-		if (!got_X0)      fprintf(stderr,"Setting x0 to default value of 0\n");
-		if (!got_X1)      fprintf(stderr,"Setting x1 to default value of nx-1\n");
-		if (!got_Y0)      fprintf(stderr,"Setting y0 to default value of 0\n");
-		if (!got_Y1)      fprintf(stderr,"Setting y1 to default value of ny-1\n");
-		if (!got_Z0)      fprintf(stderr,"Setting z0 to default value of 0\n");
-		if (!got_Z1)      fprintf(stderr,"Setting z1 to default value of z1-1\n");
-		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
-}
-
 
 void	parse_cmdline_hdf2nc(int argc, char *argv[],
 	char *histpath, char *base, double *time,
@@ -2169,7 +1961,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		if (!got_X1)      fprintf(stderr,"Will set X1 to saved_X1\n");
 		if (!got_Y1)      fprintf(stderr,"Will set Y1 to saved_Y1\n");
 		if (!got_Z0)      fprintf(stderr,"Setting Z0 to default value of 0\n");
-		if (!got_Z1)      fprintf(stderr,"Setting Z1 to default value of nz-1\n");
+		if (!got_Z1)      fprintf(stderr,"Setting Z1 to default value of nz-2\n");
 
 		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
