@@ -270,7 +270,9 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	if (is_not_between_int (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
 	if (is_not_between_int (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between_int (0, nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
+//ORF: we don't do this check for swaths, they are handled differently,
+//but we are using the z dimension
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
