@@ -29,7 +29,7 @@
 #include <omp.h>
 #include <time.h>
 
-#define MAXVARIABLES (100)
+#define MAXVARIABLES (500)
 #define MAXSTR (512)
 
 char topdir[PATH_MAX+1];
