@@ -40,6 +40,7 @@ double *dirtimes;
 int ntimedirs;
 int nx,ny,nz,nodex,nodey;
 char firstfilename[MAXSTR];
+char saved_base[MAXSTR];
 int nnodedirs;
 double *alltimes;
 int ntottimes;
@@ -61,14 +62,14 @@ int nthreads = 1;
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
 //variable names. Make this a global just for simplicity.
-int argc_hdf2nc_min=4;
+int argc_hdf2nc_min=3;
 int optcount=0;
 
-void grok_cm1hdf5_file_structure();
-void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
+void grok_cm1hdf5_file_structure(int regenerate_cache);
+void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
 
 void parse_cmdline_hdf2nc(int argc, char *argv[],
-		char *histpath, char *base,
+		char *histpath, char *base, int *got_base,
 		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache);
 
 extern char *optarg; /* This is handled by the getopt code */
@@ -118,6 +119,7 @@ int main(int argc, char *argv[])
 	int i2d;
 	double time;
 	int regenerate_cache = 0; //We pass this to our parsedir routines in the case that we want to force cache file refreshing for whatever reason
+	int got_base;
 
 	strcpy(progname,argv[0]);
 	if (strspn("hdf2nc",progname) == 6) we_are_hdf2nc = TRUE;
@@ -129,10 +131,12 @@ int main(int argc, char *argv[])
 
 	X0=Y0=X1=Y1=Z0=Z1=-1;// set to bogus values
 	time=0.0;
-	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1, &regenerate_cache );
+	got_base=0;
+	if      (we_are_hdf2nc)    parse_cmdline_hdf2nc(argc, argv, histpath, base, &got_base, &time, &X0, &Y0, &X1, &Y1, &Z0, &Z1, &regenerate_cache );
+//	printf("****ORF: after parse_cmdline_hdf2nc: got_base = %i\n",got_base);
 
 	if((cptr=realpath(histpath,topdir))==NULL)ERROR_STOP("realpath failed");
-	grok_cm1hdf5_file_structure(base,regenerate_cache);
+	grok_cm1hdf5_file_structure(regenerate_cache);
 	get_hdf_metadata(firstfilename,&nx,&ny,&nz,&nodex,&nodey); //NOTE: saved_X0 etc. are set now
 	//ORF 2019-11-20 could tweak saved_X0 etc to avoid out of bounds errors...?
 	saved_X0+=1; saved_X1-=1; saved_Y0+=1; saved_Y1-=1; //saved_Z1-=1; //<---- WE FREAKING NEED THIS
@@ -191,11 +195,25 @@ int main(int argc, char *argv[])
 		X1=saved_X1;
 	}
 
-	if(we_are_hdf2nc)             hdf2nc(argc,argv,base,X0,Y0,X1,Y1,Z0,Z1,time);
+	if(we_are_hdf2nc)             hdf2nc(argc,argv,base,got_base,X0,Y0,X1,Y1,Z0,Z1,time);
 	exit(0);
 }
 
-void grok_cm1hdf5_file_structure(char *base,int regenerate_cache)
+void get_saved_base(char *timedir, char *saved_base)
+{
+	// Just grab the basename so we can have it set automatically
+	// for the netcdf files if so desired. Apparenlty the easiest
+	// way to do this is to just remove the last 14 characters of
+	// one of the timedir directories
+
+	int tdlen;
+
+	tdlen=strlen(timedir)-14;
+	strncpy(saved_base,timedir,tdlen);
+	saved_base[tdlen]='\0';
+}
+
+void grok_cm1hdf5_file_structure(int regenerate_cache)
 {
 	int i;
 	ntimedirs = get_num_time_dirs(topdir,debug,regenerate_cache); printf("ntimedirs: %i\n",ntimedirs);
@@ -213,6 +231,10 @@ void grok_cm1hdf5_file_structure(char *base,int regenerate_cache)
 	for (i=0; i < nnodedirs; i++) nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
 	get_sorted_node_dirs(topdir,timedir[0],nodedir,&dn,nnodedirs,debug,regenerate_cache);
+
+	get_saved_base(timedir[0],saved_base);
+
+	printf("saved_base = %s\n",saved_base);
 
 	alltimes = get_all_available_times(topdir,timedir,ntimedirs,nodedir,nnodedirs,&ntottimes,firstfilename,&firsttimedirindex,
 			&saved_X0,&saved_Y0,&saved_X1,&saved_Y1,debug,regenerate_cache);
@@ -236,7 +258,7 @@ void grok_cm1hdf5_file_structure(char *base,int regenerate_cache)
 #define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
 
 //hdf2ncdammit
-void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
+void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
 {
 	float *buffer,*buf0,*ustag,*vstag,*wstag,*xvort,*yvort,*zvort;
 	float *dum0,*dum00,*dum1,*dum10;
@@ -344,7 +366,12 @@ void hdf2nc(int argc, char *argv[], char *base, int X0, int Y0, int X1, int Y1, 
 		printf("%s ",varname_cmdline[i]);
 	}
 	printf("\n");
+
+//ORF here is where base is used for the first and only time
+
+	if (!got_base) strcpy(base,saved_base);
 	sprintf(ncfilename,"%s.%012.6f.nc",base,t0);
+//	printf("*****ORF: base = %s saved_base = %s\n",base,saved_base);
 	
 	NX = X1 - X0 + 1;
 	NY = Y1 - Y0 + 1;
@@ -1796,17 +1823,17 @@ dumpit:	status = nc_put_vara_float (ncid, varnameid[ivar], start, edges, writept
 }
 
 void	parse_cmdline_hdf2nc(int argc, char *argv[],
-	char *histpath, char *base, double *time,
+	char *histpath, char *base, int *got_base, double *time,
 	int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache )
 {
-	int got_histpath,got_base,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
+	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS, OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET, OPT_INTERP };
 	// see https://stackoverflow.com/questions/23758570/c-getopt-long-only-without-alias
 	static struct option long_options[] =
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
-		{"base",     required_argument, 0, OPT_BASE},
+		{"base",     optional_argument, 0, OPT_BASE},
 		{"time",     required_argument, 0, OPT_TIME},
 		{"x0",       optional_argument, 0, OPT_X0},
 		{"y0",       optional_argument, 0, OPT_Y0},
@@ -1828,7 +1855,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
-	got_histpath=got_base=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
+	got_histpath=got_time=got_X0=got_X1=got_Y0=got_Y1=got_Z0=got_Z1=0;
 
 	int bail = 0;
 
@@ -1855,7 +1882,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				break;
 			case OPT_BASE:
 				strcpy(base,optarg);
-				got_base=1;
+				*got_base=1;
 				printf("base = %s\n",base);
 				break;
 			case OPT_TIME:

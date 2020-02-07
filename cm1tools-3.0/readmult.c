@@ -119,6 +119,7 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 extern int debug;
 
+//ORF 2020-02-07 nodedir not used here!!
 void
 read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
 		double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
