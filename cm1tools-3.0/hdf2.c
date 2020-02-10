@@ -1883,6 +1883,7 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 			case OPT_BASE:
 				strcpy(base,optarg);
 				*got_base=1;
+				optcount++;
 				printf("base = %s\n",base);
 				break;
 			case OPT_TIME:
