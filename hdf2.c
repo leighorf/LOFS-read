@@ -250,12 +250,14 @@ void grok_cm1hdf5_file_structure(int regenerate_cache)
 // code a lot easier to compare to native CM1 Fortran90 code that we are
 // copying anyway. I adopt TEM for his tem array, UA for ua etc.
 
+/***** now in include/macros.h
 #define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
 #define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
 #define TEM1(x,y,z) dum1[P3(x,y,z,NX+1,NY+1)]
 #define UA(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
 #define VA(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
 #define WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
+****/
 
 //hdf2ncdammit
 void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0)
@@ -484,12 +486,14 @@ void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, in
 	vf = (float *)malloc((NY+2) * sizeof(float));
 	mh = (float *)malloc((NZ+2) * sizeof(float));
 	mf = (float *)malloc((NZ+2) * sizeof(float));
+/*** defined in include/macros.h
 #define UH(ix) uh[ix+1]
 #define UF(ix) uf[ix+1]
 #define VH(iy) vh[iy+1]
 #define VF(iy) vf[iy+1]
 #define MH(iz) mh[iz+1]
 #define MF(iz) mf[iz+1]
+***/
 	for (ix=X0-1; ix<X1+1; ix++) UH(ix-X0) = dx/(xffull[ix+1]-xffull[ix]);
 	for (ix=X0-1; ix<X1+1; ix++) UF(ix-X0) = dx/(xhfull[ix]-xhfull[ix-1]);
 	for (iy=Y0-1; iy<Y1+1; iy++) VH(iy-Y0) = dy/(yffull[iy+1]-yffull[iy]);
