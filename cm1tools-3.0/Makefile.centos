@@ -1,4 +1,4 @@
-CC = /home/lorf/hdf5/hdf5-1.10.0-patch1/serial/bin/h5cc
+CC = /home/lorf/hdf5-1.12.0/bin/h5cc
 AR = ar
 HDF5ZFP=/home/lorf/hdf5/h5z-zfp
 ZFP=/home/lorf/build/hdf5/zfp
