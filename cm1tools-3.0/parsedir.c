@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
-#include "lofs-read.h"
+#include "include/lofs-read.h"
 
 #define MAXSTR (512)
 

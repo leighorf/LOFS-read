@@ -25,9 +25,9 @@
  * on with VisIt so I don't have to maintain their bizarre plugin code
  */
 
-#include "lofs-read.h"
 #include <omp.h>
 #include <time.h>
+#include "include/lofs-read.h"
 
 #define MAXVARIABLES (500)
 #define MAXSTR (512)

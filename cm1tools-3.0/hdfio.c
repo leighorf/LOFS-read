@@ -1,4 +1,4 @@
-#include "lofs-read.h"
+#include "include/lofs-read.h"
 
 void
 get0dint (hid_t file_id, char *varname, int *var)
