@@ -11,7 +11,7 @@ typedef struct dir_meta
 	int firsttimedirindex; //Not currently utilized, but set
 	double *dirtimes,*alltimes;
 	int ntimedirs;
-	int notottimes;
+	int ntottimes;
 	int nnodedirs;
 	int dn;
 	int regenerate_cache;
@@ -32,5 +32,30 @@ typedef struct gridstuct
 	int saved_Z0,saved_Z1;
 	float umove,vmove;
 } grid;
+
+typedef struct cmdline
+{
+	/* MUST INITIALIZE THESE */
+	int debug;
+	int do_swaths;
+	int do_allvars;
+	int gzip;
+	int use_interp;
+	int use_box_offset;
+	int filetype;
+	int nthreads;
+	int got_base;
+	int optcount;
+	char *histpath,*base;
+	float time;
+
+} cmdline;
+
+void get_sorted_time_dirs (dir_meta *dm, cmdline cmd);
+void get_sorted_node_dirs (dir_meta *dm, cmdline cmd);
+void get_num_time_dirs (dir_meta *dm, cmdline cmd);
+void get_num_node_dirs (dir_meta *dm,cmdline cmd);
+void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
+
 
 #endif

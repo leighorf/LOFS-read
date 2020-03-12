@@ -2,6 +2,9 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
+#include "include/dirstruct.h"
+#include "include/limits.h"
+#include "include/hdf2nc.h"
 #include "include/lofs-read.h"
 
 #define MAXSTR (512)
@@ -118,7 +121,7 @@ get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 
 	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
 	{
-		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir);
+		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir[0]);
 
 		open_directory (timedir_full);
 		j = 0;
@@ -128,13 +131,13 @@ get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 			ns = strlen (tmpstr);
 			if (ns == 7 && isNumeric (tmpstr))
 			{
-				strcpy (nodedir[j++], tmpstr);
+				strcpy (dm->nodedir[j++], tmpstr);
 			}
 		}
 
 		close_directory();
 		sortchararray (dm->nodedir, dm->nnodedirs);
-		dm->dn = (j != 1) ? (atoi (nodedir[1]) - atoi (nodedir[0])) : -1;
+		dm->dn = (j != 1) ? (atoi (dm->nodedir[1]) - atoi (dm->nodedir[0])) : -1;
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
 
@@ -183,7 +186,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	{
 		printf("Grabbing and caching metadata (only done once):");
 		j = 0;
-		open_directory (dm.topdir);
+		open_directory (dm->topdir);
 		while ((dit = readdir (dip)) != NULL) 
 		{
 			strcpy (tmpstr, dit->d_name);
@@ -364,7 +367,7 @@ get_num_time_dirs (dir_meta *dm,cmdline cmd)
 	}
 	else
 	{
-		if (!regenerate_cache)
+		if (!dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
@@ -379,7 +382,7 @@ get_num_time_dirs (dir_meta *dm,cmdline cmd)
 
 //get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
 void
-get_num_node_dirs (dir_meta *dm,cmd_line cmd)
+get_num_node_dirs (dir_meta *dm,cmdline cmd)
 {
 	int j, ns,iret;
 	char timedir_full[MAXSTR];
@@ -387,9 +390,9 @@ get_num_node_dirs (dir_meta *dm,cmd_line cmd)
 
 	FILE *fp;
 
-	if (cmd->regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
+	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
 	{
-		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir);
+		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir[0]);
 		open_directory (timedir_full);
 		j = 0;
 		while ((dit = readdir (dip)) != NULL)
@@ -469,9 +472,13 @@ void get_unsorted_file_list(char** cm1hdf5file)
 	close_directory();
 }
 
+/*
 double *
 get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
 		int *saved_X0, int *saved_Y0, int *saved_X1, int *saved_Y1, int debug,int regenerate_cache)
+*/
+
+void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd)
 {
 	int i, j, k, iret, itime;
 	char basedir_full[MAXSTR], tmpstr[256]; // size of dit->d_name
@@ -487,58 +494,27 @@ get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nod
 
 	FILE *fp;
 
-	hdf5filename = (char *)malloc(512*sizeof(char));
+	hdf5filename = (char *)malloc(MAXSTR*sizeof(char));
 	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
-	nodedirmask = (int *)malloc(nnodedirs*sizeof(int));
-	if (regenerate_cache||(fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
+	nodedirmask = (int *)malloc(dm->nnodedirs*sizeof(int));
+	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
 	{
-		*ntottimes = 0;
+		dm->ntottimes = 0;
 		k = 0;
 
 /*
-
-3/14/18
-
-New: This routine, called once per data set where data is cached
-to ASCII text files, also now retrieves actual saved domain index
-(x0,y0,x1,y1) parameters. We cannot assume it's the full domain as I
-regularly save subdomains focused on the mesocyclone, and it's possible
-that files are culled to save disk space. Without passing values to
-X0 etc. these saved bounds are the default. Hence it's a quick way to
-construct, for instance, a netCDF file with all the saved LOFS data at
-a given time. No longer will I need to hunt in the node directories for
-the files containing these values!
-
-This required a lot more code than I thought it would. I have broken out
-several subroutines to make the code more clear.
-
-Usually a subdomain is saved in my big CM1 simulations. The actual
-indices can only be retrieved by diving into the LOFS directory
-structure. This new functionality will mean that if hdf2nc (or
-makevisit) is called with no horizontal indices, it will choose the
-saved ones rather than throwing an error when it can't find file
-00000...
-
-First we evaluate the which node directories contain actual cm1hdf5
-files (there can be empty ones), creating a 1d integer mask array.
-Then, we go to the 1st of these node directories to get x0,y0 from the
-"smallest numbered file" and then we go to the last to get x1 y1 in the
-"largest numbered file" since cm1 does a 2D decomposition which can be
-expressed in a simple 1d array.
-
 TODO: Save Z0 in cm1hdf5 files so we can retrieve that as well.
-
 */
 
-		firstnodedir=lastnodedir=*saved_X0=*saved_Y0=*saved_X1=*saved_Y1=0;
+		firstnodedir=lastnodedir=0;
 
 		itime = 0; /* Only need one time */
 		{
 			int found_something=0;
-			for (j=0; j < nnodedirs; j++)
+			for (j=0; j < dm->nnodedirs; j++)
 			{
-				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
-				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,itime,timedir[itime],j,nodedir[j]);
+				sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
+				if(cmd.debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",dm->topdir,itime,dm->timedir[itime],j,dm->nodedir[j]);
 
 				nodedirmask[j] = get_nodemask(basedir_full);
 //				printf("nodedirmask[%i]=%i\n",j,nodedirmask[j]);
@@ -560,8 +536,8 @@ crave electrolytes.
 		/* Tested good with big-assed 15 meter data where we only saved
 		 * the center of the domain*/
 		firstnodedir=0;
-		lastnodedir=nnodedirs-1;
-		for (j=0; j < nnodedirs-1; j++)
+		lastnodedir=dm->nnodedirs-1;
+		for (j=0; j < dm->nnodedirs-1; j++)
 		{
 			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j+1;
 			if((nodedirmask[j+1]-nodedirmask[j]) == -1) lastnodedir=j;
@@ -570,7 +546,7 @@ crave electrolytes.
 
 		j=firstnodedir;
 		{
-			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
+			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
 			fprintf(stderr,"Number of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
@@ -592,15 +568,17 @@ crave electrolytes.
 				fprintf (stderr, "Cannot open %s, even though it should exist!\n", hdf5filename);
 				ERROR_STOP ("Cannot open hdf file");
 			}
-			get0dint(file_id,"grid/x0",saved_X0);
-			get0dint(file_id,"grid/y0",saved_Y0);
+			get0dint(file_id,"grid/x0",&gd->saved_X0);
+			get0dint(file_id,"grid/y0",&gd->saved_Y0);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",*saved_X0);
-			fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",*saved_Y0);
+			fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",gd->saved_X0);
+			fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",gd->saved_Y0);
+			for (i=0; i < nfiles; i++) free(cm1hdf5file[i]);
+			free(cm1hdf5file);
 		}
 		j=lastnodedir;
 		{
-			sprintf (basedir_full, "%s/%s/%s", topdir, timedir[itime], nodedir[j]);
+			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
 			fprintf(stderr,"Number of cm1hdf5 files in our last (%i) node directory: %i\n",j,nfiles);
@@ -619,15 +597,17 @@ crave electrolytes.
 			sprintf(hdf5filename,"%s/%s",basedir_full,cm1hdf5file[nfiles-1]);/* <-- index nfiles-1 is latest time */
 			if ((file_id = H5Fopen (hdf5filename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
-				fprintf (stderr, "Cannot open %s, even though it should exist!\n", firstfilename);
+				fprintf (stderr, "Cannot open %s, even though it should exist!\n", hdf5filename);
 				ERROR_STOP ("Cannot open hdf file");
 			}
 
-			get0dint(file_id,"grid/x1",saved_X1);
-			get0dint(file_id,"grid/y1",saved_Y1);
+			get0dint(file_id,"grid/x1",&gd->saved_X1);
+			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",*saved_X1);
-			fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",*saved_Y1);
+			fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",gd->saved_X1);
+			fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",gd->saved_Y1);
+			for (i=0; i < nfiles; i++) free(cm1hdf5file[i]);
+			free(cm1hdf5file);
 		}
 
 // Thus endeth the code that finds the saved domain bounds in X and Y. Z
@@ -636,29 +616,29 @@ crave electrolytes.
 // 3D files... I think I'll add a new piece of metadata to the grid
 // group...
 
-		for (i = 0; i < ntimedirs; i++)
+		for (i = 0; i < dm->ntimedirs; i++)
 		{
-			for (j=0; j < nnodedirs; j++)
+			for (j=0; j < dm->nnodedirs; j++)
 				//WHY ARE WE DOING THIS? Because now that I am doing big assed runs I have situations
 				//where when saving subdomains, some of the node
 				//directories are completely empty, so I can no longer
 				//just choose 'nodedir[0]' to find my first hdf5 file.
 			{
-				sprintf (basedir_full, "%s/%s/%s", topdir, timedir[i], nodedir[j]);
-				if(debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",topdir,i,timedir[i],j,nodedir[j]);
+				sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[i], dm->nodedir[j]);
+				if(cmd.debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",dm->topdir,i,dm->timedir[i],j,dm->nodedir[j]);
 
 				open_directory(basedir_full);
 				while ((dit = readdir (dip)) != NULL)
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
-					if(debug)printf("get_all_available_times: %s\n",basedir_full);
+					if(cmd.debug)printf("get_all_available_times: %s\n",basedir_full);
 					if (foochar != NULL) break;	// Got a cm1hdf5 file
 				}	
 				close_directory();
 				if (foochar != NULL) break;	// Got a cm1hdf5 file
 			}
-			*firsttimedirindex = j; //Might use this someday
+			dm->firsttimedirindex = j; //Might use this someday
 
 			if (!foochar)
 			{
@@ -684,19 +664,19 @@ crave electrolytes.
 
 */
 
-			sprintf(firstfilename,"%s/%s",basedir_full,tmpstr);
-			if(debug)
+			sprintf(dm->firstfilename,"%s/%s",basedir_full,tmpstr);
+			if(cmd.debug)
 			{
-				printf("get_all_available_times: firstfilename = %s\n",firstfilename);
+				printf("get_all_available_times: firstfilename = %s\n",dm->firstfilename);
 			}
 			else
 			{
 				printf(".");fflush(stdout);
 			}
 
-			if ((file_id = H5Fopen (firstfilename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
+			if ((file_id = H5Fopen (dm->firstfilename, H5F_ACC_RDONLY, H5P_DEFAULT)) < 0)
 			{
-				fprintf (stderr, "Cannot open firstfilename which is %s, even though we have already opened it!\n", firstfilename);
+				fprintf (stderr, "Cannot open firstfilename which is %s, even though we have already opened it!\n", dm->firstfilename);
 				ERROR_STOP ("Cannot open hdf file");
 			}
 
@@ -718,12 +698,12 @@ crave electrolytes.
 			if ((filetimes = (double *)malloc(dims[0]*sizeof(double)))==NULL) ERROR_STOP("Cannot malloc filetimes array");
 			get1ddouble(file_id,"times",filetimes,0,dims[0]);
 			
-			(*ntottimes) += dims[0];
+			dm->ntottimes += dims[0];
 
-			alltimes = (k==0)?(double *)malloc(dims[0]*sizeof(double)):(double *)realloc(alltimes,(*ntottimes)*sizeof(double));
+			dm->alltimes = (k==0)?(double *)malloc(dims[0]*sizeof(double)):(double *)realloc(dm->alltimes,(dm->ntottimes)*sizeof(double));
 
-			for (j=0; j<dims[0];j++)alltimes[j+k] = filetimes[j];
-			k = *ntottimes;
+			for (j=0; j<dims[0];j++)dm->alltimes[j+k] = filetimes[j];
+			k = dm->ntottimes;
 
 			free (filetimes);
 			H5Fclose(file_id);
@@ -732,43 +712,43 @@ crave electrolytes.
 		printf("\n");
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
-			fprintf(fp,"%s\n",firstfilename);
-			fprintf(fp,"%i %i %i %i\n",*saved_X0,*saved_Y0,*saved_X1,*saved_Y1);
-			fprintf(fp,"%i\n",*ntottimes);
-			for (i=0; i<*ntottimes; i++)
+			fprintf(fp,"%s\n",dm->firstfilename);
+			fprintf(fp,"%i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1);
+			fprintf(fp,"%i\n",dm->ntottimes);
+			for (i=0; i<dm->ntottimes; i++)
 			{
-				fprintf(fp,"%lf\n",alltimes[i]);
+				fprintf(fp,"%lf\n",dm->alltimes[i]);
 			}
 			fclose(fp);
 		}
 	}
 	else
 	{
-		if (!regenerate_cache)
+		if (!dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
-			iret=fscanf(fp,"%s",firstfilename);
-			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",firstfilename);
+			iret=fscanf(fp,"%s",dm->firstfilename);
+			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
 				else ERROR_STOP("fscanf firstfilename failed");
-			iret=fscanf(fp,"%i %i %i %i",saved_X0,saved_Y0,saved_X1,saved_Y1);
+			iret=fscanf(fp,"%i %i %i %i",&(gd->saved_X0),&(gd->saved_Y0),&(gd->saved_X1),&(gd->saved_Y1));
 			if(iret!=EOF){
-				fprintf(stderr,"Cached: saved_X0  = %6i\n",*saved_X0);
-				fprintf(stderr,"Cached: saved_Y0  = %6i\n",*saved_Y0);
-				fprintf(stderr,"Cached: saved_X1  = %6i\n",*saved_X1);
-				fprintf(stderr,"Cached: saved_Y1  = %6i\n",*saved_Y1);
+				fprintf(stderr,"Cached: saved_X0  = %6i\n",gd->saved_X0);
+				fprintf(stderr,"Cached: saved_Y0  = %6i\n",gd->saved_Y0);
+				fprintf(stderr,"Cached: saved_X1  = %6i\n",gd->saved_X1);
+				fprintf(stderr,"Cached: saved_Y1  = %6i\n",gd->saved_Y1);
 			}
-				else ERROR_STOP("fscanf saved_[XY][01] failed");
-			iret=fscanf(fp,"%i",ntottimes);
-			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes = %6i\n",*ntottimes);
-			alltimes = (double *)malloc(*ntottimes * sizeof(double));
-			for (i=0; i<*ntottimes; i++)
+			else ERROR_STOP("fscanf saved_[XY][01] failed");
+			iret=fscanf(fp,"%i",&(dm->ntottimes));
+			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes = %6i\n",dm->ntottimes);
+			dm->alltimes = (double *)malloc(dm->ntottimes * sizeof(double));
+			for (i=0; i<dm->ntottimes; i++)
 			{
-				if((iret=fscanf(fp,"%lf",&(alltimes[i])))==EOF)ERROR_STOP("fscanf alltimes failed");
+				if((iret=fscanf(fp,"%lf",&(dm->alltimes[i])))==EOF)ERROR_STOP("fscanf alltimes failed");
 
 			}
 			printf("Read all cached metadata from dot files\n");
 		}
 	}
 
-	return(alltimes);
+//	return(alltimes);
 }
