@@ -1,76 +1,44 @@
-/* LOFS (Leigh Orf File System / Lack Of File System) tools to convert
- * to other perhaps more useful formats
- *
- * Big rewrite June 2011. All top-level conversion code in one file, makes
- * maintenance easier. Symlinks to binary determine what is run.
- *
- * Major cleanup 11/23/2016, cleared out all unused variables and got
- * gcc to mostly shut up. Getting this code stable before converting to
- * new cm1hdf5 (subsecond) LOFS format.
- *
- * 2/17: Switched over to floating point format for times in LOFS
- *
- * Added command line parsing 7/17
- *
- * Cleaned a bunch of stuff up 3/18, see git log
- *
- * 4/18: added OMP loop directives for our calculation loops
- *
- * 4/30/19: Added --swaths flag to convert all the swaths (now saved in
- * 3D files by CM1/LOFS)
- *
- * 5/1/19: Added --allvars flag to convert all the 3D fields
- *
- * 1/30/20: Got rid of makevisit; we will only use netCDF files from now
- * on with VisIt so I don't have to maintain their bizarre plugin code
- */
-
 #include <omp.h>
 #include <time.h>
 #include "include/lofs-read.h"
 
-#define MAXVARIABLES (500)
-#define MAXSTR (512)
+//PATH_MAX inlcuded with HDF5
+//char topdir[PATH_MAX_CHARS+1];
+//int dn;
+//char **timedir; 
+//char **nodedir;
+//double *dirtimes;
+//int ntimedirs;
+//int nx,ny,nz,nodex,nodey;
+//char firstfilename[MAXSTR];
+//char saved_base[MAXSTR];
+//int nnodedirs;
+//double *alltimes;
+//int ntottimes;
+//int firsttimedirindex;
+//int saved_X0,saved_Y0,saved_X1,saved_Y1;
+//float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammit! */
 
-char topdir[PATH_MAX+1];
-int dn;
-char **timedir; 
-char **nodedir;
-double *dirtimes;
-int ntimedirs;
-int nx,ny,nz,nodex,nodey;
-char firstfilename[MAXSTR];
-char saved_base[MAXSTR];
-int nnodedirs;
-double *alltimes;
-int ntottimes;
-int firsttimedirindex;
-int saved_X0,saved_Y0,saved_X1,saved_Y1;
-float umove = 0.0, vmove = 0.0; /* Need to save these in the history files dammit! */
-//const float MISSING=1.0E37;
-const float MISSING=0.0; //Ugh deal with these later
-
-int debug = 0;
-int do_swaths = 0;
-int do_allvars = 0;
-int gzip = 0;
-int use_interp = 0;
-int use_box_offset = 0;
-int filetype = NC_NETCDF4;
-int nthreads = 1;
+// int debug = 0;
+// int do_swaths = 0;
+// int do_allvars = 0;
+// int gzip = 0;
+// int use_interp = 0;
+// int use_box_offset = 0;
+// int filetype = NC_NETCDF4;
+// int nthreads = 1;
 
 //Minimum number of required arguments to hdf2nc. Adding optional flags (to
 //hdf2nc) will require incrementing in order to retrieve all the
 //variable names. Make this a global just for simplicity.
-int argc_hdf2nc_min=3;
 int optcount=0;
 
 void grok_cm1hdf5_file_structure(int regenerate_cache);
-void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
+//void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, int X1, int Y1, int Z0, int Z1, double t0);
 
-void parse_cmdline_hdf2nc(int argc, char *argv[],
-		char *histpath, char *base, int *got_base,
-		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache);
+//void parse_cmdline_hdf2nc(int argc, char *argv[],
+//		char *histpath, char *base, int *got_base,
+//		double *time, int *X0, int *Y0, int *X1, int *Y1, int *Z0, int *Z1, int *regenerate_cache);
 
 extern char *optarg; /* This is handled by the getopt code */
 
@@ -324,6 +292,8 @@ void hdf2nc(int argc, char *argv[], char *base, int got_base, int X0, int Y0, in
 	float rv = 461.5;
 	float rd = 287.04;
 	float reps;
+
+	int argc_hdf2nc_min=3;
 
 
 
@@ -1609,33 +1579,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 			writeptr=buffer;
 
 		}
-/*
-		else if(!strcmp(varname[ivar],"thrhopert")) //We now calcluate here
-		{
-			read_hdf_mult_md(dum0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qtot",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-			read_hdf_mult_md(dum0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"thpert",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-#pragma omp parallel for private(i,j,k,dvdx,dudy)
-			for(k=0; k<nk; k++)
-			for(j=0; j<nj; j++)
-			for(i=0; i<ni; i++)
-			{
-//do vort first :)
-			}
-
-		}
-*/
-//		else if(!strcmp(varname[ivar],"zvort_stretch")) 
-//		else if(!strcmp(varname[ivar],"zvort_tilt")) 
-//		else if(!strcmp(varname[ivar],"xvort_baro")) 
-//		else if(!strcmp(varname[ivar],"yvort_baro")) 
-//		else if(!strcmp(varname[ivar],"yvort_stretch"))
-//		else if(!strcmp(varname[ivar],"yvort_tilt"))
-//		else if(!strcmp(varname[ivar],"xvort_stretch"))
-//		else if(!strcmp(varname[ivar],"xvort_tilt"))
-//		else if(!strcmp(varname[ivar],"hvort"))
-//		else if(!strcmp(varname[ivar],"vortmag"))
-//		else if(!strcmp(varname[ivar],"streamvort"))
-//		else if(!strcmp(varname[ivar],"streamfrac"))
 		else if(!strcmp(varname[ivar],"hvort"))
 		{
 #pragma omp parallel for private(i,j,k,dwdy,dvdz)
@@ -1761,29 +1704,6 @@ http://www.unidata.ucar.edu/software/netcdf/netcdf-4/newdocs/netcdf/Large-File-S
 				writeptr=buffer;
 			}
 		}
-//		else if(!strcmp(varname[ivar],"xvort"))
-//		else if(!strcmp(varname[ivar],"yvort"))
-//		else if(!strcmp(varname[ivar],"zvort"))
-//		else if(!strcmp(varname[ivar],"qcloud"))
-//		{
-//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qc",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-//			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qi",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-//			buffer=buf0; dumarray=dum0;
-//			writeptr = buffer;
-//		}
-//		else if(!strcmp(varname[ivar],"qprecip"))
-//		{
-//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qr",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-//			read_hdf_mult_md(buffer,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qs",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-//			buffer=buf0; dumarray=dum0;
-//			read_hdf_mult_md(dumarray,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"qg",X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
-//			for(i=0; i<NX*NY*NZ; i++) *buffer++ += *dumarray++;
-//			buffer=buf0; dumarray=dum0;
-//			writeptr = buffer;
-//		}
-//		else if(!strcmp(varname[ivar],"qvstupid"))
 		else // We have (hopefully) requested a variable that has been saved
 		{
 			read_hdf_mult_md(buf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,varname[ivar],X0,Y0,X1,Y1,Z0,Z1,nx,ny,nz,nodex,nodey);
@@ -1968,14 +1888,14 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 				omp_set_num_threads(nthreads);
 				optcount++;
 				break;
-			case OPT_UMOVE:
-				umove=atof(optarg);
-				optcount++;
-				break;
-			case OPT_VMOVE:
-				vmove=atof(optarg);
-				optcount++;
-				break;
+//			case OPT_UMOVE:
+//				umove=atof(optarg);
+//				optcount++;
+//				break;
+//			case OPT_VMOVE:
+//				vmove=atof(optarg);
+//				optcount++;
+//				break;
 			case '?':
 				fprintf(stderr,"Exiting: unknown command line option.\n");
 				exit(0);
@@ -1997,61 +1917,3 @@ void	parse_cmdline_hdf2nc(int argc, char *argv[],
 
 		if (bail)           { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
-//Some comments that I had higher up describing our methodology with calculating things like zvort
-//
-// 2019-05-06 THIS LOOKS GOOD but should be tested against CM1 zvort!
-//
-// I have copied George's approach here for doing vorticity. See
-// misclibs/calcvort in cm1r16. The "trick" is to read in "ghost
-// zones" of ustag and vstag since to calculate vortz on the scalar
-// mesh you must first calcluate zeta (using "upwind" nearest-neighbor
-// differencing) but those calculations go a bit to the left and a
-// bit to the right of where we would prefer. So we have one extra
-// point to the west(south) and one extra point to the east(north)
-// for ustag(vstag). Because C does not have the "handy" way to index
-// negative values like Fortran, we just start with zero as usual such
-// that the smallest index is always 0.
-//
-// Here is the CM1 Fortran version.
-//
-// Keep in mind the ghost zones are actual ghost zones for the model;
-// for us they are "lateral boundaries" for the full cube, and we are
-// staying away from the model's true boundaries. So the idea is,
-// horizntally, we should always be requesting data with enough padding
-// to the left and right so as to not fail. We will eventually probably
-// want to do this right someday.
-
-/* CM1 fortran:
-
-      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
-
-	ngxy=3 (number of ghost zones in x and y)
-	ib=1-ngxy
-	jb=1-ngxy
-	kb=1-ngz
-
-	ie=ni+ngxy
-	je=nj+ngxy
-	ke=nk+ngz
-
-So, CM1 can safely reference ua(-2:ni+3,-2:nj+2,0:nz+1) whereas I am
-only reading in ustag(0:nx+2,0:ny+2,0:0:nz+1) [in C-ese]. So the array
-indexing will be different in the C code than with George's. I am
-keeping the same loop bounds and just changing the indexing.
-
-        do k=1,nk
-          do j=1,nj+1
-          do i=1,ni+1
-            tem(i,j,k) = (va(i,j,k)-va(i-1,j,k))*rdx*uf(i)   &
-                        -(ua(i,j,k)-ua(i,j-1,k))*rdy*vf(j)
-          enddo
-          enddo
-          do j=1,nj
-          do i=1,ni
-            zvort(i,j,k) = 0.25*(tem(i,j,k)+tem(i+1,j,k)+tem(i,j+1,k)+tem(i+1,j+1,k))
-          enddo
-          enddo
-        enddo
-*/
-
-//#define P3(x,y,z,mx,my) (((z)*(mx)*(my))+((y)*(mx))+(x))

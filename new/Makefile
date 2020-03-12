@@ -1,0 +1,20 @@
+CC = mpicc
+AR = ar
+CFLAGS = -fopenmp -g -fPIC 
+
+LINKOPTS  = -lh5zzfp -lzfp -lhdf5_hl -lhdf5 -lsz -lz -lm -lnetcdf -fopenmp 
+
+all: hdf2nc 
+
+hdf2nc: hdf2nc.o parse_cmdline_hdf2nc.o
+	$(CC) $(CFLAGS) -o hdf2nc hdf2nc.o parse_cmdline_hdf2nc.o $(LINKOPTS)
+parse_cmdline_hdf2nc.o: parse_cmdline_hdf2nc.c
+	$(CC) $(CFLAGS) -c parse_cmdline_hdf2nc.c
+hdf2.o: hdf2.c
+	$(CC) $(CFLAGS) -c hdf2nc.c
+clean:
+	rm -rf *.o hdf2nc
+install: hdf2nc
+	install -m 0755 hdf2nc $(HOME)/bin
+
+.PHONY: install
