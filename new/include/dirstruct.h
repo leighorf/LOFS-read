@@ -12,6 +12,7 @@ typedef struct dir_meta
 	double *dirtimes,*alltimes;
 	int ntimedirs;
 	int notottimes;
+	int nnodedirs;
 	int dn;
 	int regenerate_cache;
 } dir_meta;

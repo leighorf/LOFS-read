@@ -106,8 +106,9 @@ sortdoublearray (double *floatarray, int nel)
 	qsort (floatarray, nel, sizeof (double), cmpdoublep);
 }
 
+//get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug,int regenerate_cache)
 void
-get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug,int regenerate_cache)
+get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 {
 	int i,j,iret,ns;
 	char tmpstr[256]; //size of dit->d_name
@@ -115,9 +116,9 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 
 	FILE *fp;
 
-	if (regenerate_cache||(fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
+	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
 	{
-		sprintf (timedir_full, "%s/%s", topdir, timedir);
+		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir);
 
 		open_directory (timedir_full);
 		j = 0;
@@ -132,32 +133,32 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 		}
 
 		close_directory();
-		sortchararray (nodedir, nnodedirs);
-		*dn = (j != 1) ? (atoi (nodedir[1]) - atoi (nodedir[0])) : -1;
+		sortchararray (dm->nodedir, dm->nnodedirs);
+		dm->dn = (j != 1) ? (atoi (nodedir[1]) - atoi (nodedir[0])) : -1;
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
 
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","w")) != NULL)
 		{
-			fprintf(fp,"%i\n",*dn);
-			fprintf(fp,"%i\n",nnodedirs);
-			for (i=0; i<nnodedirs; i++)
+			fprintf(fp,"%i\n",dm->dn);
+			fprintf(fp,"%i\n",dm->nnodedirs);
+			for (i=0; i<dm->nnodedirs; i++)
 			{
-				fprintf(fp,"%s\n",nodedir[i]);
+				fprintf(fp,"%s\n",dm->nodedir[i]);
 			}
 			fclose(fp);
 		}
 	}
 	else
 	{
-		if (!regenerate_cache)
+		if (!dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) != NULL)
 		{
-			if((iret=fscanf(fp,"%i\n",dn))==EOF)ERROR_STOP("fscanf failed");
-			if((iret=fscanf(fp,"%i",&nnodedirs))==EOF)ERROR_STOP("fscanf failed");
-			for (i=0; i<nnodedirs;i++)
+			if((iret=fscanf(fp,"%i\n",&(dm->dn)))==EOF)ERROR_STOP("fscanf failed");
+			if((iret=fscanf(fp,"%i",&(dm->nnodedirs)))==EOF)ERROR_STOP("fscanf failed");
+			for (i=0; i<dm->nnodedirs;i++)
 			{
-				if((iret=fscanf(fp,"%s",nodedir[i]))==EOF)ERROR_STOP("fscanf failed");
+				if((iret=fscanf(fp,"%s",dm->nodedir[i]))==EOF)ERROR_STOP("fscanf failed");
 			}
 			fclose(fp);
 			printf("Read cached nodedir\n");
@@ -166,7 +167,8 @@ get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int 
 }
 
 void
-get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug, int regenerate_cache)
+//get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug, int regenerate_cache)
+get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 {
 	int i, j, k, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -177,15 +179,15 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 
 	FILE *fp;
 
-	if (regenerate_cache||(fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
 		printf("Grabbing and caching metadata (only done once):");
 		j = 0;
-		open_directory (basedir);
+		open_directory (dm.topdir);
 		while ((dit = readdir (dip)) != NULL) 
 		{
 			strcpy (tmpstr, dit->d_name);
-			if(debug)printf("%s ",tmpstr);fflush(stdout);
+			if(cmd.debug)printf("%s ",tmpstr);fflush(stdout);
 			ns = strlen (tmpstr);
 			if (ns > 15)
 			{
@@ -206,8 +208,8 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				{
 					sprintf(dstring,"%s.%s",lhsstr,rhsstr);
 //					printf("dstring = %s\n",dstring);
-					times[j] = atof(dstring); //ding
-					if(debug) printf("j = %i times = %lf\n",j,times[j]);
+					dm->dirtimes[j] = atof(dstring); //ding
+					if(cmd.debug) printf("j = %i dm->dirtimes = %lf\n",j,dm->dirtimes[j]);
 				}
 				else
 				{
@@ -219,7 +221,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 				while (tmpstr[i--]!='.');
 				while (tmpstr[i--]!='.');
 				i++;
-				if (debug) printf("i = %i, j = %i\n",i,j);
+				if (cmd.debug) printf("i = %i, j = %i\n",i,j);
 				for (k = 0; k < i; k++)
 				{
 					if (j == 0) firstbase[k] = tmpstr[k];
@@ -230,7 +232,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 
 				if (j > 0)
 				{
-					if (debug) printf("base = %s\n",base);
+					if (cmd.debug) printf("base = %s\n",base);
 					if (strcmp (firstbase, base) != 0)
 					{
 						printf ("ACK: we have more than one base!\n");
@@ -244,7 +246,7 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 					strcpy(filebase,firstbase);
 				}
 
-				strcpy (timedir[j], dit->d_name);
+				strcpy (dm->timedir[j], dit->d_name);
 				j++;
 			}
 			else if( !strcmp(tmpstr,".") || !strcmp(tmpstr,".."))
@@ -254,31 +256,30 @@ get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedir
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
-//		}
-		sortchararray (timedir, ntimedirs);
-		sortdoublearray (times, ntimedirs);
+		sortchararray (dm->timedir, dm->ntimedirs);
+		sortdoublearray (dm->dirtimes, dm->ntimedirs);
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","w")) != NULL) 
 		{
-			fprintf(fp,"%i\n",ntimedirs);
-			for (i = 0; i < ntimedirs; i++) fprintf(fp,"%s %lf\n",timedir[i],times[i]);
+			fprintf(fp,"%i\n",dm->ntimedirs);
+			for (i = 0; i < dm->ntimedirs; i++) fprintf(fp,"%s %lf\n",dm->timedir[i],dm->dirtimes[i]);
 			fclose(fp);
 		}
 	}
 	else
 	{
-		if (!regenerate_cache)
+		if (dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
 		{
-			if((iret=fscanf(fp,"%i\n",&ntimedirs))==EOF)ERROR_STOP("fscanf failed");
-			for (i = 0; i < ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",timedir[i],&(times[i])))==EOF)ERROR_STOP("fscanf failed");
+			if((iret=fscanf(fp,"%i\n",&(dm->ntimedirs)))==EOF)ERROR_STOP("fscanf failed");
+			for (i = 0; i < dm->ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",dm->timedir[i],&(dm->dirtimes[i])))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
 			printf("Read cached sorted time dirs\n");
 		}
 	}
 }
 
-int
-get_num_time_dirs (char *basedir,int debug, int regenerate_cache)
+void
+get_num_time_dirs (dir_meta *dm,cmdline cmd)
 {
 	int i, j, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -289,20 +290,20 @@ get_num_time_dirs (char *basedir,int debug, int regenerate_cache)
 	
 	FILE *fp;
 
-	if (regenerate_cache||(fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
-		open_directory (basedir);
+		open_directory (dm->topdir);
 		j = 0;
 		while ((dit = readdir (dip)) != NULL)
 		{
 			strcpy (tmpstr, dit->d_name);
 			ns = strlen (tmpstr);
-			if (debug) printf("ns = %i\n",ns);
+			if (cmd.debug) printf("ns = %i\n",ns);
 			if (ns > 15 )
 			{
 				for (i = 0; i < 7; i++) rhsstr[i] = tmpstr[ns - 7 + i];
 				rhsstr[7] = '\0';
-				if(debug) printf("DEBUG: rhsstr = %s\n",rhsstr);
+				if(cmd.debug) printf("DEBUG: rhsstr = %s\n",rhsstr);
 				if (isNumeric (rhsstr))
 				{
 					for (i = 0; i < 5; i++) lhsstr[i] = tmpstr[ns - 13 + i]; // 13 = 7+5+1
@@ -320,8 +321,8 @@ get_num_time_dirs (char *basedir,int debug, int regenerate_cache)
 							else
 								base[i] = sd;
 							i++;
-							if(debug) printf("DEBUG: firstbase = %s\n",firstbase);
-							if(debug) printf("DEBUG: base = %s\n",base);
+							if(cmd.debug) printf("DEBUG: firstbase = %s\n",firstbase);
+							if(cmd.debug) printf("DEBUG: base = %s\n",base);
 						}
 						if (j == 0)
 							firstbase[i - 1] = '\0';
@@ -372,11 +373,13 @@ get_num_time_dirs (char *basedir,int debug, int regenerate_cache)
 		}
 	}
 
-	return j;
+	dm->ntimedirs = j;
+//	return j;
 }
 
-int
-get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
+//get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
+void
+get_num_node_dirs (dir_meta *dm,cmd_line cmd)
 {
 	int j, ns,iret;
 	char timedir_full[MAXSTR];
@@ -384,9 +387,9 @@ get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
 
 	FILE *fp;
 
-	if (regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
+	if (cmd->regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
 	{
-		sprintf (timedir_full, "%s/%s", topdir, timedir);
+		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir);
 		open_directory (timedir_full);
 		j = 0;
 		while ((dit = readdir (dip)) != NULL)
@@ -405,7 +408,7 @@ get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
 	}
 	else
 	{
-		if (!regenerate_cache)
+		if (!dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
@@ -414,7 +417,8 @@ get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
 		}
 	}
 
-	return j;
+	dm->nnodedirs = j;
+//	return j;
 }
 
 int get_nodemask(char basedir_full[MAXSTR])

@@ -1,13 +1,8 @@
-//What is this, the fifth iteration of this code?
 #include <omp.h>
-
 #include "include/dirstruct.h"
 #include "include/limits.h"
 #include "include/hdf2nc.h"
 #include "include/lofs-read.h"
-
-//Use pointers only when modifying otherwiwe pass copies? Or just use pointers everwhere?
-
 
 void init_struct1(cmdline *cmd,dir_meta *dm, grid *gd)
 {
@@ -24,6 +19,8 @@ void init_struct1(cmdline *cmd,dir_meta *dm, grid *gd)
 
 int main(int argc, char *argv[])
 {
+	int i;
+
 	dir_meta dm;
 	hdf_meta hm;
 	grid gd;
@@ -33,10 +30,30 @@ int main(int argc, char *argv[])
 
 	parse_cmdline_lofs2nc(argc,argv,&cmd,&dm,&gd);
 
-	if((cptr=realpath(cmd->histpath,dm->topdir))==NULL)ERROR_STOP("realpath failed");
+	if((realpath(cmd.histpath,dm.topdir))==NULL)
+	{
+		fprintf(stderr,"%s: No such directory\n",cmd.histpath);
+		ERROR_STOP("realpath failed");
+	}
+
+	get_num_time_dirs(&dm,cmd); //Sets dm.ntimedirs
+
+	dm.timedir = (char **)malloc(dm.ntimedirs * sizeof(char *));
+	for (i=0; i < dm.ntimedirs; i++) dm.timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+	dm.dirtimes = (double *)malloc(dm.ntimedirs * sizeof(double));
+
+	get_sorted_time_dirs(&dm,cmd); //Sets dm.timedir char array
+	get_num_node_dirs(&dm,cmd);    //Sets dm.nnodedirs
+
+	nodedir = (char **)malloc(nnodedirs * sizeof(char *));
+	for (i=0; i < dm.nnodedirs; i++) dm.nodedir[i] = (char *)(malloc(8 * sizeof(char)));
+
+	// ORF 8 is 7 zero padded node number directory name plus 1 end of string char
+	// TODO: make these constants/macros
+
+	get_sorted_node_dirs(&dm,cmd); //Sets dm.nodedir char array
+
+	get_saved_base(dm.timedir[0],dm.saved_base);
 
 
-	dm->timedir = (char **)malloc(ntimedirs * sizeof(char *));
-	for (i=0; i < ntimedirs; i++) timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
-	dirtimes = (double *)malloc(ntimedirs * sizeof(double));//times are float not int
 }
