@@ -20,6 +20,9 @@ typedef struct dir_meta
 typedef struct hdf_meta
 {
 	int nx,ny,nz,nodex,nodey;
+	int nvar_available;
+	char **varname_available;
+
 } hdf_meta;
 
 // grid for user-selected data
@@ -46,8 +49,11 @@ typedef struct cmdline
 	int nthreads;
 	int got_base;
 	int optcount;
+	int nvar_cmdline;
 	char *histpath,*base;
+	char **varname_cmdline;
 	float time;
+	int argc_hdf2nc_min;
 } cmdline;
 
 void get_sorted_time_dirs    (dir_meta *dm, cmdline cmd);
@@ -55,6 +61,6 @@ void get_sorted_node_dirs    (dir_meta *dm, cmdline cmd);
 void get_num_time_dirs       (dir_meta *dm, cmdline cmd);
 void get_num_node_dirs       (dir_meta *dm, cmdline cmd);
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
-void get_hdf_metadata (dir_meta dm, hdf_meta *hm);
+void get_hdf_metadata (dir_meta dm, hdf_meta *hm, cmdline *cm, char *argv[]);
 
 #endif

@@ -4,7 +4,6 @@
 #include <limits.h>
 #include "include/dirstruct.h"
 #include "include/limits.h"
-#include "include/hdf2nc.h"
 #include "include/lofs-read.h"
 
 #define MAXSTR (512)

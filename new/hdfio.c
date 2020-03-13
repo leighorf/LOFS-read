@@ -81,10 +81,12 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 }
 
 //ORF this will fill our hdf_meta struct
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm)
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[])
 {
-    hid_t file_id;
-    int status;
+    hid_t file_id,g_id;
+    H5G_info_t group_info;
+    int i,status;
+	char groupname[MAXSTR];
 
 	if ((file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
     {
@@ -96,6 +98,30 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm)
     get0dint (file_id, "grid/nx", &hm->nx);
     get0dint (file_id, "grid/ny", &hm->ny);
     get0dint (file_id, "grid/nz", &hm->nz);
+
+	sprintf(groupname,"%05i/3D",0);//All vars in 3D group 00000 are always available
+	g_id = H5Gopen(file_id,groupname,H5P_DEFAULT);
+	H5Gget_info(g_id,&group_info);
+	hm->nvar_available = group_info.nlinks;
+
+	/* Allocate our varaible name arrays, available in the lofs files, and requested variables */
+	hm->varname_available = (char **)malloc(hm->nvar_available * sizeof(char *));
+	for (i=0; i < hm->nvar_available; i++) hm->varname_available[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+	cmd->varname_cmdline = (char **)malloc(cmd->nvar_cmdline * sizeof(char *));
+	for (i=0; i < cmd->nvar_cmdline; i++) cmd->varname_cmdline[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+	for (i = 0; i < hm->nvar_available; i++)
+	{
+	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,hm->varname_available[i],40,H5P_DEFAULT); //40 characters per varname
+	}
+	H5Gclose(g_id);
+
+	for (i=0; i<cmd->nvar_cmdline; i++)
+	{
+		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME
+	}
+	printf("\n");
+
     if ((status = H5Fclose (file_id)) < 0)
     {
         fprintf(stderr,"\n\n10900: get_hdf_metadata: OH NO! Can't close hdf file with sd_id = %i\n",file_id);
