@@ -1,6 +1,6 @@
 CC = mpicc
 AR = ar
-CFLAGS = -fopenmp -g -fPIC 
+CFLAGS = -fopenmp -O2 -fPIC 
 
 LINKOPTS  = -lh5zzfp -lzfp -lhdf5_hl -lhdf5 -lsz -lz -lm -lnetcdf -fopenmp 
 

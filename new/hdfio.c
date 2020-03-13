@@ -1,4 +1,5 @@
 #include "include/lofs-read.h"
+#include "include/dirstruct.h"
 
 void
 get0dint (hid_t file_id, char *varname, int *var)
@@ -80,21 +81,21 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 }
 
 //ORF this will fill our hdf_meta struct
-void get_hdf_metadata(char *hdffilename, int *nx, int *ny, int *nz, int *nodex, int *nodey)
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm)
 {
     hid_t file_id;
     int status;
 
-	if ((file_id = H5Fopen (hdffilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
+	if ((file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
     {
-        fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", hdffilename);
+        fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", dm.firstfilename);
         exit(0);
     }
-    get0dint (file_id, "grid/nodex", nodex);
-    get0dint (file_id, "grid/nodey", nodey);
-    get0dint (file_id, "grid/nx", nx);
-    get0dint (file_id, "grid/ny", ny);
-    get0dint (file_id, "grid/nz", nz);
+    get0dint (file_id, "grid/nodex", &hm->nodex);
+    get0dint (file_id, "grid/nodey", &hm->nodey);
+    get0dint (file_id, "grid/nx", &hm->nx);
+    get0dint (file_id, "grid/ny", &hm->ny);
+    get0dint (file_id, "grid/nz", &hm->nz);
     if ((status = H5Fclose (file_id)) < 0)
     {
         fprintf(stderr,"\n\n10900: get_hdf_metadata: OH NO! Can't close hdf file with sd_id = %i\n",file_id);

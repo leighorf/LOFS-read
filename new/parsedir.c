@@ -164,7 +164,7 @@ get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 				if((iret=fscanf(fp,"%s",dm->nodedir[i]))==EOF)ERROR_STOP("fscanf failed");
 			}
 			fclose(fp);
-			printf("Read cached nodedir\n");
+			if(cmd.verbose)printf("Read cached nodedir\n");
 		}
 	}
 }
@@ -184,7 +184,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 
 	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
 	{
-		printf("Grabbing and caching metadata (only done once):");
+		if(cmd.verbose)printf("Grabbing and caching metadata (only done once):");
 		j = 0;
 		open_directory (dm->topdir);
 		while ((dit = readdir (dip)) != NULL) 
@@ -245,7 +245,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 				}
 				if (j == 0)
 				{
-					printf ("\nfirstbase = %s\n", firstbase);
+					if(cmd.debug) printf ("\nfirstbase = %s\n", firstbase);
 					strcpy(filebase,firstbase);
 				}
 
@@ -276,7 +276,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 			if((iret=fscanf(fp,"%i\n",&(dm->ntimedirs)))==EOF)ERROR_STOP("fscanf failed");
 			for (i = 0; i < dm->ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",dm->timedir[i],&(dm->dirtimes[i])))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
-			printf("Read cached sorted time dirs\n");
+			if(cmd.verbose)printf("Read cached sorted time dirs\n");
 		}
 	}
 }
@@ -324,8 +324,6 @@ get_num_time_dirs (dir_meta *dm,cmdline cmd)
 							else
 								base[i] = sd;
 							i++;
-							if(cmd.debug) printf("DEBUG: firstbase = %s\n",firstbase);
-							if(cmd.debug) printf("DEBUG: base = %s\n",base);
 						}
 						if (j == 0)
 							firstbase[i - 1] = '\0';
@@ -372,7 +370,7 @@ get_num_time_dirs (dir_meta *dm,cmdline cmd)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
-			printf("Read cached num_time_dirs of %i\n",j);
+			if(cmd.verbose)printf("Read cached num_time_dirs of %i\n",j);
 		}
 	}
 
@@ -416,7 +414,7 @@ get_num_node_dirs (dir_meta *dm,cmdline cmd)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
-			printf("Read cached num node dirs\n");
+			if(cmd.verbose)printf("Read cached num node dirs\n");
 		}
 	}
 
@@ -542,14 +540,14 @@ crave electrolytes.
 			if((nodedirmask[j+1]-nodedirmask[j]) ==  1) firstnodedir=j+1;
 			if((nodedirmask[j+1]-nodedirmask[j]) == -1) lastnodedir=j;
 		}
-		printf("firstnodedir=%i lastnodedir=%i\n",firstnodedir,lastnodedir);
+		if(cmd.debug)printf("firstnodedir=%i lastnodedir=%i\n",firstnodedir,lastnodedir);
 
 		j=firstnodedir;
 		{
 			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
-			fprintf(stderr,"Number of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
+			if(cmd.verbose)fprintf(stderr,"Number of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -571,8 +569,8 @@ crave electrolytes.
 			get0dint(file_id,"grid/x0",&gd->saved_X0);
 			get0dint(file_id,"grid/y0",&gd->saved_Y0);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",gd->saved_X0);
-			fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",gd->saved_Y0);
+			if(cmd.verbose)fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",gd->saved_X0);
+			if(cmd.verbose)fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",gd->saved_Y0);
 			for (i=0; i < nfiles; i++) free(cm1hdf5file[i]);
 			free(cm1hdf5file);
 		}
@@ -581,7 +579,7 @@ crave electrolytes.
 			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
-			fprintf(stderr,"Number of cm1hdf5 files in our last (%i) node directory: %i\n",j,nfiles);
+			if(cmd.verbose)fprintf(stderr,"Number of cm1hdf5 files in our last (%i) node directory: %i\n",j,nfiles);
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -604,8 +602,8 @@ crave electrolytes.
 			get0dint(file_id,"grid/x1",&gd->saved_X1);
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 			H5Fclose(file_id);
-			fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",gd->saved_X1);
-			fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",gd->saved_Y1);
+			if(cmd.verbose)fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",gd->saved_X1);
+			if(cmd.verbose)fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",gd->saved_Y1);
 			for (i=0; i < nfiles; i++) free(cm1hdf5file[i]);
 			free(cm1hdf5file);
 		}
@@ -728,25 +726,49 @@ crave electrolytes.
 		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
 		{
 			iret=fscanf(fp,"%s",dm->firstfilename);
-			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
-				else ERROR_STOP("fscanf firstfilename failed");
-			iret=fscanf(fp,"%i %i %i %i",&(gd->saved_X0),&(gd->saved_Y0),&(gd->saved_X1),&(gd->saved_Y1));
-			if(iret!=EOF){
-				fprintf(stderr,"Cached: saved_X0  = %6i\n",gd->saved_X0);
-				fprintf(stderr,"Cached: saved_Y0  = %6i\n",gd->saved_Y0);
-				fprintf(stderr,"Cached: saved_X1  = %6i\n",gd->saved_X1);
-				fprintf(stderr,"Cached: saved_Y1  = %6i\n",gd->saved_Y1);
+//			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
+//				else ERROR_STOP("fscanf firstfilename failed");
+			if(iret==EOF)
+			{
+				ERROR_STOP("fscanf firstfilename failed");
 			}
-			else ERROR_STOP("fscanf saved_[XY][01] failed");
+			else
+			{
+				if (cmd.verbose) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
+			}
+			
+			iret=fscanf(fp,"%i %i %i %i",&(gd->saved_X0),&(gd->saved_Y0),&(gd->saved_X1),&(gd->saved_Y1));
+
+			if(iret==EOF)
+			{
+				ERROR_STOP("fscanf saved_[XY][01] failed");
+			}
+			else
+			{
+				if(cmd.verbose)
+				{
+					fprintf(stderr,"Cached: saved_X0  = %6i\n",gd->saved_X0);
+					fprintf(stderr,"Cached: saved_Y0  = %6i\n",gd->saved_Y0);
+					fprintf(stderr,"Cached: saved_X1  = %6i\n",gd->saved_X1);
+					fprintf(stderr,"Cached: saved_Y1  = %6i\n",gd->saved_Y1);
+				}
+			}
 			iret=fscanf(fp,"%i",&(dm->ntottimes));
-			if(iret!=EOF) fprintf(stderr,"Cached: ntottimes = %6i\n",dm->ntottimes);
+			if(iret==EOF)
+			{
+				ERROR_STOP("fscanf notottimes failed");
+			}
+			else
+			{
+				if (cmd.verbose) fprintf(stderr,"Cached: ntottimes = %6i\n",dm->ntottimes);
+			}
 			dm->alltimes = (double *)malloc(dm->ntottimes * sizeof(double));
 			for (i=0; i<dm->ntottimes; i++)
 			{
 				if((iret=fscanf(fp,"%lf",&(dm->alltimes[i])))==EOF)ERROR_STOP("fscanf alltimes failed");
 
 			}
-			printf("Read all cached metadata from dot files\n");
+			if(cmd.verbose)printf("Read all cached metadata from dot files\n");
 		}
 	}
 

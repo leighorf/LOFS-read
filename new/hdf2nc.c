@@ -20,6 +20,7 @@ void init_struct1(cmdline *cmd,dir_meta *dm, grid *gd)
 	gd->saved_Z0=gd->saved_Z1=0;
 	cmd->time=0.0; cmd->got_base=0; cmd->optcount=0;
 	cmd->debug=0;
+	cmd->verbose=0;
 }
 
 void get_saved_base(char *timedir, char *saved_base)
@@ -60,6 +61,7 @@ int main(int argc, char *argv[])
 
 	get_num_time_dirs(&dm,cmd); //Sets dm.ntimedirs
 
+	/* Malloc our time directory arrays */
 	dm.timedir = (char **)malloc(dm.ntimedirs * sizeof(char *));
 	for (i=0; i < dm.ntimedirs; i++) dm.timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dm.dirtimes = (double *)malloc(dm.ntimedirs * sizeof(double));
@@ -76,12 +78,11 @@ int main(int argc, char *argv[])
 
 	get_sorted_node_dirs(&dm,cmd); //Sets dm.nodedir char array
 
-
 	get_saved_base(dm.timedir[0],dm.saved_base);
 
 	printf("Simulation identifier (saved_base) = %s\n",dm.saved_base);
 
-	get_all_available_times(&dm,&gd,cmd);
+	get_all_available_times(&dm,&gd,cmd); //Gets all times in one double precision array
 
 	if(cmd.debug)
 	{
@@ -89,5 +90,11 @@ int main(int argc, char *argv[])
 		for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]);
 		printf("\n");
 	}
+
+	get_hdf_metadata(dm,&hm);
+
+	if (cmd.debug) printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",hm.nx,hm.ny,hm.nz,hm.nodex,hm.nodey);
+
+	/* We have all our metadata, now can do something */
 
 }
