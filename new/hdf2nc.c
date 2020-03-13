@@ -4,42 +4,6 @@
 #include "include/hdf2nc.h"
 #include "include/lofs-read.h"
 
-void init_struct1(cmdline *cmd,dir_meta *dm, grid *gd)
-{
-	cmd->histpath        = (char *) malloc(MAXSTR*sizeof(char));
-	cmd->base            = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> firstfilename   = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> saved_base      = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> topdir          = (char *) malloc(MAXSTR*sizeof(char));
-
-	dm-> regenerate_cache = 0;
-
-	gd->X0=gd->Y0=gd->X1=gd->Y1=gd->Z0=gd->Z1=-1;
-	gd->saved_X0=gd->saved_X1=0;
-	gd->saved_Y0=gd->saved_Y1=0;
-	gd->saved_Z0=gd->saved_Z1=0;
-	cmd->time=0.0; cmd->got_base=0; cmd->optcount=0;
-	cmd->debug=0;
-	cmd->verbose=0;
-}
-
-void get_saved_base(char *timedir, char *saved_base)
-{
-	// Just grab the basename so we can have it set automatically
-	// for the netcdf files if so desired. Apparenlty the easiest
-	// way to do this is to just remove the last 14 characters of
-	// one of the timedir directories
-
-	int tdlen;
-//ORF TODO: make 14 a constant somewhere
-//We may wish to allow flexibility in the floating point
-//left and right of the decimal.
-	tdlen=strlen(timedir)-14;
-	strncpy(saved_base,timedir,tdlen);
-	saved_base[tdlen]='\0';
-}
-
-
 int main(int argc, char *argv[])
 {
 	int i;
@@ -49,9 +13,9 @@ int main(int argc, char *argv[])
 	grid gd;
 	cmdline cmd;
 
-	init_struct1(&cmd,&dm,&gd);
+	init_structs(&cmd,&dm,&gd);
 
-	parse_cmdline_lofs2nc(argc,argv,&cmd,&dm,&gd);
+	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd);
 
 	if((realpath(cmd.histpath,dm.topdir))==NULL)
 	{
@@ -84,17 +48,18 @@ int main(int argc, char *argv[])
 
 	get_all_available_times(&dm,&gd,cmd); //Gets all times in one double precision array
 
-	if(cmd.debug)
-	{
-		printf("All available times: ");
-		for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]);
-		printf("\n");
-	}
+	if(cmd.debug) { printf("All available times: "); for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]); printf("\n"); }
 
 	get_hdf_metadata(dm,&hm);
 
 	if (cmd.debug) printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",hm.nx,hm.ny,hm.nz,hm.nodex,hm.nodey);
 
-	/* We have all our metadata, now can do something */
+	/* We have all our metadata (have filled all our structures) */
+
+	/* Check for idiocy and tweak the span (X0-X1/Y0-Y1/Z0-Z1) as necessary */
+
+	set_span(&gd,hm,cmd);
+
+	/* Here is where hdf2nc began in old code */
 
 }

@@ -3,7 +3,7 @@
 #include "include/hdf2nc.h"
 #include "include/lofs-read.h"
 
-void parse_cmdline_lofs2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)
+void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)
 {
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
@@ -46,7 +46,6 @@ void parse_cmdline_lofs2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, g
 		exit(0);
 	}
 
-
 	while (1)
 	{
 		int r;
@@ -59,54 +58,45 @@ void parse_cmdline_lofs2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, g
 			case OPT_HISTPATH:
 				strcpy(cmd->histpath,optarg);
 				got_histpath=1;
-//				printf("histpath = %s\n",cmd->histpath);
 				break;
 			case OPT_BASE:
 				strcpy(cmd->base,optarg);
 				cmd->got_base=1;
 				cmd->optcount++;
-//				printf("base = %s\n",cmd->base);
 				break;
 			case OPT_TIME:
 				cmd->time = atof(optarg);
 				got_time=1;
-//				printf("time = %f\n",cmd->time);
 				break;
 			case OPT_X0:
 				gd->X0 = atoi(optarg);
 				got_X0=1;
 				cmd->optcount++;
-//				printf("X0 = %i\n",gd->X0);
 				break;
 			case OPT_Y0:
 				gd->Y0 = atoi(optarg);
 				got_Y0=1;
 				cmd->optcount++;
-//				printf("Y0 = %i\n",gd->Y0);
 				break;
 			case OPT_X1:
 				gd->X1 = atoi(optarg);
 				got_X1=1;
 				cmd->optcount++;
-//				printf("X1 = %i\n",gd->X1);
 				break;
 			case OPT_Y1:
 				gd->Y1 = atoi(optarg);
 				got_Y1=1;
 				cmd->optcount++;
-//				printf("Y1 = %i\n",gd->Y1);
 				break;
 			case OPT_Z0:
 				gd->Z0 = atoi(optarg);
 				got_Z0=1;
 				cmd->optcount++;
-//				printf("Z0 = %i\n",gd->Z0);
 				break;
 			case OPT_Z1:
 				gd->Z1 = atoi(optarg);
 				got_Z1=1;
 				cmd->optcount++;
-//				printf("Z1 = %i\n",gd->Z1);
 				break;
 			case OPT_DEBUG:
 				cmd->debug=1;
