@@ -1,23 +1,28 @@
 #include <omp.h>
-#include "include/dirstruct.h"
-#include "include/limits.h"
 #include "include/lofs-read.h"
+#include "include/dirstruct.h"
 #include "include/hdf2nc.h"
+#include "include/limits.h"
 
 int main(int argc, char *argv[])
 {
-	int i;
+	int i,ni,nj,nk,status;
 
 	dir_meta dm;
 	hdf_meta hm;
 	grid gd;
 	cmdline cmd;
+	ncstruct nc;
+	mesh msh;
+	sounding snd;
+
+	hid_t hdf_file_id;
 
 	/* begin */
 
 	cmd.argc_hdf2nc_min = 3; /* minimum arguments to this routine */
 
-	init_structs(&cmd,&dm,&gd);
+	init_structs(&cmd,&dm,&gd,&nc);
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd);
 
@@ -54,7 +59,13 @@ int main(int argc, char *argv[])
 
 	if(cmd.debug) { printf("All available times: "); for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]); printf("\n"); }
 
-	get_hdf_metadata(dm,&hm,&cmd,argv);
+	if ((hdf_file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
+    {
+        fprintf(stderr,"Unable to open %s, bailing!\n", dm.firstfilename);
+		ERROR_STOP("Can't open firstfilename! Weird...");
+    } // Keep open as we need metadata, 1d sounding data, etc.
+
+	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
 
 	printf("Variables available: "); for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);printf("\n");
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
@@ -65,12 +76,37 @@ int main(int argc, char *argv[])
 
 	if (cmd.debug) printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",hm.nx,hm.ny,hm.nz,hm.nodex,hm.nodey);
 
-	/* We have all our metadata (have filled all our structures) */
-
 	/* Check for idiocy and tweak the span (X0-X1/Y0-Y1/Z0-Z1) as necessary */
 
 	set_span(&gd,hm,cmd);
 
 	/* Here is where hdf2nc began in old code */
+
+	/* Set base if not at command line and create netcdf file name */
+
+	if (!cmd.got_base) strcpy(cmd.base,dm.saved_base);
+	sprintf(nc.ncfilename,"%s.%012.6f.nc",cmd.base,cmd.time);
+
+	gd.NX = gd.X1 - gd.X0 + 1;
+	gd.NY = gd.Y1 - gd.Y0 + 1;
+	gd.NZ = gd.Z1 - gd.Z0 + 1;
+
+	nk=gd.NZ;nj=gd.NY;ni=gd.NX; //For cm1-like code
+
+	/* Set start and edges for XY plots */
+
+	nc.s2[0] = 0; nc.s2[1] =     0; nc.s2[2] =     0;
+	nc.e2[0] = 1; nc.e2[1] = gd.NY; nc.e2[2] = gd.NX;
+	
+	/* Allocate memory for 1d mesh and sounding arrays */
+
+	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id);
+
+	H5Z_zfp_initialize();
+
+	status = nc_create (nc.ncfilename, NC_CLOBBER|cmd.filetype, &nc.ncid); if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+
+	set_netcdf_attributes(&nc,gd,cmd,hm);
+
 
 }

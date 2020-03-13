@@ -2,31 +2,31 @@
 #include "include/dirstruct.h"
 
 void
-get0dint (hid_t file_id, char *varname, int *var)
+get0dint (hid_t f_id, char *varname, int *var)
 {
 	hid_t dataset_id;
 	int status;
 
 	/* shouldn't need these any more */
-	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 //	printf("varname = %s, dataset_id = %i\n",varname,dataset_id);
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_INT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 }
 
 void
-get0dfloat (hid_t file_id, char *varname, float *var)
+get0dfloat (hid_t f_id, char *varname, float *var)
 {
 	hid_t dataset_id;
 	int status;
 
-	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_FLOAT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 }
 
 void
-get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
+get1ddouble (hid_t f_id, char *varname, double *var, int p0, int np)
 {
 	int rank;
 	hsize_t count[1], dims[1];
@@ -40,7 +40,7 @@ get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
 	count[0] = np;
 	dims[0] = np;
 
-	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
 	if ((memoryspace_id = H5Screate_simple(rank,dims,NULL)) < 0) ERROR_STOP("Could not H5Screate_simple");
 	if ((status = H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in,NULL,count,NULL)) < 0) ERROR_STOP("Could not H5Sselect_hyperslab");
@@ -53,7 +53,7 @@ get1ddouble (hid_t file_id, char *varname, double *var, int p0, int np)
 }
 
 void
-get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
+get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 {
 	int rank;
 	hsize_t count[1], dims[1];
@@ -68,7 +68,7 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 	dims[0] = np;
 
 //	printf("get1dfloat: %s\n",varname);
-	if ((dataset_id = H5Dopen (file_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
 	if ((memoryspace_id = H5Screate_simple(rank,dims,NULL)) < 0) ERROR_STOP("Could not H5Screate_simple");
 	if ((status = H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in,NULL,count,NULL)) < 0) ERROR_STOP("Could not H5Sselect_hyperslab");
@@ -81,26 +81,26 @@ get1dfloat (hid_t file_id, char *varname, float *var, int p0, int np)
 }
 
 //ORF this will fill our hdf_meta struct
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[])
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[], hid_t *f_id)
 {
-    hid_t file_id,g_id;
+    hid_t g_id;
     H5G_info_t group_info;
     int i,status;
 	char groupname[MAXSTR];
 
-	if ((file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
+	if ((*f_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
     {
         fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", dm.firstfilename);
         exit(0);
     }
-    get0dint (file_id, "grid/nodex", &hm->nodex);
-    get0dint (file_id, "grid/nodey", &hm->nodey);
-    get0dint (file_id, "grid/nx", &hm->nx);
-    get0dint (file_id, "grid/ny", &hm->ny);
-    get0dint (file_id, "grid/nz", &hm->nz);
+    get0dint (*f_id, "grid/nodex", &hm->nodex);
+    get0dint (*f_id, "grid/nodey", &hm->nodey);
+    get0dint (*f_id, "grid/nx", &hm->nx);
+    get0dint (*f_id, "grid/ny", &hm->ny);
+    get0dint (*f_id, "grid/nz", &hm->nz);
 
 	sprintf(groupname,"%05i/3D",0);//All vars in 3D group 00000 are always available
-	g_id = H5Gopen(file_id,groupname,H5P_DEFAULT);
+	g_id = H5Gopen(*f_id,groupname,H5P_DEFAULT);
 	H5Gget_info(g_id,&group_info);
 	hm->nvar_available = group_info.nlinks;
 
@@ -113,6 +113,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[])
 	for (i = 0; i < hm->nvar_available; i++)
 	{
 	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,hm->varname_available[i],40,H5P_DEFAULT); //40 characters per varname
+		//ORF TODO make 40 a constant somewhere
 	}
 	H5Gclose(g_id);
 
@@ -122,11 +123,12 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[])
 	}
 	printf("\n");
 
-    if ((status = H5Fclose (file_id)) < 0)
-    {
-        fprintf(stderr,"\n\n10900: get_hdf_metadata: OH NO! Can't close hdf file with sd_id = %i\n",file_id);
-        fprintf(stderr, "This simply should not ever happen.  Exiting out of fear.\n");
-        exit(-1);
-    }
+  //  Leave file open for now, or close in main where it was opened.
+  //  if ((status = H5Fclose (*f_id)) < 0)
+  //  {
+  //      fprintf(stderr,"\n\n10900: get_hdf_metadata: OH NO! Can't close hdf file with sd_id = %i\n",*f_id);
+  //      fprintf(stderr, "This simply should not ever happen.  Exiting out of fear.\n");
+  //      exit(-1);
+  //  }
 
 }

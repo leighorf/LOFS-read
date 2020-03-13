@@ -11,19 +11,22 @@
 #define TRUE (1)
 #define FALSE (0)
 
-#define UH(ix) uh[ix+1]
-#define UF(ix) uf[ix+1]
-#define VH(iy) vh[iy+1]
-#define VF(iy) vf[iy+1]
-#define MH(iz) mh[iz]
-#define MF(iz) mf[iz]
+//NOTE: these macros must be carefully used.
+//You must name your mesh structure mesh
+//And this assumes we're in pointer land
+#define UH(ix) msh->uh[ix+1]
+#define UF(ix) msh->uf[ix+1]
+#define VH(iy) msh->vh[iy+1]
+#define VF(iy) msh->vf[iy+1]
+#define MH(iz) msh->mh[iz]
+#define MF(iz) msh->mf[iz]
 
-#define xh(ix) xh[ix+1]
-#define xf(ix) xf[ix+1]
-#define yh(iy) yh[iy+1]
-#define yf(iy) yf[iy+1]
-#define zh(iz) zh[iz]
-#define zf(iz) zf[iz]
+#define xh(ix) msh->xh[ix+1]
+#define xf(ix) msh->xf[ix+1]
+#define yh(iy) msh->yh[iy+1]
+#define yf(iy) msh->yf[iy+1]
+#define zh(iz) msh->zh[iz]
+#define zf(iz) msh->zf[iz]
 
 // ORF: OK being a bit clever here ... fun with macros. This will make the code a lot
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM

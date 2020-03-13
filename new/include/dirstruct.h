@@ -1,6 +1,9 @@
 #ifndef DIRSTRUCT_H
 #define DIRSTRUCT_H
 
+#include <hdf5.h>
+//for hid_t below
+
 typedef struct dir_meta
 {
 	char **timedir;
@@ -30,11 +33,23 @@ typedef struct hdf_meta
 typedef struct gridstuct
 {
 	int X0,Y0,X1,Y1,Z0,Z1;
+	int NX,NY,NZ;
 	int saved_X0,saved_Y0;
 	int saved_X1,saved_Y1;
 	int saved_Z0,saved_Z1;
 	float umove,vmove;
 } grid;
+
+typedef struct meshstruct
+{
+	float *xhfull,*yhfull,*xffull,*yffull;
+	float *xhout,*yhout,*zhout;
+	float *xfout,*yfout,*zfout;
+	float *zh, *zf;
+	float *uh,*uf,*vh,*vf,*mh,*mf;
+	float dx,dy,dz;
+	float rdx,rdy,rdz;
+} mesh;
 
 typedef struct cmdline
 {
@@ -49,9 +64,10 @@ typedef struct cmdline
 	int nthreads;
 	int got_base;
 	int optcount;
-	int nvar_cmdline;
+	int nvar,nvar_cmdline;
 	char *histpath,*base;
 	char **varname_cmdline;
+	char **varname;
 	float time;
 	int argc_hdf2nc_min;
 } cmdline;
@@ -61,6 +77,6 @@ void get_sorted_node_dirs    (dir_meta *dm, cmdline cmd);
 void get_num_time_dirs       (dir_meta *dm, cmdline cmd);
 void get_num_node_dirs       (dir_meta *dm, cmdline cmd);
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
-void get_hdf_metadata (dir_meta dm, hdf_meta *hm, cmdline *cm, char *argv[]);
+void get_hdf_metadata (dir_meta dm, hdf_meta *hm, cmdline *cm, char *argv[], hid_t *f_id);
 
 #endif

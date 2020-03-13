@@ -1,7 +1,11 @@
 #ifndef HDF2NC_H
 #define HDF2NC_H
 
-typedef struct netcdfmeta
+#include <stdlib.h>
+//Above is for size_t, not picked up from lofs-read.h
+
+//Trashcan struct for all things netcdf I guess
+typedef struct netcdf_struct
 {
 	int nxh_dimid,nyh_dimid,nzh_dimid;
 	int nxf_dimid,nyf_dimid,nzf_dimid,time_dimid,timeid;
@@ -9,15 +13,27 @@ typedef struct netcdfmeta
 	int x0id,y0id,z0id,x1id,y1id,z1id;
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
-	int varnameid[MAXVARIABLES];
-	int dims[4];
+	int ncid;
+	int *varnameid;
+	char *ncfilename;
+	size_t dims[4],start[4],edges[4],s2[3],e2[3],d2[3];
 	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
-} ncmeta;
+	int twodslice;
+} ncstruct;
 
 typedef struct sounding
 {
 	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
 } sounding;
+
+typedef struct buffers
+{
+	float *twodfield,*twodfield0;
+	float *twodbuf,*twodbuf0;
+	float *buffer,*buffer0;
+	float *dum0,*dum00;
+	float *dum1,*dum10;
+} buffers
 
 
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
