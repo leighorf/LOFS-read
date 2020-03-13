@@ -270,7 +270,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	}
 	else
 	{
-		if (dm->regenerate_cache)
+		if (!dm->regenerate_cache)
 		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
 		{
 			if((iret=fscanf(fp,"%i\n",&(dm->ntimedirs)))==EOF)ERROR_STOP("fscanf failed");

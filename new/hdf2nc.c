@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
 	get_sorted_time_dirs(&dm,cmd); //Sets dm.timedir char array
 	get_num_node_dirs(&dm,cmd);    //Sets dm.nnodedirs
 
+
 	dm.nodedir = (char **)malloc(dm.nnodedirs * sizeof(char *));
 	for (i=0; i < dm.nnodedirs; i++) dm.nodedir[i] = (char *)(malloc(8 * sizeof(char)));
 
@@ -75,7 +76,6 @@ int main(int argc, char *argv[])
 
 	get_sorted_node_dirs(&dm,cmd); //Sets dm.nodedir char array
 
-	printf("ORF DEBUG timedir[0] = %s saved_base = %s\n",dm.timedir[0],dm.saved_base);
 
 	get_saved_base(dm.timedir[0],dm.saved_base);
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
 	get_all_available_times(&dm,&gd,cmd);
 
-	if(1)
+	if(cmd.debug)
 	{
 		printf("All available times: ");
 		for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]);
