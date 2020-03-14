@@ -15,8 +15,10 @@ typedef struct netcdf_struct
 	int xfid,yfid,zfid;
 	int ncid;
 	int *varnameid;
+	char **varname;
 	char *ncfilename;
-	size_t dims[4],start[4],edges[4],s2[3],e2[3],d2[3];
+	int dims[4],start[4],edges[4],d2[3];
+	size_t s2[3],e2[3];
 	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
 	int twodslice;
 } ncstruct;
@@ -28,12 +30,20 @@ typedef struct sounding
 
 typedef struct buffers
 {
+	float *ustag, *vstag, *wstag;
 	float *twodfield,*twodfield0;
 	float *twodbuf,*twodbuf0;
-	float *buffer,*buffer0;
+	float *buf,*buf0;
 	float *dum0,*dum00;
 	float *dum1,*dum10;
-} buffers
+	float *writeptr;
+} buffers;
+
+typedef struct readahead
+{
+	int u,v,w;
+	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
+} readahead;
 
 
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);

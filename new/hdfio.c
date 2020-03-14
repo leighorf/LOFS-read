@@ -119,7 +119,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[], hid_
 
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
-		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME
+		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
 	}
 	printf("\n");
 

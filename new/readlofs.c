@@ -1,9 +1,5 @@
-
-/*
-    This file is part of LOFS (Leigh Orf File System; or Lack Of File System),
-    written by Leigh Orf (http://orf.media)
-*/
-
+#include "include/dirstruct.h"
+#include "include/limits.h"
 #include "include/lofs-read.h"
 
 /* is between or lies on actually */
@@ -117,16 +113,20 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 // To avoid accidental weirdness, I make a buffer exclusively for the 3D
 // swath stack rather than reusing the 3D one
 //
-extern int debug;
+//extern int debug;
 
 //ORF 2020-02-07 nodedir not used here!!
-void
-read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
-		double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
-		int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
-		int nx, int ny, int nz, int nodex, int nodey)
+//void
+//read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
+//		double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
+//		int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
+//		int nx, int ny, int nz, int nodex, int nodey)
+//
+//
+//
+
+void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_meta hm, grid gd, cmdline cmd)
 {
-	int tid;//ORF openmp test
 	int i, tb;
 	int maxfilelength = 512;
 	char **nodefile;
@@ -179,55 +179,56 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	HDFstruct **hdf;
 
-	gnx = gxf - gx0 + 1;
-	gny = gyf - gy0 + 1;
-	gnz = gzf - gz0 + 1;
+	gnx = gd.X1 - gd.X0 + 1;
+	gny = gd.Y1 - gd.Y0 + 1;
+	gnz = gd.Z1 - gd.Z0 + 1;
 
-	numhdf = nodex * nodey;
+	numhdf = hm.nodex * hm.nodey;
 
-	if ((hdf = (HDFstruct **) malloc (numhdf * sizeof (HDFstruct *))) == NULL) ERROR_STOP("Insufficient memory");
+	if ((hdf = (HDFstruct **) malloc (numhdf * sizeof (HDFstruct *))) == NULL) ERROR_STOP("Insufficient memory for HDFstruct");
 	for (i = 0; i < numhdf; i++)
 	{
-		if ((hdf[i] = (HDFstruct *) malloc (sizeof (HDFstruct))) == NULL) ERROR_STOP("Insufficient memory");
+		if ((hdf[i] = (HDFstruct *) malloc (sizeof (HDFstruct))) == NULL) ERROR_STOP("Insufficient memory for HDFstruct");
 	}
 
-	if ((nodefile = (char **) malloc (numhdf * sizeof (char *))) == NULL)  ERROR_STOP("Insufficient memory");
+	if ((nodefile = (char **) malloc (numhdf * sizeof (char *))) == NULL)  ERROR_STOP("Insufficient memory for nodefile");
 
 	eps=1.0e-3;
-	if (!is_between_fuzzy(alltimes[0],alltimes[ntottimes-1],dtime))
+	if (!is_between_fuzzy(dm.alltimes[0],dm.alltimes[dm.ntottimes-1],cmd.time))
 	{
 		// edge case: Asking for last time will fail unless we check
 		// this
-		if(fabs(alltimes[ntottimes-1]-dtime)>eps)
+		if(fabs(dm.alltimes[ntottimes-1]-time)>eps)
 		{
-			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",dtime,alltimes[0],alltimes[ntottimes-1]);
+			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",time,dm.alltimes[0],dm.alltimes[ntottimes-1]);
 			ERROR_STOP("Requested time not within range\n");
 		}
 	}
-	if(debug)
+	if(cm.debug)
 	{
-		for (i=0; i < ntimedirs; i++)
-			printf("SANITY CHECK: dirtimes = %lf\n",dirtimes[i]);
+		for (i=0; i < dm.ntimedirs; i++)
+			printf("SANITY CHECK: dirtimes = %lf\n",dm.dirtimes[i]);
 	}
-	for (i=0; i < ntimedirs-1; i++)
+	for (i=0; i < dm.ntimedirs-1; i++)
 	{
-		if(debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, dtime = %lf\n",i,dirtimes[i],i+1,dirtimes[i+1],dtime);
-		if (is_between_fuzzy(dirtimes[i],dirtimes[i+1],dtime)) break;
+		if(cm.debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, time = %lf\n",i,dm.dirtimes[i],i+1,dm.dirtimes[i+1],time);
+		if (is_between_fuzzy(dm.dirtimes[i],dm.dirtimes[i+1],time)) break;
 	}
 	tb = i;
-	if (ntimedirs == 1) tb = 0;
+	if (dm.ntimedirs == 1) tb = 0;
 	for (i = 0; i < numhdf; i++)
 	{
-		if ((nodefile[i] = (char *) malloc (maxfilelength*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
-		sprintf (nodefile[i], "%s/%s/%07i/%s_%07i.cm1hdf5", topdir,timedir[tb],(dn!=-1)?((i/dn)*dn):0,timedir[tb],i);
+		if ((nodefile[i] = (char *) malloc (MAXSTR*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
+		/* Construct the cm1hdf5 file name and path, which is full of tasty metadata! */
+		sprintf (nodefile[i], "%s/%s/%07i/%s_%07i.cm1hdf5", dm.topdir,dm.timedir[tb],(dm.dn!=-1)?((i/dm.dn)*dm.dn):0,dm.timedir[tb],i);
 	}
 
 	eps = 1.0e-3;
 
 	time_is_in_file = FALSE;
-	for (i=0; i<ntottimes; i++)
+	for (i=0; i<dm.ntottimes; i++)
 	{
-		if (fabs(dtime-alltimes[i])<eps)
+		if (fabs(time-dm.alltimes[i])<eps)
 		{
 			time_is_in_file = TRUE;
 			break;
@@ -236,11 +237,11 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	if (time_is_in_file == FALSE)
 	{
-		fprintf(stderr,"Requested time %lf was not saved\n",dtime);
+		fprintf(stderr,"Requested time %lf was not saved\n",time);
 		fprintf(stderr,"Available times follow:");
-		for (i=0; i<ntottimes; i++)
+		for (i=0; i<dm.ntottimes; i++)
 		{
-			fprintf(stderr," %f",alltimes[i]);
+			fprintf(stderr," %f",dm.alltimes[i]);
 		}
 		fprintf(stderr,"\n");
 	}
@@ -248,32 +249,32 @@ read_hdf_mult_md (float *gf, char *topdir, char **timedir, char **nodedir, int n
 
 	/* We build our decomposition from metadata stored in each hdf file */
 
-	numi = nx / nodex;
-	numj = ny / nodey;
+	numi = hm.nx / hm.nodex;
+	numj = hm.ny / hm.nodey;
 	for (ihdf = 0; ihdf < numhdf; ihdf++) /* just i not ihdf */
 	{
-		hdf[ihdf]->myj = ihdf / nodex;
-		hdf[ihdf]->myi = ihdf % nodex;
+		hdf[ihdf]->myj = ihdf / hm.nodex;
+		hdf[ihdf]->myi = ihdf % hm.nodex;
 		hdf[ihdf]->x0 = hdf[ihdf]->myi * numi;
 		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
 		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
 		hdf[ihdf]->yf = (hdf[ihdf]->myj + 1) * numj - 1;
-		if (debug)
+		if (cm.debug)
 			fprintf (stderr, "myj = %i myi =%i x0 = %i xf = %i y0 = %i yf = %i\n",
 				 hdf[ihdf]->myj, hdf[ihdf]->myi, hdf[ihdf]->x0, hdf[ihdf]->xf, hdf[ihdf]->y0, hdf[ihdf]->yf);
 	}
 
 	/* first check if our requested subcube lies within our data */
 
-	if (is_not_between_int (0, nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between_int (0, nz - 1, gz0)) ERROR_STOP("Chosen z data out of range");
+	if (is_not_between_int (0, hm.nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nz - 1, gz0)) ERROR_STOP("Chosen z data out of range");
 
-	if (is_not_between_int (0, nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
 //ORF: we don't do this check for swaths, they are handled differently,
 //but we are using the z dimension
-	if ((strcmp(varname,"swaths")) && is_not_between_int (0, nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
@@ -513,8 +514,8 @@ really. See P3 macro in lofs-read.h */
 
 				for (i=0; i<ntimes; i++)
 				{
-//					printf("i = %i \t filetimes[%2i] = %f \t dtime = %f\n",i,i,filetimes[i],dtime);
-					if (fabs(filetimes[i]-dtime)<eps)
+//					printf("i = %i \t filetimes[%2i] = %f \t time = %f\n",i,i,filetimes[i],time);
+					if (fabs(filetimes[i]-time)<eps)
 						break;
 				}
 
@@ -526,9 +527,9 @@ really. See P3 macro in lofs-read.h */
 				/* 2019-05-01. New swath code.
 
 				We are still in the "only do once" part of the 2d loop. We must get
-				our 2d information (number, names) and memoryspace worked out . THEN
+				our 2d information (number, names) and memoryspace worked out. THEN
 				break from the "only do once" part and do the rest, still will have
-				to check if doing 2d
+				to check if doing 2D
 				*/
 
 				if (!strcmp(varname,"swaths")) //"swaths" is a special variable name here, kind of kludgey...
@@ -555,7 +556,7 @@ really. See P3 macro in lofs-read.h */
 					for (i2d=0; i2d<n2d; i2d++)
 					{
 						twodvarname[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
-					}
+					} //ORF TODO MAKE 50 A CONSTANT
 
 					i2d=0;
 					H5Giterate(file_id, "/00000/2D/static",NULL,twod_second_pass,NULL);
@@ -567,9 +568,9 @@ really. See P3 macro in lofs-read.h */
 					 * different way... we'll get access to
 					 * the data a bit further down */
 				}
-			} // We really could just pull this shit out of the 2D loop
+			}
 
-			/* Now we are in our 2d loop, after 1st pass stuff above */
+			/* Now we are in our 2D loop, after 1st pass stuff above */
 
 			if (!strcmp(varname,"swaths"))
 			{
@@ -609,7 +610,7 @@ really. See P3 macro in lofs-read.h */
 
 					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
 					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
-					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("h5dread");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,buf); if (status < 0) ERROR_STOP("h5dread");
 					H5Dclose (swath_dataset_id);
 					H5Sclose (swath_dataspace_id);
 				}
@@ -632,7 +633,7 @@ really. See P3 macro in lofs-read.h */
 
 					status=H5Sselect_hyperslab (swath_dataspace_id,H5S_SELECT_SET,offset_in2,NULL,count2,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
 					status=H5Sselect_hyperslab (swath_memoryspace_id,H5S_SELECT_SET,offset_out3,NULL,count3,NULL); if (status < 0) ERROR_STOP("select_hyperslab");
-					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,gf); if (status < 0) ERROR_STOP("h5dread");
+					status=H5Dread (swath_dataset_id,H5T_NATIVE_FLOAT,swath_memoryspace_id,swath_dataspace_id,H5P_DEFAULT,buf); if (status < 0) ERROR_STOP("h5dread");
 					H5Dclose (swath_dataset_id);
 					H5Sclose (swath_dataspace_id);
 				}
@@ -681,7 +682,7 @@ really. See P3 macro in lofs-read.h */
 						H5Eprint(H5E_DEFAULT,NULL);
 						ERROR_STOP("H5Sselect_hyperslab failed");
 				}
-				if ((retval=H5Dread (dataset_id,H5T_NATIVE_FLOAT,memoryspace_id,dataspace_id,H5P_DEFAULT,gf)) < 0)
+				if ((retval=H5Dread (dataset_id,H5T_NATIVE_FLOAT,memoryspace_id,dataspace_id,H5P_DEFAULT,buf)) < 0)
 				{
 						fprintf(stderr,"\nCannot read hyperslab for %s in %s\n",datasetname,nodefile[k]);
 						fprintf(stderr,"return value = %i\n",retval);

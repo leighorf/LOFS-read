@@ -24,6 +24,7 @@ typedef struct hdf_meta
 {
 	int nx,ny,nz,nodex,nodey;
 	int nvar_available;
+	int n2dswaths;
 	char **varname_available;
 
 } hdf_meta;
@@ -67,7 +68,6 @@ typedef struct cmdline
 	int nvar,nvar_cmdline;
 	char *histpath,*base;
 	char **varname_cmdline;
-	char **varname;
 	float time;
 	int argc_hdf2nc_min;
 } cmdline;
