@@ -93,7 +93,8 @@ int main(int argc, char *argv[])
 
 	nk=gd.NZ;nj=gd.NY;ni=gd.NX; //For cm1-like code
 
-	/* Set start and edges for XY plots */
+	/* Set start and edges for 2D XY plots... this should probably go in
+	 * set_netcdf_attributes */
 
 	nc.s2[0] = 0; nc.s2[1] =     0; nc.s2[2] =     0;
 	nc.e2[0] = 1; nc.e2[1] = gd.NY; nc.e2[2] = gd.NX;
@@ -108,5 +109,8 @@ int main(int argc, char *argv[])
 
 	set_netcdf_attributes(&nc,gd,cmd,hm);
 
+	status = nc_enddef (nc.ncid); if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
+
+	nc_write_1d_data(nc,gd,snd);
 
 }
