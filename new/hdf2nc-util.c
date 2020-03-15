@@ -4,7 +4,7 @@
 #include "include/lofs-read.h"
 #include "include/macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, hdf_meta *hm, grid *gd,ncstruct *nc, readahead *rh)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
 {
 	int i;
 
@@ -332,7 +332,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 		for (i2d=0; i2d<n2d; i2d++) free((void *)twodvarname[i2d]); //shaddap compiler
 		free(twodvarname);
-		free(twodvarid);
+//		free(twodvarid);
 
 		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
@@ -672,7 +672,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 //	read_hdf_mult_md(swathbuf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"swaths",X0,Y0,X1,Y1,0,n2d,nx,ny,nz,nodex,nodey);
 
-	read_lofs_buffer(swathbuf,"swaths",cmd.time,dm,hm,gd,cmd);
+	read_lofs_buffer(swathbuf,"swaths",dm,hm,gd,cmd);
 
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
@@ -680,7 +680,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 			for (ix=0; ix<gd.NX; ix++)
 				twodfield[P2(ix,iy,gd.NX)] = swathbuf[P3(ix,iy,i2d,gd.NX,gd.NY)];
 		writeptr = twodfield;
-		status = nc_put_vara_float (ncid, twodvarid[i2d], nc.s2, nc.e2, writeptr);
+		status = nc_put_vara_float (nc.ncid, twodvarid[i2d], nc.s2, nc.e2, writeptr);
 	}
 	free(swathbuf);
 	free(twodfield);

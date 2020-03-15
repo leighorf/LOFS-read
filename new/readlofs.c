@@ -125,7 +125,7 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 //
 
-void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_meta hm, grid gd, cmdline cmd)
+void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, grid gd, cmdline cmd)
 {
 	int i, tb;
 	int maxfilelength = 512;
@@ -198,21 +198,21 @@ void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_me
 	{
 		// edge case: Asking for last time will fail unless we check
 		// this
-		if(fabs(dm.alltimes[ntottimes-1]-time)>eps)
+		if(fabs(dm.alltimes[dm.ntottimes-1]-cmd.time)>eps)
 		{
-			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",time,dm.alltimes[0],dm.alltimes[ntottimes-1]);
+			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",cmd.time,dm.alltimes[0],dm.alltimes[dm.ntottimes-1]);
 			ERROR_STOP("Requested time not within range\n");
 		}
 	}
-	if(cm.debug)
+	if(cmd.debug)
 	{
 		for (i=0; i < dm.ntimedirs; i++)
 			printf("SANITY CHECK: dirtimes = %lf\n",dm.dirtimes[i]);
 	}
 	for (i=0; i < dm.ntimedirs-1; i++)
 	{
-		if(cm.debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, time = %lf\n",i,dm.dirtimes[i],i+1,dm.dirtimes[i+1],time);
-		if (is_between_fuzzy(dm.dirtimes[i],dm.dirtimes[i+1],time)) break;
+		if(cmd.debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, time = %lf\n",i,dm.dirtimes[i],i+1,dm.dirtimes[i+1],cmd.time);
+		if (is_between_fuzzy(dm.dirtimes[i],dm.dirtimes[i+1],cmd.time)) break;
 	}
 	tb = i;
 	if (dm.ntimedirs == 1) tb = 0;
@@ -228,7 +228,7 @@ void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_me
 	time_is_in_file = FALSE;
 	for (i=0; i<dm.ntottimes; i++)
 	{
-		if (fabs(time-dm.alltimes[i])<eps)
+		if (fabs(cmd.time-dm.alltimes[i])<eps)
 		{
 			time_is_in_file = TRUE;
 			break;
@@ -237,7 +237,7 @@ void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_me
 
 	if (time_is_in_file == FALSE)
 	{
-		fprintf(stderr,"Requested time %lf was not saved\n",time);
+		fprintf(stderr,"Requested time %lf was not saved\n",cmd.time);
 		fprintf(stderr,"Available times follow:");
 		for (i=0; i<dm.ntottimes; i++)
 		{
@@ -259,46 +259,46 @@ void read_lofs_buffer(float *buf, char *varname, float time, dir_meta dm, hdf_me
 		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
 		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
 		hdf[ihdf]->yf = (hdf[ihdf]->myj + 1) * numj - 1;
-		if (cm.debug)
+		if (cmd.debug)
 			fprintf (stderr, "myj = %i myi =%i x0 = %i xf = %i y0 = %i yf = %i\n",
 				 hdf[ihdf]->myj, hdf[ihdf]->myi, hdf[ihdf]->x0, hdf[ihdf]->xf, hdf[ihdf]->y0, hdf[ihdf]->yf);
 	}
 
 	/* first check if our requested subcube lies within our data */
 
-	if (is_not_between_int (0, hm.nx - 1, gx0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, hm.ny - 1, gy0)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between_int (0, hm.nz - 1, gz0)) ERROR_STOP("Chosen z data out of range");
+	if (is_not_between_int (0, hm.nx - 1, gd.X0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, gd.Y0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nz - 1, gd.Z0)) ERROR_STOP("Chosen z data out of range");
 
-	if (is_not_between_int (0, hm.nx - 1, gxf)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, hm.ny - 1, gyf)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nx - 1, gd.X1)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, gd.Y1)) ERROR_STOP("Chosen y data out of range");
 //ORF: we don't do this check for swaths, they are handled differently,
 //but we are using the z dimension
-	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, gzf)) ERROR_STOP("Chosen z data out of range");
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, gd.Z1)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gx0) && is_between_int (hdf[i]->y0, hdf[i]->yf, gy0))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gd.X0) && is_between_int (hdf[i]->y0, hdf[i]->yf, gd.Y0))
 		{
 			fx0 = hdf[i]->myi;
 			fy0 = hdf[i]->myj;
-			if (debug) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
+			if (cmd.debug) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
 		}
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gxf) && is_between_int (hdf[i]->y0, hdf[i]->yf, gyf))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gd.X1) && is_between_int (hdf[i]->y0, hdf[i]->yf, gd.Y1))
 		{
 			fxf = hdf[i]->myi;
 			fyf = hdf[i]->myj;
-			if (debug) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
+			if (cmd.debug) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
 		}
 	}
 
 	snx = numi;
 	sny = numj;
-	dxleft = gx0 % snx;
-	dxright = gxf % snx;
-	dybot = gy0 % sny;
-	dytop = gyf % sny;
-	nxnode = nodex;
+	dxleft = gd.X0 % snx;
+	dxright = gd.X1 % snx;
+	dybot = gd.Y0 % sny;
+	dytop = gd.Y1 % sny;
+	nxnode = hm.nodex;
 
 	/*
 
@@ -435,7 +435,7 @@ really. See P3 macro in lofs-read.h */
 		{
 			k = ixnode + iynode * nxnode;
 
-			if (debug) printf("Working on %s\n",nodefile[k]);
+			if (cmd.debug) printf("Working on %s\n",nodefile[k]);
 			if ((file_id = H5Fopen (nodefile[k], H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
 			{
 				fprintf (stderr, "\n\nread_hdf_mult: Could not start to read %s!\n", nodefile[k]);
@@ -447,7 +447,7 @@ really. See P3 macro in lofs-read.h */
 				fprintf (stderr, "\nExiting.\n");
 				exit (-1);
 			}
-			if (debug) printf("Varname = %s\n",varname);
+			if (cmd.debug) printf("Varname = %s\n",varname);
 
 //			printf("DEBUG: nodefile = %s\n",nodefile[k]);
 
@@ -515,7 +515,7 @@ really. See P3 macro in lofs-read.h */
 				for (i=0; i<ntimes; i++)
 				{
 //					printf("i = %i \t filetimes[%2i] = %f \t time = %f\n",i,i,filetimes[i],time);
-					if (fabs(filetimes[i]-time)<eps)
+					if (fabs(filetimes[i]-cmd.time)<eps)
 						break;
 				}
 
@@ -653,8 +653,8 @@ really. See P3 macro in lofs-read.h */
 				{
 					snx = hdf[k]->sxf - hdf[k]->sx0 + 1; 
 					sny = hdf[k]->syf - hdf[k]->sy0 + 1;
-					snz = gzf - gz0 + 1;
-					offset_in3[0] = gz0;
+					snz = gd.Z1 - gd.Z0 + 1;
+					offset_in3[0] = gd.Z0;
 					offset_in3[1] = hdf[k]->sy0;
 					offset_in3[2] = hdf[k]->sx0;
 					offset_out3[0] = 0; //orf 6/30/10 gz0 was a bug? should always be 0?
