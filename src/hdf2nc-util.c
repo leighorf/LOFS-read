@@ -29,6 +29,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->use_box_offset=0;
 	cmd->use_interp=0;
 	cmd->do_swaths=0;
+	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
 
 	nc->varname = (char **)malloc(MAXVARIABLES * sizeof(char *));
