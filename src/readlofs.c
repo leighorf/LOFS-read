@@ -1,6 +1,6 @@
-#include "include/dirstruct.h"
-#include "include/limits.h"
-#include "include/lofs-read.h"
+#include "../include/dirstruct.h"
+#include "../include/limits.h"
+#include "../include/lofs-read.h"
 
 /* is between or lies on actually */
 int

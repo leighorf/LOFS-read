@@ -1,8 +1,8 @@
-#include "include/dirstruct.h"
-#include "include/limits.h"
-#include "include/hdf2nc.h"
-#include "include/lofs-read.h"
-#include "include/macros.h"
+#include "../include/dirstruct.h"
+#include "../include/limits.h"
+#include "../include/hdf2nc.h"
+#include "../include/lofs-read.h"
+#include "../include/macros.h"
 
 void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
 {

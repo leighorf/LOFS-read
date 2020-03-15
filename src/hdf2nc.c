@@ -1,8 +1,8 @@
 #include <omp.h>
-#include "include/lofs-read.h"
-#include "include/dirstruct.h"
-#include "include/hdf2nc.h"
-#include "include/limits.h"
+#include "../include/lofs-read.h"
+#include "../include/dirstruct.h"
+#include "../include/hdf2nc.h"
+#include "../include/limits.h"
 
 int main(int argc, char *argv[])
 {

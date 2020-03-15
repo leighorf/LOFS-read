@@ -2,9 +2,9 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
-#include "include/dirstruct.h"
-#include "include/limits.h"
-#include "include/lofs-read.h"
+#include "../include/dirstruct.h"
+#include "../include/limits.h"
+#include "../include/lofs-read.h"
 
 #define MAXSTR (512)
 

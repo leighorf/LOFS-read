@@ -1,5 +1,5 @@
-#include "include/lofs-read.h"
-#include "include/dirstruct.h"
+#include "../include/lofs-read.h"
+#include "../include/dirstruct.h"
 
 void
 get0dint (hid_t f_id, char *varname, int *var)
