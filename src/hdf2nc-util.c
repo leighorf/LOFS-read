@@ -57,10 +57,12 @@ void get_saved_base(char *timedir, char *saved_base)
 
 void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 {
-	/* We do this because of stencils */
+	/* We do this because of stencils. Note, saved_Z0 is always 0 in LOFS.
+	 * If we want to save only elevated data, set lower data to float(0.0) and compress*/
 
 	gd->saved_X0+=1; gd->saved_X1-=1;
 	gd->saved_Y0+=1; gd->saved_Y1-=1;
+	gd->saved_Z1-=1;
 
 	/* X and Y values are with respect to (0,0) of the actual saved data, not with respect
 	 * to actual (0,0) (done because I often choose new netCDF subdomains from ncview).
@@ -78,7 +80,7 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 
 	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
 	if(gd->X0<0)gd->X0=gd->saved_X0; if(gd->Y0<0)gd->Y0=gd->saved_Y0; if(gd->Z0<0)gd->Z0=0;
-	if(gd->X1<0)gd->X1=gd->saved_X1; if(gd->Y1<0)gd->Y1=gd->saved_Y1; if(gd->Z1<0)gd->Z1=hm.nz-2; //ORF -2 not -1 now
+	if(gd->X1<0)gd->X1=gd->saved_X1; if(gd->Y1<0)gd->Y1=gd->saved_Y1; if(gd->Z1<0)gd->Z1=gd->saved_Z1; //ORF -2 not -1 now
 
 
 	if (gd->X0>gd->X1||gd->Y0>gd->Y1||gd->X1<gd->saved_X0||gd->Y1<gd->saved_Y0||gd->X0>gd->saved_X1||gd->Y0>gd->saved_Y1)
@@ -317,7 +319,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		twodvarid =   (int *)        malloc(n2d*sizeof(int));
 
 		hm->n2dswaths = n2d;
-		printf("There are %i 2D static/swath fields (the former domain of the 2D files).\n",n2d);
+		printf("There are %i 2D static/swath fields.\n",n2d);
 //		bufsize = (long) (NX) * (long) (NY) * (long) (n2d) * (long) sizeof(float);
 //		if ((twodbuf0 = twodbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
 
@@ -654,7 +656,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			if ((b->dum10 = b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		printf("We allocated a total of %8.5f GB of memory for floating point buffers\n",1.0e-9*totbufsize);
+		printf("We allocated a total of %6.2f GB of memory for floating point buffers\n",1.0e-9*totbufsize);
 	}
 }
 
@@ -663,6 +665,10 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	int i2d,ix,iy,status;
 	float *twodfield,*swathbuf,*writeptr;
 	float bufsize;
+	requested_cube rc;
+
+	rc.X0=gd.X0; rc.Y0=gd.Y0; rc.Z0=gd.Z0;
+	rc.X1=gd.X1; rc.Y1=gd.Y1; rc.Z1=gd.Z1;
 
 	printf("Working on 2D static fields and swaths ("); 
 
@@ -673,7 +679,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 //	read_hdf_mult_md(swathbuf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"swaths",X0,Y0,X1,Y1,0,n2d,nx,ny,nz,nodex,nodey);
 
-	read_lofs_buffer(swathbuf,"swaths",dm,hm,gd,cmd);
+	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
@@ -686,4 +692,32 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	free(swathbuf);
 	free(twodfield);
 	printf(")\n");
+}
+
+void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
+{
+	requested_cube rc;
+	/* We select extra data for doing spatial averaging */
+	/* By shrinking in saved_x0,saved_x1 etc by 1 point on either side (see set_span), this will not fail
+	 * if we do not specify X0, X1 etc.*/
+
+	if (rh.u)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		read_lofs_buffer(b->ustag,"u",dm,hm,rc,cmd);
+	}
+	if (rh.v)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		read_lofs_buffer(b->vstag,"v",dm,hm,rc,cmd);
+	}
+	if (rh.w)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
+		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
+	}
+
 }

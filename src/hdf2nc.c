@@ -134,6 +134,8 @@ int main(int argc, char *argv[])
 
 	if (cmd.do_swaths) do_the_swaths(hm,nc,dm,gd,cmd);
 
+	do_readahead(&b,gd,rh,dm,hm,cmd);
+
 	status = nc_close(nc.ncid);  if (status != NC_NOERR)
 	{
 		fprintf(stderr, "%s\n", nc_strerror(status));

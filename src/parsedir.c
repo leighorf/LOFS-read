@@ -567,6 +567,7 @@ crave electrolytes.
 			}
 			get0dint(file_id,"grid/x0",&gd->saved_X0);
 			get0dint(file_id,"grid/y0",&gd->saved_Y0);
+			/* gd->saved_Z0 = 0; set in init_structs... ORF TODO ALWAYS?? Fill in zeroes and compress if only saving elevated data? */
 			H5Fclose(file_id);
 			if(cmd.verbose)fprintf(stderr,"Setting X0 to saved_X0 which is %i\n",gd->saved_X0);
 			if(cmd.verbose)fprintf(stderr,"Setting Y0 to saved_Y0 which is %i\n",gd->saved_Y0);
@@ -575,6 +576,8 @@ crave electrolytes.
 		}
 		j=lastnodedir;
 		{
+			int nkwrite;
+
 			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
@@ -600,9 +603,12 @@ crave electrolytes.
 
 			get0dint(file_id,"grid/x1",&gd->saved_X1);
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
+			get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			gd->saved_Z1=nkwrite-1;
 			H5Fclose(file_id);
 			if(cmd.verbose)fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",gd->saved_X1);
 			if(cmd.verbose)fprintf(stderr,"Setting Y1 to saved_Y1 which is %i\n",gd->saved_Y1);
+			if(cmd.verbose)fprintf(stderr,"Setting Z1 to saved_Z1 which is %i\n",gd->saved_Z1);
 			for (i=0; i < nfiles; i++) free(cm1hdf5file[i]);
 			free(cm1hdf5file);
 		}
@@ -710,7 +716,7 @@ crave electrolytes.
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",dm->firstfilename);
-			fprintf(fp,"%i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1);
+			fprintf(fp,"%i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
 			fprintf(fp,"%i\n",dm->ntottimes);
 			for (i=0; i<dm->ntottimes; i++)
 			{
@@ -736,7 +742,7 @@ crave electrolytes.
 				if (cmd.verbose) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
 			}
 			
-			iret=fscanf(fp,"%i %i %i %i",&(gd->saved_X0),&(gd->saved_Y0),&(gd->saved_X1),&(gd->saved_Y1));
+			iret=fscanf(fp,"%i %i %i %i %i %i",gd->saved_X0,&gd->saved_Y0,&gd->saved_X1,&gd->saved_Y1,&gd->saved_Z0,&gd->saved_Z1);
 
 			if(iret==EOF)
 			{
@@ -750,6 +756,8 @@ crave electrolytes.
 					fprintf(stderr,"Cached: saved_Y0  = %6i\n",gd->saved_Y0);
 					fprintf(stderr,"Cached: saved_X1  = %6i\n",gd->saved_X1);
 					fprintf(stderr,"Cached: saved_Y1  = %6i\n",gd->saved_Y1);
+					fprintf(stderr,"Cached: saved_Z0  = %6i\n",gd->saved_Z0);
+					fprintf(stderr,"Cached: saved_Z1  = %6i\n",gd->saved_Z1);
 				}
 			}
 			iret=fscanf(fp,"%i",&(dm->ntottimes));

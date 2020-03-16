@@ -125,7 +125,7 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 //
 
-void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, grid gd, cmdline cmd)
+void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
 {
 	int i, tb;
 	int maxfilelength = 512;
@@ -179,9 +179,13 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, grid 
 
 	HDFstruct **hdf;
 
-	gnx = gd.X1 - gd.X0 + 1;
-	gny = gd.Y1 - gd.Y0 + 1;
-	gnz = gd.Z1 - gd.Z0 + 1;
+	printf("rc.X0 = %i rc.X1 = %i\n",rc.X0,rc.X1);
+	printf("rc.Y0 = %i rc.Y1 = %i\n",rc.Y0,rc.Y1);
+	printf("rc.Z0 = %i rc.Z1 = %i\n",rc.Z0,rc.Z1);
+
+	gnx = rc.X1 - rc.X0 + 1;
+	gny = rc.Y1 - rc.Y0 + 1;
+	gnz = rc.Z1 - rc.Z0 + 1;
 
 	numhdf = hm.nodex * hm.nodey;
 
@@ -266,25 +270,25 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, grid 
 
 	/* first check if our requested subcube lies within our data */
 
-	if (is_not_between_int (0, hm.nx - 1, gd.X0)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, hm.ny - 1, gd.Y0)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between_int (0, hm.nz - 1, gd.Z0)) ERROR_STOP("Chosen z data out of range");
+	if (is_not_between_int (0, hm.nx - 1, rc.X0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, rc.Y0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nz - 1, rc.Z0)) ERROR_STOP("Chosen z data out of range");
 
-	if (is_not_between_int (0, hm.nx - 1, gd.X1)) ERROR_STOP("Chosen x data out of range");
-	if (is_not_between_int (0, hm.ny - 1, gd.Y1)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nx - 1, rc.X1)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, rc.Y1)) ERROR_STOP("Chosen y data out of range");
 //ORF: we don't do this check for swaths, they are handled differently,
 //but we are using the z dimension
-	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, gd.Z1)) ERROR_STOP("Chosen z data out of range");
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gd.X0) && is_between_int (hdf[i]->y0, hdf[i]->yf, gd.Y0))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, rc.X0) && is_between_int (hdf[i]->y0, hdf[i]->yf, rc.Y0))
 		{
 			fx0 = hdf[i]->myi;
 			fy0 = hdf[i]->myj;
 			if (cmd.debug) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
 		}
-		if (is_between_int (hdf[i]->x0, hdf[i]->xf, gd.X1) && is_between_int (hdf[i]->y0, hdf[i]->yf, gd.Y1))
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, rc.X1) && is_between_int (hdf[i]->y0, hdf[i]->yf, rc.Y1))
 		{
 			fxf = hdf[i]->myi;
 			fyf = hdf[i]->myj;
@@ -294,10 +298,10 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, grid 
 
 	snx = numi;
 	sny = numj;
-	dxleft = gd.X0 % snx;
-	dxright = gd.X1 % snx;
-	dybot = gd.Y0 % sny;
-	dytop = gd.Y1 % sny;
+	dxleft = rc.X0 % snx;
+	dxright = rc.X1 % snx;
+	dybot = rc.Y0 % sny;
+	dytop = rc.Y1 % sny;
 	nxnode = hm.nodex;
 
 	/*
@@ -653,8 +657,8 @@ really. See P3 macro in lofs-read.h */
 				{
 					snx = hdf[k]->sxf - hdf[k]->sx0 + 1; 
 					sny = hdf[k]->syf - hdf[k]->sy0 + 1;
-					snz = gd.Z1 - gd.Z0 + 1;
-					offset_in3[0] = gd.Z0;
+					snz = rc.Z1 - rc.Z0 + 1;
+					offset_in3[0] = rc.Z0;
 					offset_in3[1] = hdf[k]->sy0;
 					offset_in3[2] = hdf[k]->sx0;
 					offset_out3[0] = 0; //orf 6/30/10 gz0 was a bug? should always be 0?

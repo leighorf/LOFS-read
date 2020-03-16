@@ -41,6 +41,12 @@ typedef struct gridstuct
 	float umove,vmove;
 } grid;
 
+//Our requested Cartesian grid points for any LOFS read
+typedef struct requested_cube
+{
+	int X0,Y0,Z0,X1,Y1,Z1;
+} requested_cube;
+
 typedef struct meshstruct
 {
 	float *xhfull,*yhfull,*xffull,*yffull;
