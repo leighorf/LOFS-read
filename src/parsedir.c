@@ -716,7 +716,7 @@ crave electrolytes.
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",dm->firstfilename);
-			fprintf(fp,"%i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
+			fprintf(fp,"%i %i %i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
 			fprintf(fp,"%i\n",dm->ntottimes);
 			for (i=0; i<dm->ntottimes; i++)
 			{
@@ -742,7 +742,7 @@ crave electrolytes.
 				if (cmd.verbose) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
 			}
 			
-			iret=fscanf(fp,"%i %i %i %i %i %i",gd->saved_X0,&gd->saved_Y0,&gd->saved_X1,&gd->saved_Y1,&gd->saved_Z0,&gd->saved_Z1);
+			iret=fscanf(fp,"%i %i %i %i %i %i",&gd->saved_X0,&gd->saved_Y0,&gd->saved_X1,&gd->saved_Y1,&gd->saved_Z0,&gd->saved_Z1);
 
 			if(iret==EOF)
 			{
