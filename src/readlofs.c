@@ -179,7 +179,7 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 
 	HDFstruct **hdf;
 
-	printf("rc.X0 = %i rc.X1 = %i\n",rc.X0,rc.X1);
+	printf("\nrc.X0 = %i rc.X1 = %i\n",rc.X0,rc.X1);
 	printf("rc.Y0 = %i rc.Y1 = %i\n",rc.Y0,rc.Y1);
 	printf("rc.Z0 = %i rc.Z1 = %i\n",rc.Z0,rc.Z1);
 
@@ -278,7 +278,7 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 	if (is_not_between_int (0, hm.ny - 1, rc.Y1)) ERROR_STOP("Chosen y data out of range");
 //ORF: we don't do this check for swaths, they are handled differently,
 //but we are using the z dimension
-	if ((strcmp(varname,"swaths")) && is_not_between_int (0, rc.NZ - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{

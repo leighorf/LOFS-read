@@ -45,6 +45,15 @@ typedef struct readahead
 	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
 } readahead;
 
+/* Boolean array */
+typedef struct diagnostics
+{
+	int uinterp,vinterp,winterp;
+	int hwin_sr,hwin_gr,windmag_sr;
+	int xvort,yvort,zvort;
+	int hdiv,vortmag,hvort,streamvort;
+} diagnostics;
+
 
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
 void get_saved_base(char *timedir, char *saved_base);

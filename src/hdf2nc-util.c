@@ -4,7 +4,7 @@
 #include "../include/lofs-read.h"
 #include "../include/macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, diagnostics *diag)
 {
 	int i;
 
@@ -18,11 +18,21 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	dm-> regenerate_cache = 0;
 
-	gd->X0=gd->Y0=gd->X1=gd->Y1=gd->Z0=gd->Z1=-1;
-	gd->saved_X0=gd->saved_X1=0;
-	gd->saved_Y0=gd->saved_Y1=0;
-	gd->saved_Z0=gd->saved_Z1=0;
-	cmd->time=0.0; cmd->got_base=0; cmd->optcount=0;
+	gd->X0=-1;
+	gd->Y0=-1;
+	gd->X1=-1;
+	gd->Y1=-1;
+	gd->Z0=-1;
+	gd->Z1=-1;
+	gd->saved_X0=0;
+	gd->saved_X1=0;
+	gd->saved_Y0=0;
+	gd->saved_Y1=0;
+	gd->saved_Z0=0;
+	gd->saved_Z1=0;
+	cmd->time=0.0;
+	cmd->got_base=0;
+	cmd->optcount=0;
 	cmd->debug=0;
 	cmd->verbose=0;
 	cmd->do_allvars=0;
@@ -37,6 +47,17 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
+
+	diag->uinterp=0;
+	diag->vinterp=0;
+	diag->winterp=0;
+	diag->hwin_sr=0;
+	diag->hwin_gr=0;
+	diag->windmag_sr=0;
+	diag->hdiv=0;
+	diag->vortmag=0;
+	diag->hvort=0;
+	diag->streamvort=0;
 }
 
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd)
@@ -506,8 +527,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[3] = gd.NX;
 		}
 
-// I'm now going to create truly 2D files when we ask for them rather
-//than putting them into a 3D container as I have done in the past
+// If we request a 2D slice set parameters accordingly
 
 		if(gd.X0==gd.X1)
 		{
@@ -608,9 +628,25 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_pi","m/s");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_qv","m/s");
+}
 
-//	expose this in main for clarity since it denotes when we can start actually doing omething
-//	status = nc_enddef (nc->ncid); if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
+void set_diag_flags_from_varnames(diagnostics *diag, ncstruct nc,cmdline cmd)
+{
+	int ivar;
+
+	for (ivar=0; ivar < cmd.nvar; ivar++)
+	{
+		if(!strcmp(nc.varname[ivar],"uinterp"))	diag->uinterp=1;
+		if(!strcmp(nc.varname[ivar],"vinterp"))	diag->vinterp=1;
+		if(!strcmp(nc.varname[ivar],"winterp"))	diag->winterp=1;
+		if(!strcmp(nc.varname[ivar],"hwin_sr"))	diag->hwin_sr=1;
+		if(!strcmp(nc.varname[ivar],"hwin_gr"))	diag->hwin_gr=1;
+		if(!strcmp(nc.varname[ivar],"windmag_sr")) diag->windmag_sr=1;
+		if(!strcmp(nc.varname[ivar],"hdiv")) diag->hdiv=1;
+		if(!strcmp(nc.varname[ivar],"vortmag")) diag->vortmag=1;
+		if(!strcmp(nc.varname[ivar],"hvort")) diag->hvort=1;
+		if(!strcmp(nc.varname[ivar],"streamvort")) diag->streamvort=1;
+	}
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -644,25 +680,25 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 }
 
-void set_readahead(readahead *rh,ncstruct nc,cmdline cmd)
+void set_readahead(readahead *rh,ncstruct nc,diagnostics diag, cmdline cmd)
 {
 	int ivar;
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
-		if(!strcmp(nc.varname[ivar],"uinterp")&&!cmd.use_interp) {rh->u=1;}
-		if(!strcmp(nc.varname[ivar],"vinterp")&&!cmd.use_interp) {rh->v=1;}
-		if(!strcmp(nc.varname[ivar],"winterp")&&!cmd.use_interp) {rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"hwin_sr")) {rh->u=rh->v=1;}
-		if(!strcmp(nc.varname[ivar],"hdiv")) {rh->u=rh->v=1;}
-		if(!strcmp(nc.varname[ivar],"windmag_sr")) {rh->u=rh->v=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"zvort")) {rh->u=rh->v=1;}
-		if(!strcmp(nc.varname[ivar],"xvort")) {rh->v=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"yvort")) {rh->u=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"hvort")) {rh->u=rh->v=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"vortmag")) {rh->u=rh->v=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"streamvort")) {rh->u=rh->v=rh->w=1;}
-		if(!strcmp(nc.varname[ivar],"hwin_gr")) {rh->u=rh->v=rh->w=1;}
+		if(diag.uinterp&&!cmd.use_interp) {rh->u=1;}
+		if(diag.vinterp&&!cmd.use_interp) {rh->v=1;}
+		if(diag.winterp&&!cmd.use_interp) {rh->w=1;}
+		if(diag.hwin_sr) {rh->u=rh->v=1;}
+		if(diag.hdiv) {rh->u=rh->v=1;}
+		if(diag.windmag_sr) {rh->u=rh->v=rh->w=1;}
+		if(diag.zvort) {rh->u=rh->v=1;}
+		if(diag.xvort) {rh->v=rh->w=1;}
+		if(diag.yvort) {rh->u=rh->w=1;}
+		if(diag.hvort) {rh->u=rh->v=rh->w=1;}
+		if(diag.vortmag) {rh->u=rh->v=rh->w=1;}
+		if(diag.streamvort) {rh->u=rh->v=rh->w=1;}
+		if(diag.hwin_gr) {rh->u=rh->v=rh->w=1;}
 //		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=1;}
 //		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
 //		if(!strcmp(varname[ivar],"yvort_baro")) {thrhopert_rh=1;}
@@ -689,30 +725,36 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
 		totbufsize = bufsize;
 
-		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
+		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
+			ERROR_STOP("Cannot allocate our 3D variable buffer array");
 		if (rh.u)
 		{
-			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our ustag buffer array");
+			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our ustag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.v)
 		{
-			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our vstag buffer array");
+			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our vstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.w)
 		{
-			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our wstag buffer array");
+			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.u||rh.v||rh.w)
 		{
-			if ((b->dum00 = b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our first 3D temp calculation array");
+			if ((b->dum00 = b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
 		if (rh.vortmag||rh.hvort||rh.streamvort)//Not really readahead, but if we calculated these we need another array
 		{
-			if ((b->dum10 = b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our second 3D temp calculation array");
+			if ((b->dum10 = b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
 		printf("We allocated a total of %6.2f GB of memory for floating point buffers\n",1.0e-9*totbufsize);
@@ -731,9 +773,11 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	printf("Working on 2D static fields and swaths ("); 
 
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) sizeof(float);
-	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 2D swath buffer array");
+	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL)
+		ERROR_STOP("Cannot allocate our 2D swath buffer array");
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) (hm.n2dswaths) * (long) sizeof(float);
-	if ((swathbuf = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D swaths buffer array");
+	if ((swathbuf = (float *) malloc ((size_t)bufsize)) == NULL)
+		ERROR_STOP("Cannot allocate our 3D swaths buffer array");
 
 	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
@@ -753,6 +797,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
 	requested_cube rc;
+
 	/* We select extra data for doing spatial averaging */
 	/* By shrinking in saved_x0,saved_x1 etc by 1 point on either side (see set_span), this will not fail
 	 * if we do not specify X0, X1 etc.*/
