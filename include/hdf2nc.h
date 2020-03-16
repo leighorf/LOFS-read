@@ -17,8 +17,8 @@ typedef struct netcdf_struct
 	int *varnameid;
 	char **varname;
 	char *ncfilename;
-	int dims[4],start[4],edges[4],d2[3];
-	size_t s2[3],e2[3];
+	int dims[4],d2[3];
+	size_t s2[3],e2[3],start[4],edges[4];
 	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
 	int twodslice;
 } ncstruct;

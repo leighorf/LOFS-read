@@ -39,7 +39,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
-void copy_to_requested_cube (requested_cube *rc, grid gd)
+void copy_grid_to_requested_cube (requested_cube *rc, grid gd)
 {
 	rc->X0=gd.X0; rc->X1=gd.X1;
 	rc->Y0=gd.Y0; rc->Y1=gd.Y1;
@@ -72,26 +72,32 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 
 	gd->saved_X0+=1; gd->saved_X1-=1;
 	gd->saved_Y0+=1; gd->saved_Y1-=1;
-	gd->saved_Z1-=1;
+	gd->saved_Z1-=2;
 
 	/* X and Y values are with respect to (0,0) of the actual saved data, not with respect
 	 * to actual (0,0) (done because I often choose new netCDF subdomains from ncview).
 	 * --offset allows this
 	 */
 
+	/* If we didn't specify values at the command line, value is -1
+	 * Set them to values specifying all the saved data */
+
 	if(cmd.use_box_offset)
 	{
-		if(gd->X0<0||gd->Y0<0||gd->X1<0||gd->Y1<0) ERROR_STOP ("X0,Y0,X1,Y1 must be specified at command line with --offset option\n");
-		gd->X0+=gd->saved_X0;
-		gd->X1+=gd->saved_X0;
-		gd->Y0+=gd->saved_Y0;
-		gd->Y1+=gd->saved_Y0;
+		if (gd->X0<0) gd->X0 = gd->saved_X0; else gd->X0 = gd->X0 + gd->saved_X0;
+		if (gd->X1<0) gd->X1 = gd->saved_X1; else gd->X1 = gd->X1 + gd->saved_X0;
+		if (gd->Y0<0) gd->Y0 = gd->saved_Y0; else gd->Y0 = gd->Y0 + gd->saved_Y0;
+		if (gd->Y1<0) gd->Y1 = gd->saved_Y1; else gd->Y1 = gd->Y1 + gd->saved_Y0;
 	}
-
-	/* If we didn't specify values at the command line, set them to values specifying all the saved data */
-	if(gd->X0<0)gd->X0=gd->saved_X0; if(gd->Y0<0)gd->Y0=gd->saved_Y0; if(gd->Z0<0)gd->Z0=0;
-	if(gd->X1<0)gd->X1=gd->saved_X1; if(gd->Y1<0)gd->Y1=gd->saved_Y1; if(gd->Z1<0)gd->Z1=gd->saved_Z1; //ORF -2 not -1 now
-
+	else
+	{
+		if (gd->X0<0) gd->X0 = gd->saved_X0;
+		if (gd->X1<0) gd->X1 = gd->saved_X1;
+		if (gd->Y0<0) gd->Y0 = gd->saved_Y0;
+		if (gd->Y1<0) gd->Y1 = gd->saved_Y1;
+	}
+	if (gd->Z0<0) gd->Z0 = gd->saved_Z0;
+	if (gd->Z1<0) gd->Z1 = gd->saved_Z1; //ORF -2 not -1 now
 
 	if (gd->X0>gd->X1||gd->Y0>gd->Y1||gd->X1<gd->saved_X0||gd->Y1<gd->saved_Y0||gd->X0>gd->saved_X1||gd->Y0>gd->saved_Y1)
 	{
@@ -117,7 +123,7 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 	if(gd->Y1>gd->saved_Y1)
 	{
 		printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_Y1 (%i)\n",gd->Y1,gd->saved_Y1);
-		gd->X1=gd->saved_X1;
+		gd->Y1=gd->saved_Y1;
 	}
 }
 
@@ -415,6 +421,12 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
+		int var_is_u = 0, var_is_v = 0, var_is_w = 0;
+
+		if (!strcmp(nc->varname[ivar],"u")) var_is_u=1;
+		if (!strcmp(nc->varname[ivar],"v")) var_is_v=1;
+		if (!strcmp(nc->varname[ivar],"w")) var_is_w=1;
+
 		/* u v and w live on their own mesh (Arakawa C grid)*/
 
 		/* Recommend, however, for making netcdf files, to just
@@ -425,26 +437,56 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		 * saving u v and w easily while facilitating averaging
 		 * which requires 1 fewer point */
 
-		if(!strcmp(nc->varname[ivar],"u"))
+		if(var_is_u)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
 			nc->dims[2] = nc->nyh_dimid;
 			nc->dims[3] = nc->nxf_dimid;
+
+			nc->start[0] = 0;
+			nc->start[1] = 0;
+			nc->start[2] = 0;
+			nc->start[3] = 0;
+
+			nc->edges[0] = 1;
+			nc->edges[1] = gd.NZ;
+			nc->edges[2] = gd.NY;
+			nc->edges[3] = gd.NX;
 		}
-		else if (!strcmp(nc->varname[ivar],"v"))
+		else if (var_is_v)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
 			nc->dims[2] = nc->nyf_dimid;
 			nc->dims[3] = nc->nxh_dimid;
+
+			nc->start[0] = 0;
+			nc->start[1] = 0;
+			nc->start[2] = 0;
+			nc->start[3] = 0;
+
+			nc->edges[0] = 1;
+			nc->edges[1] = gd.NZ;
+			nc->edges[2] = gd.NY;
+			nc->edges[3] = gd.NX;
 		}
-		else if (!strcmp(nc->varname[ivar],"w"))
+		else if (var_is_w)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzf_dimid;
 			nc->dims[2] = nc->nyh_dimid;
 			nc->dims[3] = nc->nxh_dimid;
+
+			nc->start[0] = 0;
+			nc->start[1] = 0;
+			nc->start[2] = 0;
+			nc->start[3] = 0;
+
+			nc->edges[0] = 1;
+			nc->edges[1] = gd.NZ;
+			nc->edges[2] = gd.NY;
+			nc->edges[3] = gd.NX;
 		}
 		else /* scalar grid */
 		{
@@ -452,6 +494,16 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->dims[1] = nc->nzh_dimid;
 			nc->dims[2] = nc->nyh_dimid;
 			nc->dims[3] = nc->nxh_dimid;
+
+			nc->start[0] = 0;
+			nc->start[1] = 0;
+			nc->start[2] = 0;
+			nc->start[3] = 0;
+
+			nc->edges[0] = 1;
+			nc->edges[1] = gd.NZ;
+			nc->edges[2] = gd.NY;
+			nc->edges[3] = gd.NX;
 		}
 
 // I'm now going to create truly 2D files when we ask for them rather
@@ -461,8 +513,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = nc->nzh_dimid;
-			nc->dims[2] = nc->nyh_dimid;
+			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -475,8 +527,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = nc->nzh_dimid;
-			nc->dims[2] = nc->nxh_dimid;
+			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -489,22 +541,17 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = nc->nyh_dimid;
-			nc->dims[2] = nc->nxh_dimid;
+			nc->dims[1] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
+			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NY;
 			nc->edges[2] = gd.NX;
-			status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &(nc->varnameid[ivar]));
+			status =  nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &nc->varnameid[ivar]);
 		}
-		else status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 4, nc->dims, &(nc->varnameid[ivar]));
-
-//		printf("dims:  %5i %5i %5i %5i %s\n",dims[0],dims[1],dims[2],dims[3],varname[ivar]);
-//		printf("start: %5i %5i %5i %5i %s\n",start[0],start[1],start[2],start[3],varname[ivar]);
-//		printf("edges: %5i %5i %5i %5i %s\n",edges[0],edges[1],edges[2],edges[3],varname[ivar]);
-//		printf("\n");
+		else status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 4, nc->dims, &nc->varnameid[ivar]);
 
 		if (status != NC_NOERR) 
 		{
@@ -679,9 +726,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	float bufsize;
 	requested_cube rc;
 
-//	rc.X0=gd.X0; rc.Y0=gd.Y0; rc.Z0=gd.Z0;
-//	rc.X1=gd.X1; rc.Y1=gd.Y1; rc.Z1=gd.Z1;
-	copy_to_requested_cube(&rc,gd);
+	copy_grid_to_requested_cube(&rc,gd);
 
 	printf("Working on 2D static fields and swaths ("); 
 
@@ -689,8 +734,6 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 2D swath buffer array");
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) (hm.n2dswaths) * (long) sizeof(float);
 	if ((swathbuf = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D swaths buffer array");
-
-//	read_hdf_mult_md(swathbuf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"swaths",X0,Y0,X1,Y1,0,n2d,nx,ny,nz,nodex,nodey);
 
 	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
