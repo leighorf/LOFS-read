@@ -1,3 +1,7 @@
+
+
+#spack load hdf5-zfp netcdf-c first
+
 CC = mpicc
 AR = ar
 CFLAGS = -fopenmp -O2 -fPIC 
