@@ -40,7 +40,8 @@ int main(int argc, char *argv[])
 
 	/* Malloc our time directory arrays */
 	dm.timedir = (char **)malloc(dm.ntimedirs * sizeof(char *));
-	for (i=0; i < dm.ntimedirs; i++) dm.timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+	for (i=0; i < dm.ntimedirs; i++)
+		dm.timedir[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 	dm.dirtimes = (double *)malloc(dm.ntimedirs * sizeof(double));
 
 	get_sorted_time_dirs(&dm,cmd); //Sets dm.timedir char array
@@ -67,10 +68,10 @@ int main(int argc, char *argv[])
 	}
 
 	if ((hdf_file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-    {
-        fprintf(stderr,"Unable to open %s, bailing!\n", dm.firstfilename);
+	{
+		fprintf(stderr,"Unable to open %s, bailing!\n", dm.firstfilename);
 		ERROR_STOP("Can't open firstfilename! Weird...");
-    } // Keep open as we need metadata, 1d sounding data, etc.
+	} // Keep open as we need metadata, 1d sounding data, etc.
 
 	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
 

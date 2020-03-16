@@ -88,11 +88,13 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm,cmdline *cmd, char *argv[], hid_
     int i,status;
 	char groupname[MAXSTR];
 
+	/* Already open 
 	if ((*f_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
     {
-        fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", dm.firstfilename);
-        exit(0);
+		fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", dm.firstfilename);
+   		exit(0);
     }
+	*/
     get0dint (*f_id, "grid/nodex", &hm->nodex);
     get0dint (*f_id, "grid/nodey", &hm->nodey);
     get0dint (*f_id, "grid/nx", &hm->nx);
