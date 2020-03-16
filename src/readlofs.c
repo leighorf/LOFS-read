@@ -278,7 +278,7 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 	if (is_not_between_int (0, hm.ny - 1, rc.Y1)) ERROR_STOP("Chosen y data out of range");
 //ORF: we don't do this check for swaths, they are handled differently,
 //but we are using the z dimension
-	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
+	if ((strcmp(varname,"swaths")) && is_not_between_int (0, rc.NZ - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
 
 	for (i = 0; i < numhdf; i++)
 	{
@@ -426,7 +426,7 @@ really. See P3 macro in lofs-read.h */
 //
 // First, initialize ZFP lossy floating point compression
 
-	H5Z_zfp_initialize();
+//	H5Z_zfp_initialize();
 
 	rank=3;
 	count3[0]=gnz;count3[1]=gny;count3[2]=gnx;
@@ -713,5 +713,5 @@ really. See P3 macro in lofs-read.h */
 	}
 	free (hdf);
 	free (nodefile);
-	H5Z_zfp_finalize();
+//	H5Z_zfp_finalize();
 }

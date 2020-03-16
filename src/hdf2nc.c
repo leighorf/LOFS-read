@@ -1,4 +1,3 @@
-#include <omp.h>
 #include "../include/lofs-read.h"
 #include "../include/dirstruct.h"
 #include "../include/hdf2nc.h"
@@ -116,8 +115,6 @@ int main(int argc, char *argv[])
 
 	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id);
 
-//	H5Z_zfp_initialize(); This is done in readlofs.c
-
 	status = nc_create (nc.ncfilename, NC_CLOBBER|cmd.filetype, &nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
@@ -132,15 +129,22 @@ int main(int argc, char *argv[])
 
 	malloc_3D_arrays(&b,gd,rh,cmd);
 
+	H5Z_zfp_initialize();
+
 	if (cmd.do_swaths) do_the_swaths(hm,nc,dm,gd,cmd);
 
 	do_readahead(&b,gd,rh,dm,hm,cmd);
 
+	do_requested_variables(&b,nc,gd,rh,dm,hm,cmd);
+
 	status = nc_close(nc.ncid);  if (status != NC_NOERR)
 	{
+		printf("******nc.ncid = %i\n",nc.ncid);
 		fprintf(stderr, "%s\n", nc_strerror(status));
 		printf("status = %i\n",status);
 		fprintf(stderr, "Warning: netcdf is throwing an error when we close...\n");
 	}
+
+	H5Z_zfp_finalize();
 
 }

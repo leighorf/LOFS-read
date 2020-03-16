@@ -45,6 +45,7 @@ typedef struct gridstuct
 typedef struct requested_cube
 {
 	int X0,Y0,Z0,X1,Y1,Z1;
+	int NX,NY,NZ;
 } requested_cube;
 
 typedef struct meshstruct

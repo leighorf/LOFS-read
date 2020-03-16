@@ -39,6 +39,16 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
+void copy_to_requested_cube (requested_cube *rc, grid gd)
+{
+	rc->X0=gd.X0; rc->X1=gd.X1;
+	rc->Y0=gd.Y0; rc->Y1=gd.Y1;
+	rc->Z0=gd.Z0; rc->Z1=gd.Z1;
+	rc->NX=gd.NX;
+	rc->NY=gd.NY;
+	rc->NZ=gd.NZ;
+}
+
 void get_saved_base(char *timedir, char *saved_base)
 {
 	// Just grab the basename so we can have it set automatically
@@ -119,8 +129,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	msh->yhfull = (float *)malloc(hm.ny * sizeof(float));
 	msh->xffull = (float *)malloc((hm.nx+1) * sizeof(float));
 	msh->yffull = (float *)malloc((hm.ny+1) * sizeof(float));
-	msh->zh = (float *)malloc((hm.nz) * sizeof(float));
-	msh->zf = (float *)malloc((hm.nz) * sizeof(float));
+	msh->zh = (float *)malloc(gd.NZ * sizeof(float));
+	msh->zf = (float *)malloc(gd.NZ * sizeof(float));
 	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->qv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->u0 = (float *)malloc(gd.NZ * sizeof(float));
@@ -135,8 +145,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);
 	get1dfloat (*f_id,(char *)"mesh/yffull",msh->yffull,0,hm.ny+1);
-	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,hm.nz);
-	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,hm.nz);
+	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,gd.NZ);
+	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
 	for (k=0; k<gd.NZ; k++) snd->qv0[k] *= 1000.0; // g/kg now
 	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ);
@@ -173,12 +183,14 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	// Carefully consider the UH,UF etc. macros and make sure they are appropriate for where you are in
 	// the code (should be in pointer land)
 
+#ifdef EATME
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UH(ix-gd.X0) = msh->dx/(msh->xffull[ix+1]-msh->xffull[ix]);
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UF(ix-gd.X0) = msh->dx/(msh->xhfull[ix]-msh->xhfull[ix-1]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VH(iy-gd.Y0) = msh->dy/(msh->yffull[iy+1]-msh->yffull[iy]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VF(iy-gd.Y0) = msh->dy/(msh->yhfull[iy]-msh->yhfull[iy-1]);
 	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MH(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
 	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MF(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
+#endif
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
 	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
 	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = 0.001*msh->xffull[ix];
@@ -667,14 +679,15 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	float bufsize;
 	requested_cube rc;
 
-	rc.X0=gd.X0; rc.Y0=gd.Y0; rc.Z0=gd.Z0;
-	rc.X1=gd.X1; rc.Y1=gd.Y1; rc.Z1=gd.Z1;
+//	rc.X0=gd.X0; rc.Y0=gd.Y0; rc.Z0=gd.Z0;
+//	rc.X1=gd.X1; rc.Y1=gd.Y1; rc.Z1=gd.Z1;
+	copy_to_requested_cube(&rc,gd);
 
 	printf("Working on 2D static fields and swaths ("); 
 
-	bufsize = (long) (gd.NX) * (long) (gd.NY) * (long) sizeof(float);
+	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) sizeof(float);
 	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 2D swath buffer array");
-	bufsize = (long) (gd.NX) * (long) (gd.NY) * (long) (hm.n2dswaths) * (long) sizeof(float);
+	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) (hm.n2dswaths) * (long) sizeof(float);
 	if ((swathbuf = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D swaths buffer array");
 
 //	read_hdf_mult_md(swathbuf0,topdir,timedir,nodedir,ntimedirs,dn,dirtimes,alltimes,ntottimes,t0,"swaths",X0,Y0,X1,Y1,0,n2d,nx,ny,nz,nodex,nodey);
@@ -683,9 +696,9 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
-		for (iy=0; iy<gd.NY; iy++)
-			for (ix=0; ix<gd.NX; ix++)
-				twodfield[P2(ix,iy,gd.NX)] = swathbuf[P3(ix,iy,i2d,gd.NX,gd.NY)];
+		for (iy=0; iy<rc.NY; iy++)
+			for (ix=0; ix<rc.NX; ix++)
+				twodfield[P2(ix,iy,rc.NX)] = swathbuf[P3(ix,iy,i2d,rc.NX,rc.NY)];
 		writeptr = twodfield;
 		status = nc_put_vara_float (nc.ncid, twodvarid[i2d], nc.s2, nc.e2, writeptr);
 	}
@@ -705,18 +718,21 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		read_lofs_buffer(b->ustag,"u",dm,hm,rc,cmd);
 	}
 	if (rh.v)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		read_lofs_buffer(b->vstag,"v",dm,hm,rc,cmd);
 	}
 	if (rh.w)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
 	}
 
