@@ -156,7 +156,9 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); //rdx=1.0/msh->dx;
 	get0dfloat (*f_id,(char *)"mesh/dy",&msh->dy); //rdy=1.0/msh->dy;
-	msh->dz=msh->dx;//rdz=rdx; //BAD BAD BAD
+	get0dfloat (*f_id,(char *)"mesh/dz",&msh->dz); //rdy=1.0/msh->dy;
+	get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
+	get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
 	get1dfloat (*f_id,(char *)"mesh/xhfull",msh->xhfull,0,hm.nx);
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);
@@ -199,14 +201,12 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	// Carefully consider the UH,UF etc. macros and make sure they are appropriate for where you are in
 	// the code (should be in pointer land)
 
-#ifndef EATME
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UH(ix-gd.X0) = msh->dx/(msh->xffull[ix+1]-msh->xffull[ix]);
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UF(ix-gd.X0) = msh->dx/(msh->xhfull[ix]-msh->xhfull[ix-1]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VH(iy-gd.Y0) = msh->dy/(msh->yffull[iy+1]-msh->yffull[iy]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VF(iy-gd.Y0) = msh->dy/(msh->yhfull[iy]-msh->yhfull[iy-1]);
 	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MH(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
 	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MF(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
-#endif
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
 	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
 	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = 0.001*msh->xffull[ix];

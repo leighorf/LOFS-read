@@ -38,7 +38,6 @@ typedef struct gridstuct
 	int saved_X0,saved_Y0;
 	int saved_X1,saved_Y1;
 	int saved_Z0,saved_Z1;
-	float umove,vmove;
 } grid;
 
 //Our requested Cartesian grid points for any LOFS read
@@ -57,6 +56,7 @@ typedef struct meshstruct
 	float *uh,*uf,*vh,*vf,*mh,*mf;
 	float dx,dy,dz;
 	float rdx,rdy,rdz;
+	float umove,vmove;
 } mesh;
 
 typedef struct cmdline

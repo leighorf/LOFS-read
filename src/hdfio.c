@@ -21,6 +21,7 @@ get0dfloat (hid_t f_id, char *varname, float *var)
 	hid_t dataset_id;
 	int status;
 
+	printf("Getting %s\n",varname);
 	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 	if ((status = H5Dread (dataset_id, H5T_NATIVE_FLOAT,H5S_ALL,H5S_ALL,H5P_DEFAULT,var)) < 0) ERROR_STOP("Could not H5Dread");
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");

@@ -34,12 +34,12 @@
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM
 // for his tem array, UA for ua etc.
 
-#define BUF(x,y,z) buf0[P3(x,y,z,NX,NY)]
-#define TEM(x,y,z) dum0[P3(x,y,z,NX+1,NY+1)]
-#define TEM1(x,y,z) dum1[P3(x,y,z,NX+1,NY+1)]
-#define  UA(x,y,z) ustag[P3(x+1,y+1,z,NX+2,NY+2)]
-#define  VA(x,y,z) vstag[P3(x+1,y+1,z,NX+2,NY+2)]
-#define  WA(x,y,z) wstag[P3(x+1,y+1,z,NX+2,NY+2)]
+#define BUF(x,y,z) b->buf0[P3(x,y,z,nx,ny)]
+#define TEM(x,y,z) b->dum0[P3(x,y,z,nx+1,ny+1)]
+#define TEM1(x,y,z) b->dum1[P3(x,y,z,nx+1,ny+1)]
+#define  UA(x,y,z) b->ustag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  VA(x,y,z) b->vstag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  WA(x,y,z) b->wstag[P3(x+1,y+1,z,nx+2,ny+2)]
 
 #define PCL(t,p,mt) (((p)*(mt))+(t))
 #endif

@@ -8,7 +8,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS,
-		OPT_NTHREADS, OPT_UMOVE, OPT_VMOVE, OPT_OFFSET, OPT_INTERP };
+		OPT_NTHREADS, OPT_OFFSET, OPT_INTERP };
 
 	static struct option long_options[] =
 	{
@@ -29,8 +29,6 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
-		{"umove", optional_argument, 0, OPT_UMOVE},
-		{"vmove", optional_argument, 0, OPT_VMOVE},
 		{"offset", optional_argument, 0, OPT_OFFSET},
 		{"interp", optional_argument, 0, OPT_INTERP},
 		{0, 0, 0, 0}//sentinel, needed!
@@ -137,14 +135,6 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_NTHREADS:
 				cmd->nthreads=atoi(optarg);
 				omp_set_num_threads(cmd->nthreads);
-				cmd->optcount++;
-				break;
-			case OPT_UMOVE:
-				gd->umove=atof(optarg);
-				cmd->optcount++;
-				break;
-			case OPT_VMOVE:
-				gd->vmove=atof(optarg);
 				cmd->optcount++;
 				break;
 			case '?':

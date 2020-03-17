@@ -1,7 +1,7 @@
 #spack load hdf5-zfp netcdf-c first
 
 CC = mpicc
-CFLAGS = -fopenmp -O3 -fPIC 
+CFLAGS = -fopenmp -g -fPIC 
 LINKOPTS  = -lh5zzfp -lzfp -lhdf5_hl -lhdf5 -lsz -lz -lm -lnetcdf -fopenmp 
 SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c
 
