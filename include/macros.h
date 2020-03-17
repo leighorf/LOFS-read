@@ -15,13 +15,21 @@
 
 //NOTE: these macros must be carefully used.
 //You must name your mesh structure mesh
-//And this assumes we're in pointer land
-#define UH(ix) msh->uh[ix+1]
-#define UF(ix) msh->uf[ix+1]
-#define VH(iy) msh->vh[iy+1]
-#define VF(iy) msh->vf[iy+1]
-#define MH(iz) msh->mh[iz]
-#define MF(iz) msh->mf[iz]
+//And you have to pick whether you're in pointer land or not
+
+#define UHp(ix) msh->uh[ix+1]
+#define UFp(ix) msh->uf[ix+1]
+#define VHp(iy) msh->vh[iy+1]
+#define VFp(iy) msh->vf[iy+1]
+#define MHp(iz) msh->mh[iz]
+#define MFp(iz) msh->mf[iz]
+
+#define UH(ix) msh.uh[ix+1]
+#define UF(ix) msh.uf[ix+1]
+#define VH(iy) msh.vh[iy+1]
+#define VF(iy) msh.vf[iy+1]
+#define MH(iz) msh.mh[iz]
+#define MF(iz) msh.mf[iz]
 
 #define xh(ix) msh->xh[ix+1]
 #define xf(ix) msh->xf[ix+1]

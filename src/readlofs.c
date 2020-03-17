@@ -181,9 +181,9 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 
 	if(cmd.verbose)
 	{
-		printf("\nrc.X0 = %i rc.X1 = %i\n",rc.X0,rc.X1);
-		printf("rc.Y0 = %i rc.Y1 = %i\n",rc.Y0,rc.Y1);
-		printf("rc.Z0 = %i rc.Z1 = %i\n",rc.Z0,rc.Z1);
+		printf("\nrc.X0 = %5i\t rc.X1 = %5i\n",rc.X0,rc.X1);
+		printf("rc.Y0 = %5i\t rc.Y1 = %5i\n",rc.Y0,rc.Y1);
+		printf("rc.Z0 = %5i\t rc.Z1 = %5i\n",rc.Z0,rc.Z1);
 		printf("\nReading %s...\n",varname);
 	}
 
