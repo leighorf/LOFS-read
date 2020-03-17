@@ -82,7 +82,7 @@ get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 }
 
 //ORF this will fill our hdf_meta struct
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm, diagnostics *diag, cmdline *cmd, char *argv[], hid_t *f_id)
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id)
 {
     hid_t g_id;
     H5G_info_t group_info;
@@ -123,10 +123,6 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, diagnostics *diag, cmdline *cmd
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
-
-		/* If you add a new diagnostic variable (something not already written in LOFS), add a new member to the diagnostics
-		 * structure in include/hdf2nc.h and add a line below. This is done so we don't have that if !strcmp shit
-		 * everywhere */
 	} printf("\n");
 }
 

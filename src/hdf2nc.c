@@ -15,7 +15,6 @@ int main(int argc, char *argv[])
 	mesh msh;
 	sounding snd;
 	readahead rh;
-	diagnostics diag;
 	buffers b;
 
 	hid_t hdf_file_id;
@@ -24,7 +23,7 @@ int main(int argc, char *argv[])
 
 	cmd.argc_hdf2nc_min = 3; /* minimum arguments to this routine */
 
-	init_structs(&cmd,&dm,&gd,&nc,&rh,&diag);
+	init_structs(&cmd,&dm,&gd,&nc,&rh);
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd);
 
@@ -73,7 +72,7 @@ int main(int argc, char *argv[])
 		ERROR_STOP("Can't open firstfilename! Weird...");
 	} // Keep open as we need metadata, 1d sounding data, etc.
 
-	get_hdf_metadata(dm,&hm,&diag,&cmd,argv,&hdf_file_id);
+	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
 
 	printf("Variables available: ");
 	for (i = 0; i < hm.nvar_available; i++)
@@ -124,11 +123,9 @@ int main(int argc, char *argv[])
 	status = nc_enddef (nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
 
-	set_diag_flags_from_varnames(&diag,nc,cmd);
-
 	nc_write_1d_data(nc,gd,msh,snd,cmd);
 
-	set_readahead(&rh,nc,diag,cmd);
+	set_readahead(&rh,nc,cmd);
 
 	malloc_3D_arrays(&b,gd,rh,cmd);
 
@@ -138,7 +135,7 @@ int main(int argc, char *argv[])
 
 	do_readahead(&b,gd,rh,dm,hm,cmd);
 
-	do_requested_variables(&b,nc,gd,rh,dm,hm,diag,cmd);
+	do_requested_variables(&b,nc,gd,rh,dm,hm,cmd);
 
 	status = nc_close(nc.ncid);  if (status != NC_NOERR)
 	{

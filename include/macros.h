@@ -11,6 +11,8 @@
 #define TRUE (1)
 #define FALSE (0)
 
+#define same(a,b) !strcmp(a,b)
+
 //NOTE: these macros must be carefully used.
 //You must name your mesh structure mesh
 //And this assumes we're in pointer land

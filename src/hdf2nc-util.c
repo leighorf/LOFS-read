@@ -4,7 +4,7 @@
 #include "../include/lofs-read.h"
 #include "../include/macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, diagnostics *diag)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
 {
 	int i;
 
@@ -47,17 +47,6 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
-
-	diag->uinterp=0;
-	diag->vinterp=0;
-	diag->winterp=0;
-	diag->hwin_sr=0;
-	diag->hwin_gr=0;
-	diag->windmag_sr=0;
-	diag->hdiv=0;
-	diag->vortmag=0;
-	diag->hvort=0;
-	diag->streamvort=0;
 }
 
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd)
@@ -210,7 +199,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	// Carefully consider the UH,UF etc. macros and make sure they are appropriate for where you are in
 	// the code (should be in pointer land)
 
-#ifdef EATME
+#ifndef EATME
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UH(ix-gd.X0) = msh->dx/(msh->xffull[ix+1]-msh->xffull[ix]);
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UF(ix-gd.X0) = msh->dx/(msh->xhfull[ix]-msh->xhfull[ix-1]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VH(iy-gd.Y0) = msh->dy/(msh->yffull[iy+1]-msh->yffull[iy]);
@@ -254,7 +243,7 @@ void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *
 int n2d;
 const char **twodvarname;
 int *twodvarid;
-int ncid;
+int ncid_g;
 int d2[3];
 
 herr_t twod_first_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
@@ -270,7 +259,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     H5G_stat_t statbuf;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
     strcpy((char *)twodvarname[n2d],name);
-    nc_def_var (ncid, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
+    nc_def_var (ncid_g, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
     n2d++;
     return 0;
 }
@@ -280,6 +269,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	int status;
 	int nv;
 	int ivar;
+	char var[MAXSTR];
 
 	status = nc_def_dim (nc->ncid, "xh", gd.NX, &nc->nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (nc->ncid, "yh", gd.NY, &nc->nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
@@ -346,10 +336,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int i2d,bufsize;
 
-//		do this later
-//		bufsize = (long) (gd.NX) * (long) (gd.NY) * (long) sizeof(float);
-//		if ((b->twodfield = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 2D swaths buffer array");
-/* n2d, twodvarname and twodvarid are global vars declared above to enable the H5Giterate function */
 		n2d = 0;
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
@@ -359,8 +345,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 		hm->n2dswaths = n2d;
 		printf("There are %i 2D static/swath fields.\n",n2d);
-//		bufsize = (long) (NX) * (long) (NY) * (long) (n2d) * (long) sizeof(float);
-//		if ((twodbuf0 = twodbuffer = (float *) malloc ((size_t)bufsize)) == NULL) ERROR_STOP("Cannot allocate our 3D variable buffer array");
 
 		for (i2d=0; i2d<n2d; i2d++)
 		{
@@ -368,13 +352,12 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		}
 
 		n2d = 0;
-		ncid=nc->ncid; //Needed for iteration func.
+		ncid_g=nc->ncid; //Needed for iteration func.
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_second_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_second_pass_hdf2nc,NULL);
 
 		for (i2d=0; i2d<n2d; i2d++) free((void *)twodvarname[i2d]); //shaddap compiler
 		free(twodvarname);
-//		free(twodvarid);
 
 		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
@@ -444,9 +427,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int var_is_u = 0, var_is_v = 0, var_is_w = 0;
 
-		if (!strcmp(nc->varname[ivar],"u")) var_is_u=1;
-		if (!strcmp(nc->varname[ivar],"v")) var_is_v=1;
-		if (!strcmp(nc->varname[ivar],"w")) var_is_w=1;
+		strcpy(var,nc->varname[ivar]);
+
+		if (same(var,"u")) var_is_u=1;
+		if (same(var,"v")) var_is_v=1;
+		if (same(var,"w")) var_is_w=1;
 
 		/* u v and w live on their own mesh (Arakawa C grid)*/
 
@@ -581,36 +566,36 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 // We are still before the nc_enddef call, in case you are lost
 
-		if(!strcmp(nc->varname[ivar],"uinterp"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind","m/s");
-		else if(!strcmp(nc->varname[ivar],"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind","m/s");
-		else if(!strcmp(nc->varname[ivar],"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind","m/s");
-		else if(!strcmp(nc->varname[ivar],"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","pressure_perturbation","hPa");
-		else if(!strcmp(nc->varname[ivar],"thpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","potential_temperature_perturbation","K");
-		else if(!strcmp(nc->varname[ivar],"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_perturbation","kg/m^3");
-		else if(!strcmp(nc->varname[ivar],"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(!strcmp(nc->varname[ivar],"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(!strcmp(nc->varname[ivar],"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(!strcmp(nc->varname[ivar],"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(!strcmp(nc->varname[ivar],"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","x_vorticity","s^-1");
-		else if(!strcmp(nc->varname[ivar],"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","y_vorticity","s^-1");
-		else if(!strcmp(nc->varname[ivar],"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","z_vorticity","s^-1");
-		else if(!strcmp(nc->varname[ivar],"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vorticity_magnitude","s^-1");
-		else if(!strcmp(nc->varname[ivar],"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_vorticity_magnitude","s^-1");
-		else if(!strcmp(nc->varname[ivar],"streamvort"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
-		else if(!strcmp(nc->varname[ivar],"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","radar_reflectivity_simulated","dBZ");
-		else if(!strcmp(nc->varname[ivar],"qvpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
-		else if(!strcmp(nc->varname[ivar],"qc"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
-		else if(!strcmp(nc->varname[ivar],"qr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
-		else if(!strcmp(nc->varname[ivar],"qi"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
-		else if(!strcmp(nc->varname[ivar],"qs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","now_mixing_ratio","g/kg");
-		else if(!strcmp(nc->varname[ivar],"qg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_mixing_ratio","g/kg");
-		else if(!strcmp(nc->varname[ivar],"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ice_number_concenctration","cm^-3");
-		else if(!strcmp(nc->varname[ivar],"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_number_concenctration","cm^-3");
-		else if(!strcmp(nc->varname[ivar],"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","snow_number_concenctration","cm^-3");
-		else if(!strcmp(nc->varname[ivar],"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_number_concenctration","cm^-3");
-		else if(!strcmp(nc->varname[ivar],"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(!strcmp(nc->varname[ivar],"windmag_sr"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
-		else if(!strcmp(nc->varname[ivar],"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ground_relative_horizontal_wind_speed","m/s");
+		if(same(var,"uinterp"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind","m/s");
+		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind","m/s");
+		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind","m/s");
+		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","pressure_perturbation","hPa");
+		else if(same(var,"thpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","potential_temperature_perturbation","K");
+		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_perturbation","kg/m^3");
+		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","x_vorticity","s^-1");
+		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","y_vorticity","s^-1");
+		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","z_vorticity","s^-1");
+		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vorticity_magnitude","s^-1");
+		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_vorticity_magnitude","s^-1");
+		else if(same(var,"streamvort"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
+		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qvpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
+		else if(same(var,"qc"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qi"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","now_mixing_ratio","g/kg");
+		else if(same(var,"qg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_number_concenctration","cm^-3");
+		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","snow_number_concenctration","cm^-3");
+		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_number_concenctration","cm^-3");
+		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ground_relative_horizontal_wind_speed","m/s");
 		if (cmd->gzip) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, 1);
 	}
 
@@ -628,25 +613,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_pi","m/s");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_qv","m/s");
-}
-
-void set_diag_flags_from_varnames(diagnostics *diag, ncstruct nc,cmdline cmd)
-{
-	int ivar;
-
-	for (ivar=0; ivar < cmd.nvar; ivar++)
-	{
-		if(!strcmp(nc.varname[ivar],"uinterp"))	diag->uinterp=1;
-		if(!strcmp(nc.varname[ivar],"vinterp"))	diag->vinterp=1;
-		if(!strcmp(nc.varname[ivar],"winterp"))	diag->winterp=1;
-		if(!strcmp(nc.varname[ivar],"hwin_sr"))	diag->hwin_sr=1;
-		if(!strcmp(nc.varname[ivar],"hwin_gr"))	diag->hwin_gr=1;
-		if(!strcmp(nc.varname[ivar],"windmag_sr")) diag->windmag_sr=1;
-		if(!strcmp(nc.varname[ivar],"hdiv")) diag->hdiv=1;
-		if(!strcmp(nc.varname[ivar],"vortmag")) diag->vortmag=1;
-		if(!strcmp(nc.varname[ivar],"hvort")) diag->hvort=1;
-		if(!strcmp(nc.varname[ivar],"streamvort")) diag->streamvort=1;
-	}
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -680,40 +646,30 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 }
 
-void set_readahead(readahead *rh,ncstruct nc,diagnostics diag, cmdline cmd)
+void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 {
 	int ivar;
+	char *var;
+
+	var = (char *) malloc (MAXSTR * sizeof (char));
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
-		if(diag.uinterp&&!cmd.use_interp) {rh->u=1;}
-		if(diag.vinterp&&!cmd.use_interp) {rh->v=1;}
-		if(diag.winterp&&!cmd.use_interp) {rh->w=1;}
-		if(diag.hwin_sr) {rh->u=rh->v=1;}
-		if(diag.hdiv) {rh->u=rh->v=1;}
-		if(diag.windmag_sr) {rh->u=rh->v=rh->w=1;}
-		if(diag.zvort) {rh->u=rh->v=1;}
-		if(diag.xvort) {rh->v=rh->w=1;}
-		if(diag.yvort) {rh->u=rh->w=1;}
-		if(diag.hvort) {rh->u=rh->v=rh->w=1;}
-		if(diag.vortmag) {rh->u=rh->v=rh->w=1;}
-		if(diag.streamvort) {rh->u=rh->v=rh->w=1;}
-		if(diag.hwin_gr) {rh->u=rh->v=rh->w=1;}
-//		if(!strcmp(varname[ivar],"streamfrac")) {u_rh=v_rh=w_rh=1;}
-//		if(!strcmp(varname[ivar],"xvort_baro")) {thrhopert_rh=1;}
-//		if(!strcmp(varname[ivar],"yvort_baro")) {thrhopert_rh=1;}
-//		if(!strcmp(varname[ivar],"yvort_stretch")) {u_rh=w_rh=yvort_rh=1;}
-//		if(!strcmp(varname[ivar],"yvort_tilt")) {v_rh=xvort_rh=yvort_rh=1;}
-//		if(!strcmp(varname[ivar],"xvort_stretch")) {v_rh=w_rh=xvort_rh=1;}
-//		if(!strcmp(varname[ivar],"xvort_tilt")) {u_rh=yvort_rh=zvort_rh=1;}
-//		if(!strcmp(varname[ivar],"zvort_stretch")) {u_rh=v_rh=zvort_rh=1;}
-//		if(!strcmp(varname[ivar],"zvort_tilt")) {w_rh=xvort_rh=zvort_rh=1;}
-//Might use these, but I usually only read cloud stuff once, so this
-//isn't used... yet
-//		if(!strcmp(varname[ivar],"qcloud")) {qc_rh=qi_rh=1;}
-//		if(!strcmp(varname[ivar],"qprecip")) {qr_rh=qs_rh=qg_rh=1;}
-	}
+		var=nc.varname[ivar];
 
+		if(same(var,"uinterp")) {rh->u=1;}
+		if(same(var,"vinterp")) {rh->v=1;}
+		if(same(var,"winterp")) {rh->w=1;}
+		if(same(var,"hwin_sr")) {rh->u=1;rh->v=1;}
+		if(same(var,"hwin_gr")) {rh->u=1;rh->v=1;}
+		if(same(var,"windmag_sr")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"hdiv")) {rh->u=1;rh->v=1;}
+		if(same(var,"xvort")) {rh->v=1;rh->w=1;}
+		if(same(var,"yvort")) {rh->u=1;rh->w=1;}
+		if(same(var,"zvort")) {rh->u=1;rh->v=1;}
+		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;}
+	}
 }
 
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
