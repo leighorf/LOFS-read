@@ -601,13 +601,13 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	var = (char *) malloc (MAXSTR * sizeof(char));
 
 #define FL fflush(stdout);
-#define CL if(cmd.verbose){printf("calculating...");FL}
-#define BL if(cmd.verbose){printf("\n");FL}
+#define CL {printf("calculating...");FL}
+#define BL {printf("\n");FL}
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
 		var=nc.varname[ivar];
-		if(cmd.verbose) {printf("%s: ",var);FL;}
+		printf("%s: ",var);FL;
 
 		if(same(var,"u"))
 		{
@@ -657,10 +657,12 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);wp=b->buf;}
 		else
 		{
+			printf("reading...");FL;
 			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
+			wp=b->buf;
 			BL;
 		}
-		if(cmd.verbose) {printf("writing...");FL;}
+		printf("writing...");FL;
 		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
 		BL;
 	}

@@ -436,7 +436,7 @@ really. See P3 macro in lofs-read.h */
 	count3[0]=gnz;count3[1]=gny;count3[2]=gnx;
 	status=memoryspace_id = H5Screate_simple(rank,count3,NULL);
 	if (status < 0) ERROR_STOP("H5Screate_simple failed");
-	printf("\n");
+	if(cmd.verbose)printf("\n");
 	for (iynode = fy0; iynode <= fyf; iynode++)
 	{
 		for (ixnode = fx0; ixnode <= fxf; ixnode++)
@@ -610,7 +610,7 @@ really. See P3 macro in lofs-read.h */
 
 					offset_out3[0] = i2d;
 
-					if(i2d == 0) //seriously you want this
+					if(i2d == 0 && cmd.verbose) //seriously you want this
 					{
 						letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
 						printf ("%c",alph[letter]); fflush (stdout);
@@ -676,8 +676,11 @@ really. See P3 macro in lofs-read.h */
 				{
 					ERROR_STOP("Rank should be 3, WTF?");
 				}
-				letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
-				printf ("%c",alph[letter]); fflush (stdout);
+				if(cmd.verbose)
+				{
+					letter = (int)(25.0*(float)(snx*sny)/(float)(numi*numj));
+					printf ("%c",alph[letter]); fflush (stdout);
+				}
 				if ((H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in3,NULL,count3,NULL)) < 0)
 				{
 						fprintf(stderr,"\nCannot select hyperslab dataspace_id %i in file %s\n",dataspace_id,nodefile[k]);
@@ -703,7 +706,7 @@ really. See P3 macro in lofs-read.h */
 			}
 			H5Fclose (file_id);
 		}
-		printf("\n");
+		if(cmd.verbose)printf("\n");
 	}
     if (!strcmp(varname,"swaths")) {
 	    H5Sclose (swath_memoryspace_id);
@@ -717,5 +720,5 @@ really. See P3 macro in lofs-read.h */
 	}
 	free (hdf);
 	free (nodefile);
-//	H5Z_zfp_finalize();
+	if(cmd.verbose)printf("\n");
 }
