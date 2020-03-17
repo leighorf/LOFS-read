@@ -4,6 +4,42 @@
 #include "../include/hdf2nc.h"
 #include "../include/limits.h"
 
+void calc_uinterp()
+{
+}
+void calc_vinterp()
+{
+}
+void calc_winterp()
+{
+}
+void calc_hwin_sr()
+{
+}
+void calc_hwin_gr()
+{
+}
+void calc_windmag_sr()
+{
+}
+void calc_hdiv()
+{
+}
+void calc_xvort()
+{
+}
+void calc_yvort()
+{
+}
+void calc_zvort()
+{
+}
+void calc_vortmag()
+{
+}
+void calc_streamvort()
+{
+}
 
 void do_requested_variables(buffers *b, ncstruct nc, grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
@@ -28,18 +64,18 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd,readahead rh,dir_me
 	{
 		var=nc.varname[ivar];
 
-		if(same(var,"uinterp")) {;}
-		if(same(var,"vinterp")) {;}
-		if(same(var,"winterp")) {;}
-		if(same(var,"hwin_sr")) {;}
-		if(same(var,"hwin_gr")) {;}
-		if(same(var,"windmag_sr")) {;}
-		if(same(var,"hdiv")) {;}
-		if(same(var,"xvort")) {;}
-		if(same(var,"yvort")) {;}
-		if(same(var,"zvort")) {;}
-		if(same(var,"vortmag")) {;}
-		if(same(var,"streamvort")) {;}
+		if(same(var,"uinterp")) {calc_uinterp();}
+		if(same(var,"vinterp")) {calc_vinterp();}
+		if(same(var,"winterp")) {calc_winterp();}
+		if(same(var,"hwin_sr")) {calc_hwin_sr();}
+		if(same(var,"hwin_gr")) {calc_hwin_gr();}
+		if(same(var,"windmag_sr")) {calc_windmag_sr();}
+		if(same(var,"hdiv")) {calc_hdiv();}
+		if(same(var,"xvort")) {calc_xvort();}
+		if(same(var,"yvort")) {calc_yvort();}
+		if(same(var,"zvort")) {calc_zvort();}
+		if(same(var,"vortmag")) {calc_vortmag();}
+		if(same(var,"streamvort")) {calc_streamvort();}
 		else
 		{
 			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
@@ -47,3 +83,4 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd,readahead rh,dir_me
 		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, b->buf);
 	}
 }
+
