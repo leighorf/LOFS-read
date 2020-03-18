@@ -600,10 +600,6 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 
 	var = (char *) malloc (MAXSTR * sizeof(char));
 
-#define FL fflush(stdout);
-#define CL {printf("calculating...");FL}
-#define BL {printf("\n");FL}
-
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
 		var=nc.varname[ivar];

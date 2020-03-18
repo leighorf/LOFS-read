@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 
 	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
 
-	printf("Variables available: ");
+	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++)
 		printf("%s ",hm.varname_available[i]);printf("\n");
 
@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 		printf("We are requesting the following variables: ");
 		for (i=0; i<cmd.nvar_cmdline; i++)
 			printf("%s ",cmd.varname_cmdline[i]);
-	} printf("\n");
+		 printf("\n");
+	}
 
 	if (cmd.debug)
 		printf("nx = %i ny = %i nz = %i nodex = %i nodey = %i\n",hm.nx,hm.ny,hm.nz,hm.nodex,hm.nodey);
@@ -146,5 +147,9 @@ int main(int argc, char *argv[])
 	}
 
 	H5Z_zfp_finalize();
+
+	write_hdf2nc_command_txtfile(argc,argv,nc);
+
+	exit(0);
 
 }

@@ -50,4 +50,9 @@
 #define  WA(x,y,z) b->wstag[P3(x+1,y+1,z,nx+2,ny+2)]
 
 #define PCL(t,p,mt) (((p)*(mt))+(t))
+
+#define FL fflush(stdout);
+#define CL {printf("calculating...");FL}
+#define BL {printf("\n");FL}
+
 #endif

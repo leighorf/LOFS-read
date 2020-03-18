@@ -66,10 +66,6 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd);
 void sortchararray (char **strarray, int nel);
-
-
-
-
-
+void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 
 #endif

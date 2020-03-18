@@ -2,8 +2,7 @@
 #include "../include/dirstruct.h"
 #include "../include/hdf2nc.h"
 
-void
-get0dint (hid_t f_id, char *varname, int *var)
+void get0dint (hid_t f_id, char *varname, int *var)
 {
 	hid_t dataset_id;
 	int status;
@@ -15,8 +14,7 @@ get0dint (hid_t f_id, char *varname, int *var)
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 }
 
-void
-get0dfloat (hid_t f_id, char *varname, float *var)
+void get0dfloat (hid_t f_id, char *varname, float *var)
 {
 	hid_t dataset_id;
 	int status;
@@ -27,8 +25,7 @@ get0dfloat (hid_t f_id, char *varname, float *var)
 	if ((status = H5Dclose (dataset_id)) < 0) ERROR_STOP("Could not H5Dclose");
 }
 
-void
-get1ddouble (hid_t f_id, char *varname, double *var, int p0, int np)
+void get1ddouble (hid_t f_id, char *varname, double *var, int p0, int np)
 {
 	int rank;
 	hsize_t count[1], dims[1];
@@ -54,8 +51,7 @@ get1ddouble (hid_t f_id, char *varname, double *var, int p0, int np)
 
 }
 
-void
-get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
+void get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 {
 	int rank;
 	hsize_t count[1], dims[1];
@@ -117,6 +113,6 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
-	} printf("\n");
+	}
 }
 

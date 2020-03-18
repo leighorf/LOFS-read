@@ -685,7 +685,6 @@ crave electrolytes.
 			H5Fclose(file_id);
 
 		}
-		printf("\n");
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",dm->firstfilename);

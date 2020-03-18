@@ -59,6 +59,26 @@ void copy_grid_to_requested_cube (requested_cube *rc, grid gd)
 	rc->NZ=gd.NZ;
 }
 
+void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc)
+{
+	int i;
+	FILE *fp;
+	char *cmdfilename;
+	cmdfilename = (char *)malloc(MAXSTR*sizeof(char));
+	sprintf(cmdfilename,"%s%s",nc.ncfilename,".cmd");
+	if ((fp = fopen(cmdfilename,"w")) != NULL)
+	{
+		for (i=0; i<argc; i++)
+		{
+			fprintf(fp,"%s ",argv[i]);
+		}
+	fprintf(fp,"\n");
+	fclose(fp);
+    }
+	free(cmdfilename);
+}
+
+
 void get_saved_base(char *timedir, char *saved_base)
 {
 	// Just grab the basename so we can have it set automatically
@@ -717,7 +737,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	copy_grid_to_requested_cube(&rc,gd);
 
-	printf("Working on 2D static fields and swaths ("); 
+	printf("swaths: writing...");FL; 
 
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) sizeof(float);
 	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -738,7 +758,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 	}
 	free(swathbuf);
 	free(twodfield);
-	printf(")\n");
+	BL;
 }
 
 void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
