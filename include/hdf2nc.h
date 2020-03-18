@@ -47,13 +47,29 @@ typedef struct readahead
 
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
 void get_saved_base(char *timedir, char *saved_base);
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
+void get_num_time_dirs (dir_meta *dm,cmdline cmd);
+void get_sorted_time_dirs (dir_meta *dm,cmdline cmd);
+void get_num_node_dirs (dir_meta *dm,cmdline cmd);
+void get_sorted_node_dirs (dir_meta *dm,cmdline cmd);
+void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id);
+void set_span(grid *gd,hdf_meta hm,cmdline cmd);
+void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id);
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id);
+void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd);
+void set_readahead(readahead *rh,ncstruct nc, cmdline cmd);
+void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
+void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd);
+void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
+void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
+void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
+void copy_grid_to_requested_cube (requested_cube *rc, grid gd);
+void sortchararray (char **strarray, int nel);
 
-/*
-void read_hdf_mult_md(float *gf, char *topdir, char **timedir, char **nodedir, int ntimedirs, int dn,
-    double *dirtimes, double *alltimes, int ntottimes, double dtime, char *varname,
-    int gx0, int gy0, int gxf, int gyf, int gz0, int gzf,
-    int nx, int ny, int nz, int nodex, int nodey);
 
-*/
+
+
+
 
 #endif

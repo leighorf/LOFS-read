@@ -10,8 +10,7 @@
 DIR *dip;
 struct dirent *dit;
 
-void
-open_directory(char basedir_full[MAXSTR])
+void open_directory(char basedir_full[MAXSTR])
 /* This routine must be called before any call to
  * readdir (which iterates over files in the directory) */
 {
@@ -22,8 +21,7 @@ open_directory(char basedir_full[MAXSTR])
 		ERROR_STOP ("Can't open directory");
 	}
 }
-void
-close_directory()
+void close_directory()
 {
 	if (closedir (dip) == -1)
 	{
@@ -32,8 +30,7 @@ close_directory()
 	}
 }
 
-int
-isNumeric (const char *s)
+int isNumeric (const char *s)
 {
 	int i;
 
@@ -46,20 +43,17 @@ isNumeric (const char *s)
 	return 1;
 }
 
-static int
-cmpstringp (const void *p1, const void *p2)
+static int cmpstringp (const void *p1, const void *p2)
 {
 	return strcmp (*(char *const *) p1, *(char *const *) p2);
 }
 
-static int
-cmpintp (const void *p1, const void *p2)
+static int cmpintp (const void *p1, const void *p2)
 {
 	return *(int *) p1 - *(int *) p2;
 }
 
-static int
-cmpfloatp (const void *p1, const void *p2)
+static int cmpfloatp (const void *p1, const void *p2)
 {
 	static int retval;
 	float fdiff;
@@ -70,8 +64,7 @@ cmpfloatp (const void *p1, const void *p2)
 	return retval;
 }
 
-static int
-cmpdoublep (const void *p1, const void *p2)
+static int cmpdoublep (const void *p1, const void *p2)
 {
 	double fdiff;
 	static int retval;
@@ -82,33 +75,28 @@ cmpdoublep (const void *p1, const void *p2)
 	return retval;
 }
 
-void
-sortchararray (char **strarray, int nel)
+void sortchararray (char **strarray, int nel)
 {
 	qsort (strarray, nel, sizeof (char *), cmpstringp);
 }
 
-void
-sortintarray (int *intarray, int nel)
+void sortintarray (int *intarray, int nel)
 {
 	qsort (intarray, nel, sizeof (int), cmpintp);
 }
 
-void
-sortfloatarray (float *floatarray, int nel)
+void sortfloatarray (float *floatarray, int nel)
 {
 	qsort (floatarray, nel, sizeof (float), cmpfloatp);
 }
 
-void
-sortdoublearray (double *floatarray, int nel)
+void sortdoublearray (double *floatarray, int nel)
 {
 	qsort (floatarray, nel, sizeof (double), cmpdoublep);
 }
 
 //get_sorted_node_dirs (char *topdir, char *timedir, char **nodedir, int *dn, int nnodedirs,int debug,int regenerate_cache)
-void
-get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
+void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 {
 	int i,j,iret,ns;
 	char tmpstr[256]; //size of dit->d_name
@@ -166,9 +154,7 @@ get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 	}
 }
 
-void
-//get_sorted_time_dirs (char *basedir, char **timedir, double *times, int ntimedirs, int debug, int regenerate_cache)
-get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
+void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 {
 	int i, j, k, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -278,8 +264,7 @@ get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	}
 }
 
-void
-get_num_time_dirs (dir_meta *dm,cmdline cmd)
+void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 {
 	int i, j, ns, iret;
 	char tmpstr[256]; // size of dit->d_name
@@ -372,12 +357,9 @@ get_num_time_dirs (dir_meta *dm,cmdline cmd)
 	}
 
 	dm->ntimedirs = j;
-//	return j;
 }
 
-//get_num_node_dirs (char *topdir, char *timedir,int debug, int regenerate_cache)
-void
-get_num_node_dirs (dir_meta *dm,cmdline cmd)
+void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 {
 	int j, ns,iret;
 	char timedir_full[MAXSTR];
@@ -416,7 +398,6 @@ get_num_node_dirs (dir_meta *dm,cmdline cmd)
 	}
 
 	dm->nnodedirs = j;
-//	return j;
 }
 
 int get_nodemask(char basedir_full[MAXSTR])
@@ -466,12 +447,6 @@ void get_unsorted_file_list(char** cm1hdf5file)
 	}
 	close_directory();
 }
-
-/*
-double *
-get_all_available_times (char *topdir, char **timedir, int ntimedirs, char **nodedir, int nnodedirs, int *ntottimes, char *firstfilename, int *firsttimedirindex,
-		int *saved_X0, int *saved_Y0, int *saved_X1, int *saved_Y1, int debug,int regenerate_cache)
-*/
 
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd)
 {
@@ -776,6 +751,4 @@ crave electrolytes.
 			if(cmd.verbose)printf("Read all cached metadata from dot files\n");
 		}
 	}
-
-//	return(alltimes);
 }

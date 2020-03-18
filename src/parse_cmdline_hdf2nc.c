@@ -1,3 +1,4 @@
+#include <omp.h>
 #include "../include/dirstruct.h"
 #include "../include/limits.h"
 #include "../include/hdf2nc.h"
