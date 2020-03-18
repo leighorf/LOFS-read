@@ -1,0 +1,24 @@
+#spack load hdf5-zfp netcdf-c first
+
+CC = mpicc
+CFLAGS = -fopenmp -O3 -fPIC 
+LINKOPTS  = -lh5zzfp -lzfp -lhdf5_hl -lhdf5 -lsz -lz -lm -lnetcdf -fopenmp 
+SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c
+
+OBJS = $(addsuffix .o, $(basename $(SRC)))
+
+all: hdf2nc stash
+
+hdf2nc: $(OBJS)
+	$(CC) $(CFLAGS) -o hdf2nc  $(OBJS) $(LINKOPTS)
+.c.o:	
+	$(CC) $(CFLAGS) -c $*.c
+stash: stash.o
+	cc -o stash stash.o $(LINKOPTS)
+stash.c:	
+	$(CC) -c stash.c
+clean:
+	rm -rf *.o hdf2nc stash
+install: hdf2nc stash
+	install -m 0755 hdf2nc $(HOME)/bin
+	install -m 0755 stash $(HOME)/bin
