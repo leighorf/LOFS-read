@@ -85,23 +85,16 @@ get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 //ORF this will fill our hdf_meta struct
 void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id)
 {
-    hid_t g_id;
-    H5G_info_t group_info;
-    int i,status;
+	hid_t g_id;
+	H5G_info_t group_info;
+	int i,status;
 	char groupname[MAXSTR];
 
-	/* Already open 
-	if ((*f_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
-    {
-		fprintf(stderr,"\n\nget_hdf_metadata: Unable to read metadata from %s, bailing!\n", dm.firstfilename);
-   		exit(0);
-    }
-	*/
-    get0dint (*f_id, "grid/nodex", &hm->nodex);
-    get0dint (*f_id, "grid/nodey", &hm->nodey);
-    get0dint (*f_id, "grid/nx", &hm->nx);
-    get0dint (*f_id, "grid/ny", &hm->ny);
-    get0dint (*f_id, "grid/nz", &hm->nz);
+	get0dint (*f_id, "grid/nodex", &hm->nodex);
+	get0dint (*f_id, "grid/nodey", &hm->nodey);
+	get0dint (*f_id, "grid/nx", &hm->nx);
+	get0dint (*f_id, "grid/ny", &hm->ny);
+	get0dint (*f_id, "grid/nz", &hm->nz);
 
 	sprintf(groupname,"%05i/3D",0);//All vars in 3D group 00000 are always available
 	g_id = H5Gopen(*f_id,groupname,H5P_DEFAULT);
