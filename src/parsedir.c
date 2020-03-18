@@ -6,8 +6,6 @@
 #include "../include/limits.h"
 #include "../include/lofs-read.h"
 
-#define MAXSTR (512)
-
 //extern int regenerate_cache;
 DIR *dip;
 struct dirent *dit;
