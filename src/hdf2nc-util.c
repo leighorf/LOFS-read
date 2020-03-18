@@ -214,17 +214,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = 0.001*msh->yhfull[iy];
 	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = 0.001*msh->xhfull[ix];
 }
-/*
-void set_nc_meta(ncstruct nc, int ivar, char *namestandard, char *name, char *units)
-{
-	int len;
 
-	len=strlen(name);
-	status = nc_put_att_text(nc->ncid, nc->varnameid[ivar],namestandard,len,name); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	len=strlen(units); status = nc_put_att_text(nc->ncid, nc->varnameid[ivar], "units",len,units);
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-}
-*/
 
 void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *units)
 {
