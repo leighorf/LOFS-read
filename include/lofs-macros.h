@@ -31,12 +31,12 @@
 #define MH(iz) msh.mh[iz]
 #define MF(iz) msh.mf[iz]
 
-#define xh(ix) msh->xh[ix+1]
-#define xf(ix) msh->xf[ix+1]
-#define yh(iy) msh->yh[iy+1]
-#define yf(iy) msh->yf[iy+1]
-#define zh(iz) msh->zh[iz]
-#define zf(iz) msh->zf[iz]
+#define xh(ix) msh->xhout[ix+1]
+#define xf(ix) msh->xfout[ix+1]
+#define yh(iy) msh->yhout[iy+1]
+#define yf(iy) msh->yfout[iy+1]
+#define zh(iz) msh->zhout[iz]
+#define zf(iz) msh->zfout[iz]
 
 // ORF: OK being a bit clever here ... fun with macros. This will make the code a lot
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM
