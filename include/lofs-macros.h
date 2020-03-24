@@ -42,7 +42,7 @@
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM
 // for his tem array, UA for ua etc.
 #define BUF4D(x,y,z,t) buf0[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
-#define TEM4D(x,y,z,t) buf0[P4(x,y,z,t,nx+2,ny+2,nz+1)]
+#define TEM4D(x,y,z,t) dum0[P4(x,y,z,t,nx+2,ny+2,nz+1)]
 
 #define BUFp(x,y,z) b->buf0[P3(x,y,z,nx,ny)]
 #define TEMp(x,y,z) b->dum0[P3(x,y,z,nx+1,ny+1)]
