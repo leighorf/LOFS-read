@@ -1,6 +1,6 @@
 #include "../include/lofs-read.h"
-#include "../include/dirstruct.h"
-#include "../include/hdf2nc.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-hdf2nc.h"
 
 void get0dint (hid_t f_id, char *varname, int *var)
 {

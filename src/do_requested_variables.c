@@ -1,9 +1,9 @@
 #include <omp.h>
 #include "../include/lofs-read.h"
-#include "../include/dirstruct.h"
-#include "../include/hdf2nc.h"
-#include "../include/limits.h"
-#include "../include/macros.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-hdf2nc.h"
+#include "../include/lofs-limits.h"
+#include "../include/lofs-macros.h"
 
 /* Note, we use George's i,j,k and ni,nj,nk approach although we personally prefer ix,iy,iz and
  * nx,ny,nz. Because some of our macros use the nx,ny,nz approach we copy ni,nj,nk to a local nx,ny,nz

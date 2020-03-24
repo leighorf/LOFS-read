@@ -2,8 +2,8 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
-#include "../include/dirstruct.h"
-#include "../include/limits.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-limits.h"
 #include "../include/lofs-read.h"
 
 //extern int regenerate_cache;
