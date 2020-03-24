@@ -57,6 +57,7 @@ typedef struct meshstruct
 	float dx,dy,dz;
 	float rdx,rdy,rdz;
 	float umove,vmove;
+	double dt;
 } mesh;
 
 typedef struct cmdline
