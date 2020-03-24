@@ -113,6 +113,7 @@ int main(int argc, char *argv[])
 	nc.e2[0] = 1; nc.e2[1] = gd.NY; nc.e2[2] = gd.NX;
 	
 	/* Allocate memory for 1d mesh and sounding arrays */
+	allocate_1d_arrays(hm, gd, &msh, &snd);
 
 	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id);
 
