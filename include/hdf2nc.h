@@ -25,7 +25,7 @@ typedef struct netcdf_struct
 
 typedef struct sounding
 {
-	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
+	float *u0,*v0,*pres0,*pi0,*th0,*qv0,*rho0;
 } sounding;
 
 typedef struct buffers
