@@ -33,6 +33,7 @@ clean:
 	rm -rf ../bin/stash
 	rm -rf ../lib/liblofs.a
 install: hdf2nc stash
+	mkdir -p ../bin ../lib
 	mv hdf2nc ../bin
 	mv stash ../bin
 	mv liblofs.a ../lib/
