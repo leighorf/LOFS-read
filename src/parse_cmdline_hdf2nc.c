@@ -1,7 +1,7 @@
 #include <omp.h>
-#include "../include/dirstruct.h"
-#include "../include/limits.h"
-#include "../include/hdf2nc.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-limits.h"
+#include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-read.h"
 
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)

@@ -14,8 +14,8 @@
 #include <hdf5_hl.h>
 #include <H5Zzfp.h>
 #include <getopt.h>
-#include "macros.h"
-#include "limits.h"
+#include "lofs-macros.h"
+#include "lofs-limits.h"
 
 void get0dint(hid_t sd_id, char *varname, int *var);
 void get0dfloat(hid_t sd_id, char *varname, float *var);
