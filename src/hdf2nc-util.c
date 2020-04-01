@@ -690,7 +690,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
 	}
-	free(var);
+	//free(var);
 }
 
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
