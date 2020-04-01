@@ -44,7 +44,7 @@ typedef struct readahead
 	int u,v,w;
 	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
 } readahead;
-
+void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
 void get_saved_base(char *timedir, char *saved_base);
 void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
