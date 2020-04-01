@@ -234,8 +234,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UFp(ix-gd.X0) = msh->dx/(msh->xhfull[ix]-msh->xhfull[ix-1]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VHp(iy-gd.Y0) = msh->dy/(msh->yffull[iy+1]-msh->yffull[iy]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VFp(iy-gd.Y0) = msh->dy/(msh->yhfull[iy]-msh->yhfull[iy-1]);
-	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MHp(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
-	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
+	for (iz=gd.Z0; iz<gd.Z1+1; iz++) MHp(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
+	for (iz=gd.Z0; iz<gd.Z1+1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = 0.001*msh->zh[iz];
 	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
