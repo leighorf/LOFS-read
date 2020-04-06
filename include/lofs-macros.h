@@ -31,23 +31,36 @@
 #define MH(iz) msh.mh[iz]
 #define MF(iz) msh.mf[iz]
 
-#define xh(ix) msh->xh[ix+1]
-#define xf(ix) msh->xf[ix+1]
-#define yh(iy) msh->yh[iy+1]
-#define yf(iy) msh->yf[iy+1]
-#define zh(iz) msh->zh[iz]
-#define zf(iz) msh->zf[iz]
+#define xh(ix) msh->xhout[ix+1]
+#define xf(ix) msh->xfout[ix+1]
+#define yh(iy) msh->yhout[iy+1]
+#define yf(iy) msh->yfout[iy+1]
+#define zh(iz) msh->zhout[iz]
+#define zf(iz) msh->zfout[iz]
 
 // ORF: OK being a bit clever here ... fun with macros. This will make the code a lot
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM
 // for his tem array, UA for ua etc.
+#define BUF4D(x,y,z,t) buf0[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
+#define TEM4D(x,y,z,t) dum0[P4(x,y,z,t,nx+2,ny+2,nz+1)]
+#define  UA4D(x,y,z,t) ustag[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
+#define  VA4D(x,y,z,t) vstag[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
+#define  WA4D(x,y,z,t) wstag[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
+#define  KM4D(x,y,z,t) kmstag[P4(x+1,y+1,z,t,nx+2,ny+2,nz+1)]
 
-#define BUF(x,y,z) b->buf0[P3(x,y,z,nx,ny)]
-#define TEM(x,y,z) b->dum0[P3(x,y,z,nx+1,ny+1)]
-#define TEM1(x,y,z) b->dum1[P3(x,y,z,nx+1,ny+1)]
-#define  UA(x,y,z) b->ustag[P3(x+1,y+1,z,nx+2,ny+2)]
-#define  VA(x,y,z) b->vstag[P3(x+1,y+1,z,nx+2,ny+2)]
-#define  WA(x,y,z) b->wstag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define BUFp(x,y,z) b->buf0[P3(x,y,z,nx,ny)]
+#define TEMp(x,y,z) b->dum0[P3(x,y,z,nx+1,ny+1)]
+#define TEM1p(x,y,z) b->dum1[P3(x,y,z,nx+1,ny+1)]
+#define  UAp(x,y,z) b->ustag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  VAp(x,y,z) b->vstag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  WAp(x,y,z) b->wstag[P3(x+1,y+1,z,nx+2,ny+2)]
+
+#define BUF(x,y,z) buf0[P3(x,y,z,nx,ny)]
+#define TEM(x,y,z) dum0[P3(x,y,z,nx+1,ny+1)]
+#define TEM1(x,y,z) dum1[P3(x,y,z,nx+1,ny+1)]
+#define  UA(x,y,z) ustag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  VA(x,y,z) vstag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define  WA(x,y,z) wstag[P3(x+1,y+1,z,nx+2,ny+2)]
 
 #define PCL(t,p,mt) (((p)*(mt))+(t))
 

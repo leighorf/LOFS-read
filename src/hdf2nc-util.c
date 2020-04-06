@@ -1,8 +1,8 @@
-#include "../include/dirstruct.h"
-#include "../include/limits.h"
-#include "../include/hdf2nc.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-limits.h"
+#include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-read.h"
-#include "../include/macros.h"
+#include "../include/lofs-macros.h"
 
 void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
 {
@@ -157,9 +157,7 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 	}
 }
 
-void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
-{
-	int ix,iy,iz,k;
+void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 	msh->xhfull = (float *)malloc(hm.nx * sizeof(float));
 	msh->yhfull = (float *)malloc(hm.ny * sizeof(float));
@@ -167,12 +165,34 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	msh->yffull = (float *)malloc((hm.ny+1) * sizeof(float));
 	msh->zh = (float *)malloc(gd.NZ * sizeof(float));
 	msh->zf = (float *)malloc(gd.NZ * sizeof(float));
+
+	msh->xhout = (float *)malloc(gd.NX * sizeof(float));
+	msh->yhout = (float *)malloc(gd.NY * sizeof(float));
+	msh->zhout = (float *)malloc(gd.NZ * sizeof(float));
+
+	msh->xfout = (float *)malloc(gd.NX * sizeof(float));
+	msh->yfout = (float *)malloc(gd.NY * sizeof(float));
+	msh->zfout = (float *)malloc(gd.NZ * sizeof(float));
+
+	msh->uh = (float *)malloc((gd.NX+2) * sizeof(float));
+	msh->uf = (float *)malloc((gd.NX+2) * sizeof(float));
+	msh->vh = (float *)malloc((gd.NY+2) * sizeof(float));
+	msh->vf = (float *)malloc((gd.NY+2) * sizeof(float));
+	msh->mh = (float *)malloc((gd.NZ+2) * sizeof(float));
+	msh->mf = (float *)malloc((gd.NZ+2) * sizeof(float));
+
+
 	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->qv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->u0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->v0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->pres0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->pi0 = (float *)malloc(gd.NZ * sizeof(float));
+}
+
+void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
+{
+	int ix,iy,iz,k;
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
 	get0dfloat (*f_id,(char *)"mesh/dy",&msh->dy); msh->rdy=1.0/msh->dy;
@@ -193,14 +213,6 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
 
-	msh->xhout = (float *)malloc(gd.NX * sizeof(float));
-	msh->yhout = (float *)malloc(gd.NY * sizeof(float));
-	msh->zhout = (float *)malloc(gd.NZ * sizeof(float));
-
-	msh->xfout = (float *)malloc(gd.NX * sizeof(float));
-	msh->yfout = (float *)malloc(gd.NY * sizeof(float));
-	msh->zfout = (float *)malloc(gd.NZ * sizeof(float));
-
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
 // CM1 does internally for stretched and isotropic meshes.
@@ -210,13 +222,6 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 // We malloc enough space for the "ghost zones" and then make sure we
 // offset by the correct amount on each side. The macros take care of
 // the offsetting.
-
-	msh->uh = (float *)malloc((gd.NX+2) * sizeof(float));
-	msh->uf = (float *)malloc((gd.NX+2) * sizeof(float));
-	msh->vh = (float *)malloc((gd.NY+2) * sizeof(float));
-	msh->vf = (float *)malloc((gd.NY+2) * sizeof(float));
-	msh->mh = (float *)malloc((gd.NZ+2) * sizeof(float));
-	msh->mf = (float *)malloc((gd.NZ+2) * sizeof(float));
 
 	// Carefully consider the UH,UF etc. macros and make sure they are appropriate for where you are in
 	// the code (should be in pointer land)

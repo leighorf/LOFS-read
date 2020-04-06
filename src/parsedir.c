@@ -2,8 +2,8 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
-#include "../include/dirstruct.h"
-#include "../include/limits.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-limits.h"
 #include "../include/lofs-read.h"
 
 //extern int regenerate_cache;
@@ -577,7 +577,20 @@ crave electrolytes.
 
 			get0dint(file_id,"grid/x1",&gd->saved_X1);
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
-			get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+
+			if (H5Lexists(file_id, "misc/nkwrite_val", H5P_DEFAULT) > 0) {
+				get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			}
+			else if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
+				get0dint(file_id,"grid/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			}
+			else if (H5Lexists(file_id, "namelist/orf_io/nkwrite_val", H5P_DEFAULT) > 0) {
+				get0dint(file_id,"namelist/orf_io/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			}
+			else {
+				nkwrite = 2;
+			}
+
 			gd->saved_Z1=nkwrite-1;
 			H5Fclose(file_id);
 			if(cmd.verbose)fprintf(stderr,"Setting X1 to saved_X1 which is %i\n",gd->saved_X1);

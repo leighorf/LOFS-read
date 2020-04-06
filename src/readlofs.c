@@ -1,5 +1,5 @@
-#include "../include/dirstruct.h"
-#include "../include/limits.h"
+#include "../include/lofs-dirstruct.h"
+#include "../include/lofs-limits.h"
 #include "../include/lofs-read.h"
 
 /* is between or lies on actually */

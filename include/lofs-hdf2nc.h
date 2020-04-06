@@ -25,7 +25,7 @@ typedef struct netcdf_struct
 
 typedef struct sounding
 {
-	float *u0,*v0,*pres0,*pi0,*th0,*qv0;
+	float *u0,*v0,*pres0,*pi0,*th0,*qv0,*rho0;
 } sounding;
 
 typedef struct buffers
@@ -55,6 +55,7 @@ void get_sorted_node_dirs (dir_meta *dm,cmdline cmd);
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
 void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id);
 void set_span(grid *gd,hdf_meta hm,cmdline cmd);
+void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd);
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id);
 void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id);
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd);
