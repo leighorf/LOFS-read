@@ -34,6 +34,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->got_base=0;
 	cmd->optcount=0;
 	cmd->debug=0;
+	cmd->gzip=0;
 	cmd->verbose=0;
 	cmd->do_allvars=0;
 	cmd->use_box_offset=0;
