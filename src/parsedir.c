@@ -471,6 +471,7 @@ void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd)
 	{
 		dm->ntottimes = 0;
 		k = 0;
+		printf("Generating cache data");fflush(stdout);
 
 /*
 TODO: Save Z0 in cm1hdf5 files so we can retrieve that as well.
@@ -685,6 +686,7 @@ crave electrolytes.
 			H5Fclose(file_id);
 
 		}
+		printf("\n");
 		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
 		{
 			fprintf(fp,"%s\n",dm->firstfilename);
