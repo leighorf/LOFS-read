@@ -168,8 +168,8 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	msh->yhfull = (float *)malloc(hm.ny * sizeof(float));
 	msh->xffull = (float *)malloc((hm.nx+1) * sizeof(float));
 	msh->yffull = (float *)malloc((hm.ny+1) * sizeof(float));
-	msh->zh = (float *)malloc(gd.NZ * sizeof(float));
-	msh->zf = (float *)malloc(gd.NZ * sizeof(float));
+	msh->zh = (float *)malloc(hm.nz * sizeof(float));
+	msh->zf = (float *)malloc(hm.nz+1 * sizeof(float));
 
 	msh->xhout = (float *)malloc(gd.NX * sizeof(float));
 	msh->yhout = (float *)malloc(gd.NY * sizeof(float));
@@ -208,8 +208,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);
 	get1dfloat (*f_id,(char *)"mesh/yffull",msh->yffull,0,hm.ny+1);
-	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,gd.NZ);
-	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,gd.NZ);
+	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,hm.nz);
+	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,hm.nz+1);
 	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
 	for (k=0; k<gd.NZ; k++) snd->qv0[k] *= 1000.0; // g/kg now
 	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ);
