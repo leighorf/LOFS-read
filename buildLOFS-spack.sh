@@ -11,7 +11,7 @@ if spack find --format "{compiler}" zfp | grep -q intel; then
     PREFIX=$PREFIX make -f Makefile.spack.intel clean 
     PREFIX=$PREFIX make -f Makefile.spack.intel all
     PREFIX=$PREFIX make -f Makefile.spack.intel install
-elif spack find --format "{compiler}" zfp | grep -q intel; then
+elif spack find --format "{compiler}" zfp | grep -q gcc; then
     PREFIX=$PREFIX make -f Makefile.spack.gcc clean 
     PREFIX=$PREFIX make -f Makefile.spack.gcc all
     PREFIX=$PREFIX make -f Makefile.spack.gcc install
