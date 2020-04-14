@@ -50,6 +50,10 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
+void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
+}
+
+
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd)
 {
 	rc->X0=gd.X0; rc->X1=gd.X1;
@@ -164,8 +168,8 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	msh->yhfull = (float *)malloc(hm.ny * sizeof(float));
 	msh->xffull = (float *)malloc((hm.nx+1) * sizeof(float));
 	msh->yffull = (float *)malloc((hm.ny+1) * sizeof(float));
-	msh->zh = (float *)malloc(gd.NZ * sizeof(float));
-	msh->zf = (float *)malloc(gd.NZ * sizeof(float));
+	msh->zh = (float *)malloc(hm.nz * sizeof(float));
+	msh->zf = (float *)malloc(hm.nz * sizeof(float));
 
 	msh->xhout = (float *)malloc(gd.NX * sizeof(float));
 	msh->yhout = (float *)malloc(gd.NY * sizeof(float));
@@ -179,8 +183,8 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	msh->uf = (float *)malloc((gd.NX+2) * sizeof(float));
 	msh->vh = (float *)malloc((gd.NY+2) * sizeof(float));
 	msh->vf = (float *)malloc((gd.NY+2) * sizeof(float));
-	msh->mh = (float *)malloc((gd.NZ+2) * sizeof(float));
-	msh->mf = (float *)malloc((gd.NZ+2) * sizeof(float));
+	msh->mh = (float *)malloc((gd.NZ) * sizeof(float));
+	msh->mf = (float *)malloc((gd.NZ+1) * sizeof(float));
 
 
 	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
@@ -204,15 +208,16 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);
 	get1dfloat (*f_id,(char *)"mesh/yffull",msh->yffull,0,hm.ny+1);
-	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,gd.NZ);
-	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,gd.NZ);
+	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,hm.nz);
+	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,hm.nz);
 	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
 	for (k=0; k<gd.NZ; k++) snd->qv0[k] *= 1000.0; // g/kg now
 	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/u0",snd->u0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/v0",snd->v0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ);
-	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
+	get1dfloat (*f_id,(char *)"basestate/v0",snd->rho0,gd.Z0,gd.NZ);
+	//get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
 
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
@@ -231,14 +236,18 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	for (ix=gd.X0-1; ix<gd.X1+1; ix++) UFp(ix-gd.X0) = msh->dx/(msh->xhfull[ix]-msh->xhfull[ix-1]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VHp(iy-gd.Y0) = msh->dy/(msh->yffull[iy+1]-msh->yffull[iy]);
 	for (iy=gd.Y0-1; iy<gd.Y1+1; iy++) VFp(iy-gd.Y0) = msh->dy/(msh->yhfull[iy]-msh->yhfull[iy-1]);
-	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MHp(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
-	for (iz=gd.Z0-1; iz<gd.Z1+1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = 0.001*msh->xffull[ix];
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = 0.001*msh->zh[iz];
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = 0.001*msh->yhfull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = 0.001*msh->xhfull[ix];
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) MHp(iz-gd.Z0) = msh->dz/(msh->zf[iz+1]-msh->zf[iz]);
+	// the iz-1 will index to -1 if we don't start from iz=1
+	for (iz=gd.Z0+1; iz<=gd.Z1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
+	// this is how things are set in CM1 Param.F line 6874
+	MFp(0) = MFp(1);
+	
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = msh->zf[iz]; 
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = msh->zh[iz];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = msh->yffull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = msh->xffull[ix];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = msh->yhfull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = msh->xhfull[ix];
 }
 
 
@@ -687,6 +696,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
 	}
+	//free(var);
 }
 
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
