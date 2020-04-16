@@ -17,17 +17,17 @@
 //You must name your mesh structure mesh
 //And you have to pick whether you're in pointer land or not
 
-#define UHp(ix) msh->uh[ix+1]
-#define UFp(ix) msh->uf[ix+1]
-#define VHp(iy) msh->vh[iy+1]
-#define VFp(iy) msh->vf[iy+1]
+#define UHp(ix) msh->uh[ix]
+#define UFp(ix) msh->uf[ix]
+#define VHp(iy) msh->vh[iy]
+#define VFp(iy) msh->vf[iy]
 #define MHp(iz) msh->mh[iz]
 #define MFp(iz) msh->mf[iz]
 
-#define UH(ix) msh.uh[ix+1]
-#define UF(ix) msh.uf[ix+1]
-#define VH(iy) msh.vh[iy+1]
-#define VF(iy) msh.vf[iy+1]
+#define UH(ix) msh.uh[ix]
+#define UF(ix) msh.uf[ix]
+#define VH(iy) msh.vh[iy]
+#define VF(iy) msh.vf[iy]
 #define MH(iz) msh.mh[iz]
 #define MF(iz) msh.mf[iz]
 
@@ -48,16 +48,18 @@
 #define  WA4D(x,y,z,t) wstag[P4(x+1, y+1, z, t, nx+2, ny+2, nz+1)]
 #define  KM4D(x,y,z,t) kmstag[P4(x+1, y+1, z, t, nx+2, ny+2, nz+1)]
 
-#define BUFp(x,y,z) b->buf0[P3(x,y,z,nx+2,ny+2)]
-#define TEMp(x,y,z) b->dum0[P3(x,y,z,nx+2,ny+2)]
-#define TEM1p(x,y,z) b->dum1[P3(x,y,z,nx+2,ny+2)]
-#define  UAp(x,y,z) b->ustag[P3(x+1,y+1,z,nx+2,ny+2)]
-#define  VAp(x,y,z) b->vstag[P3(x+1,y+1,z,nx+2,ny+2)]
-#define  WAp(x,y,z) b->wstag[P3(x+1,y+1,z,nx+2,ny+2)]
+#define BUFp(x,y,z)  b->buf0[P3(x+1, y+1, z, nx+2, ny+2)]
+#define TEMp(x,y,z)  b->dum0[P3(x+1, y+1, z, nx+2, ny+2)]
+#define TEM1p(x,y,z) b->dum1[P3(x+1, y+1, z, nx+2, ny+2)]
 
-#define BUF(x,y,z) buf0[P3(x+1, y+1, z, nx+2, ny+2)]
-#define TEM(x,y,z) dum0[P3(x+1, y+1, z, nx+2, ny+2)]
+#define  UAp(x,y,z) b->ustag[P3(x+1, y+1, z, nx+2, ny+2)]
+#define  VAp(x,y,z) b->vstag[P3(x+1, y+1, z, nx+2, ny+2)]
+#define  WAp(x,y,z) b->wstag[P3(x+1, y+1, z, nx+2, ny+2)]
+
+#define BUF(x,y,z)  buf0[P3(x+1, y+1, z, nx+2, ny+2)]
+#define TEM(x,y,z)  dum0[P3(x+1, y+1, z, nx+2, ny+2)]
 #define TEM1(x,y,z) dum1[P3(x+1, y+1, z, nx+2, ny+2)]
+
 #define  UA(x,y,z) ustag[P3(x+1, y+1, z, nx+2, ny+2)]
 #define  VA(x,y,z) vstag[P3(x+1, y+1, z, nx+2, ny+2)]
 #define  WA(x,y,z) wstag[P3(x+1, y+1, z, nx+2, ny+2)]

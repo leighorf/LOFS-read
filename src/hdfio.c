@@ -65,8 +65,11 @@ void get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 	count[0] = np;
 	dims[0] = np;
 
-//	printf("get1dfloat: %s\n",varname);
-	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+	if ((dataset_id = H5Dopen (f_id, varname,H5P_DEFAULT)) < 0)
+	{
+		printf("get1dfloat: %s failed\n",varname);
+		ERROR_STOP("Could not H5Dopen");
+	}
 	if ((dataspace_id = H5Dget_space(dataset_id)) < 0) ERROR_STOP("Could not H5Dget_space");
 	if ((memoryspace_id = H5Screate_simple(rank,dims,NULL)) < 0) ERROR_STOP("Could not H5Screate_simple");
 	if ((status = H5Sselect_hyperslab (dataspace_id,H5S_SELECT_SET,offset_in,NULL,count,NULL)) < 0) ERROR_STOP("Could not H5Sselect_hyperslab");

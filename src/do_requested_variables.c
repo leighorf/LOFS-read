@@ -582,10 +582,11 @@ void buf_w(buffers *b,grid gd)
 
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
-	int ivar,status;
+	int ix,iy,iz,nx,ny,buf0nx,buf0ny,i,ixoff,iyoff,ivar,status;
 	requested_cube rc;
 	char *var;
-	float *wp;
+	float *twodbuf;
+	size_t writestart[4],writeedges[4];
 
 // For flexibility we always set rc in case we need to read outside of what we
 // requested at the command line such as what occurs with staggered variables. The
@@ -599,9 +600,13 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	copy_grid_to_requested_cube(&rc,gd);
 
 	var = (char *) malloc (MAXSTR * sizeof(char));
+	twodbuf = (float *)malloc(gd.NX*gd.NY*sizeof(float));
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
+		buf0nx=gd.NX+2;ixoff=1;
+		buf0ny=gd.NY+2;iyoff=1;
+
 		var=nc.varname[ivar];
 		printf("%s: ",var);FL;
 
@@ -609,58 +614,87 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		{
 			if(!rh.u)
 			{
-				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd); wp=b->buf;
+				buf0nx=gd.NX;ixoff=0;
+				buf0ny=gd.NY;iyoff=0;
+				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
 			{
-				buf_u(b,gd); wp=b->buf;
+				buf_u(b,gd); 
 			}
 		}
 		else if(same(var,"v"))
 		{
 			if(!rh.v)
 			{
-				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd); wp=b->buf;
+				buf0nx=gd.NX;ixoff=0;
+				buf0ny=gd.NY;iyoff=0;
+				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
 			{
-				buf_v(b,gd); wp=b->buf;
+				buf_v(b,gd);
 			}
 		}
 		else if(same(var,"w"))
 		{
 			if(!rh.w)
 			{
-				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd); wp=b->buf;
+				buf0nx=gd.NX;ixoff=0;
+				buf0ny=gd.NY;iyoff=0;
+				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
 			{
-				buf_w(b,gd); wp=b->buf;
+				buf_w(b,gd);
 			}
 		}
-		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);wp=b->buf;}
-		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);wp=b->buf;}
-		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);wp=b->buf;}
-		else if(same(var,"hwin_sr"))	{CL;calc_hwin_sr(b,gd,cmd);wp=b->buf;}
-		else if(same(var,"hwin_gr"))	{CL;calc_hwin_gr(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"windmag_sr"))	{CL;calc_windmag_sr(b,gd,cmd);wp=b->buf;}
-		else if(same(var,"hdiv")) 		{CL;calc_hdiv(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"xvort"))		{CL;calc_xvort(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"yvort"))		{CL;calc_yvort(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"zvort"))		{CL;calc_zvort(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"hvort"))		{CL;calc_hvort(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"vortmag"))	{CL;calc_vortmag(b,gd,msh,cmd);wp=b->buf;}
-		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);wp=b->buf;}
+		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
+		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
+		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);}
+		else if(same(var,"hwin_sr"))	{CL;calc_hwin_sr(b,gd,cmd);}
+		else if(same(var,"hwin_gr"))	{CL;calc_hwin_gr(b,gd,msh,cmd);}
+		else if(same(var,"windmag_sr"))	{CL;calc_windmag_sr(b,gd,cmd);}
+		else if(same(var,"hdiv")) 		{CL;calc_hdiv(b,gd,msh,cmd);}
+		else if(same(var,"xvort"))		{CL;calc_xvort(b,gd,msh,cmd);}
+		else if(same(var,"yvort"))		{CL;calc_yvort(b,gd,msh,cmd);}
+		else if(same(var,"zvort"))		{CL;calc_zvort(b,gd,msh,cmd);}
+		else if(same(var,"hvort"))		{CL;calc_hvort(b,gd,msh,cmd);}
+		else if(same(var,"vortmag"))	{CL;calc_vortmag(b,gd,msh,cmd);}
+		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);}
 		else
 		{
 			printf("reading...");FL;
+			buf0nx=gd.NX;ixoff=0;
+			buf0ny=gd.NY;iyoff=0;
 			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
-			wp=b->buf;
 			BL;
 		}
 		printf("writing...");FL;
-		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
+// ORF we write our netcdf files in Z slices now.
+// This is done in order to handle our different array indexing issues
+// No appreciable performance penalty, and we only have to malloc an
+// additional 2D array. This approach means this writeout routine is a
+// little more complicated, but everything else in LOFT/LOFS should be
+// consistent, which is the big advantage
+		for (iz=0; iz<gd.NZ; iz++)
+		{
+			for(iy=0;iy<gd.NY;iy++)
+			{
+				for(ix=0;ix<gd.NX;ix++)
+				{
+					twodbuf[P2(ix,iy,gd.NX)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+				}
+			}
+			/* t,z,y,x */
+			writestart[0]=0; writeedges[0]=1;
+			writestart[1]=iz; writeedges[1]=1;
+			writestart[2]=0; writeedges[2]=gd.NY;
+			writestart[3]=0; writeedges[3]=gd.NX;
+			status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
+			//status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
+		}
 		BL;
 	}
+	free(twodbuf);
 }
-
