@@ -18,7 +18,7 @@ typedef struct netcdf_struct
 	char **varname;
 	char *ncfilename;
 	int dims[4],d2[3];
-	size_t s2[3],e2[3],start[4],edges[4];
+	size_t start[4],edges[4];//not used anymore, se do_requested_variables
 	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
 	int twodslice;
 } ncstruct;
@@ -61,12 +61,14 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd);
 void set_readahead(readahead *rh,ncstruct nc, cmdline cmd);
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
+void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
 void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd);
 void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
 void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd);
 void sortchararray (char **strarray, int nel);
+void compress_with_nccopy(ncstruct nc,cmdline cmd);
 void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 
 #endif

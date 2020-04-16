@@ -118,7 +118,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				cmd->optcount++;
 				break;
 			case OPT_COMPRESS:
-				cmd->gzip=1;
+				cmd->gzip = 1;
 				cmd->optcount++;
 				break;
 			case OPT_INTERP:

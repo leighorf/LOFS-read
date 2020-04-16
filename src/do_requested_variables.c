@@ -579,6 +579,15 @@ void buf_w(buffers *b,grid gd)
 
 /*******************************************************************************/
 
+void z_progress_bar(int iz, int nz)
+{
+	int index;
+	char *alph="abcdefghijklmnopqrstuvwxyz";
+	index=(int)((float)iz*26.0/(float)nz);
+	printf("%c",alph[index]); fflush (stdout);
+}
+
+/*******************************************************************************/
 
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
@@ -671,14 +680,23 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 			BL;
 		}
 		printf("writing...");FL;
+
 // ORF we write our netcdf files in Z slices now.
-// This is done in order to handle our different array indexing issues
-// No appreciable performance penalty, and we only have to malloc an
-// additional 2D array. This approach means this writeout routine is a
-// little more complicated, but everything else in LOFT/LOFS should be
-// consistent, which is the big advantage
+//
+// This is done in order to handle our different array indexing issues. No appreciable
+// performance penalty for uncompressed writes, and we only have to malloc an additional
+// 2D array. This approach means this writeout routine is a little more complicated, but
+// everything else in LOFT/LOFS should be consistent, which is the big advantage.
+//
+// It turns out that the already bad performanace (CPU time) of doing gzip compression
+// here was made much worse by doing slices. I found that the external program nccopy
+// is much much more efficient when run as a standalone program, so we just call it
+// externally now if --compress is passed at the command line. nccopy is part of netCDF so
+// it should be available to all users since LOFS-read depends on it.
+
 		for (iz=0; iz<gd.NZ; iz++)
 		{
+//			if(cmd.verbose&&cmd.gzip) z_progress_bar(iz,gd.NZ);
 			for(iy=0;iy<gd.NY;iy++)
 			{
 				for(ix=0;ix<gd.NX;ix++)
@@ -686,15 +704,39 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 					twodbuf[P2(ix,iy,gd.NX)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
 				}
 			}
-			/* t,z,y,x */
-			writestart[0]=0; writeedges[0]=1;
-			writestart[1]=iz; writeedges[1]=1;
-			writestart[2]=0; writeedges[2]=gd.NY;
-			writestart[3]=0; writeedges[3]=gd.NX;
+
+// If we requested a 2D slice, write accordingly
+			
+			if(gd.X0==gd.X1)      //YZ slice
+			{
+				writestart[0]=0;  writeedges[0]=1;     //time
+				writestart[1]=iz; writeedges[1]=1;     //z
+				writestart[2]=0;  writeedges[2]=gd.NY; //y
+			}
+			else if(gd.Y0==gd.Y1) //XZ slice
+			{
+				writestart[0]=0;  writeedges[0]=1;     //time
+				writestart[1]=iz; writeedges[1]=1;     //z
+				writestart[2]=0;  writeedges[2]=gd.NX; //x
+			}
+			else if(gd.Z0==gd.Z1) //XY slice
+			{
+				writestart[0]=0;  writeedges[0]=1;     //time
+				writestart[1]=0;  writeedges[1]=gd.NY; //y
+				writestart[2]=0;  writeedges[2]=gd.NX; //x
+			}
+			else                  //XYZ tetrahedra (cubey thing)
+			{
+				writestart[0]=0;  writeedges[0]=1;     //time
+				writestart[1]=iz; writeedges[1]=1;     //z
+				writestart[2]=0;  writeedges[2]=gd.NY; //y
+				writestart[3]=0;  writeedges[3]=gd.NX; //x
+			}
 			status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
-			//status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
 		}
 		BL;
+		//The old 3D way, with wp pointing to our buffer
+		//status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
 	}
 	free(twodbuf);
 }

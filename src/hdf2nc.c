@@ -106,12 +106,6 @@ int main(int argc, char *argv[])
 
 	nk=gd.NZ;nj=gd.NY;ni=gd.NX; //For cm1-like code
 
-	/* Set start and edges for 2D XY plots... this should probably go in
-	 * set_netcdf_attributes */
-
-	nc.s2[0] = 0; nc.s2[1] =     0; nc.s2[2] =     0;
-	nc.e2[0] = 1; nc.e2[1] = gd.NY; nc.e2[2] = gd.NX;
-	
 	/* Allocate memory for 1d mesh and sounding arrays */
 	allocate_1d_arrays(hm, gd, &msh, &snd);
 
@@ -150,6 +144,13 @@ int main(int argc, char *argv[])
 	H5Z_zfp_finalize();
 
 	write_hdf2nc_command_txtfile(argc,argv,nc);
+
+	//ORF FREE ALL 3D ARRAYS HERE
+
+	free_3D_arrays(&b,gd,rh,cmd);
+
+	if(cmd.gzip) compress_with_nccopy(nc,cmd);
+
 
 	exit(0);
 

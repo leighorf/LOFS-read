@@ -91,12 +91,13 @@ void get_saved_base(char *timedir, char *saved_base)
 	// way to do this is to just remove the last 14 characters of
 	// one of the timedir directories
 
-	int tdlen;
+	int i,tdlen;
 //ORF TODO: make 14 a constant somewhere
 //We may wish to allow flexibility in the floating point
 //left and right of the decimal.
 	tdlen=strlen(timedir)-14;
-	strncpy(saved_base,timedir,tdlen);
+	for(i=0;i<tdlen;i++)saved_base[i]=timedir[i];
+	//strncpy(saved_base,timedir,tdlen);
 	saved_base[tdlen]='\0';
 }
 
@@ -479,6 +480,13 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		 * saving u v and w easily while facilitating averaging
 		 * which requires 1 fewer point */
 
+
+		/* ORF 2020-04-16
+		 * NOTE start/edges that are set here are ignored. I've changed over to writing
+		 * netCDF files in Z slices, and set the appropirate start and edges values in
+		 * do_requested_variables. However the dimid stuff must still be done here and is
+		 * used */
+
 		if(var_is_u)
 		{
 			nc->dims[0] = nc->time_dimid;
@@ -632,7 +640,19 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"windmag_sr"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
 		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ground_relative_horizontal_wind_speed","m/s");
-		if (cmd->gzip) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, 1);
+
+		/* ORF 2020-04-16
+		 * After switching to writing data in Z slices, it appears the gzip compression
+		 * performance got much worse, even compared to the already bad performance of
+		 * doing 3D writes. Experimentation with the netcdf external program nccopy has
+		 * revealed much better performance (time wise) with the added benefit that it
+		 * compresses all variables including 2D. So from now on, if you pass --compress,
+		 * it will compress the whole netCDF file usging nccopy. Passing the verbose flag
+		 * will give compresion ratio information. Since netcdf is required for hdf2nc,
+		 * nccopy must have been built and it must be in your path for this to work. */
+
+//	NO MORE CRAPPY PERFORMANCE
+//	if (cmd->gzip>0) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, cmd->gzip); //shuffle=1,deflate=1,deflate_level=cmd->gzip value
 	}
 
 /* Write sounding data */
@@ -755,12 +775,27 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	}
 }
 
+void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
+{
+	if (cmd.nvar>0)
+	{
+		free (b->buf);
+		if (rh.u) free (b->ustag);
+		if (rh.v) free (b->vstag);
+		if (rh.w) free (b->wstag);
+		if (rh.u||rh.v||rh.w) free (b->dum0);
+		if (rh.vortmag||rh.hvort||rh.streamvort)free(b->dum1);
+	}
+}
+
 void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 {
 	int i2d,ix,iy,status;
 	float *twodfield,*swathbuf,*writeptr;
 	float bufsize;
 	requested_cube rc;
+	size_t s2[3] = {0,0,0};
+	size_t e2[3] = {1,gd.NY,gd.NX};
 
 	copy_grid_to_requested_cube(&rc,gd);
 
@@ -775,13 +810,14 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
+	if(cmd.verbose)printf("Writing swaths...\n");
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
 		for (iy=0; iy<rc.NY; iy++)
 			for (ix=0; ix<rc.NX; ix++)
 				twodfield[P2(ix,iy,rc.NX)] = swathbuf[P3(ix,iy,i2d,rc.NX,rc.NY)];
 		writeptr = twodfield;
-		status = nc_put_vara_float (nc.ncid, twodvarid[i2d], nc.s2, nc.e2, writeptr);
+		status = nc_put_vara_float (nc.ncid, twodvarid[i2d], s2, e2, writeptr);
 	}
 	free(swathbuf);
 	free(twodfield);
@@ -818,4 +854,60 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
 	}
 
+}
+
+// It is much, much faster to do this externally and also has the benefit of compressing all
+// arrays, not just the 3D ones. So for the best performance, just make sure nccopy is in
+// your path!
+//
+// TODO: return value checks, check for nccopy in path
+void compress_with_nccopy(ncstruct nc,cmdline cmd)
+{
+	char strbuf[MAXSTR];
+	off_t unc_fsize,comp_fsize;
+	float ratio;
+	struct stat st;
+	int retval;
+
+	printf("compressing...\n");fflush(stdout);
+	sprintf(strbuf,"mv %s %s.uncompressed",nc.ncfilename,nc.ncfilename);
+	retval=system(strbuf);
+	if(retval!=0)
+	{
+		fprintf(stderr,"Command: %s ...failed!\n",strbuf);
+		return;
+	}
+	sprintf(strbuf,"nccopy -d9 -s %s.uncompressed %s",nc.ncfilename,nc.ncfilename);
+	if(cmd.verbose)printf("Calling external compression program: executing: %s ...\n",strbuf);fflush(stdout);
+	retval=system(strbuf); //we have compressed the file. Get file savings info.
+	if(retval!=0)
+	{
+		fprintf(stderr,"Command: %s ...failed!\n",strbuf);
+		//nccopy failed so move file name back to .nc, warn and bail
+		sprintf(strbuf,"mv %s.uncompressed %s",nc.ncfilename,nc.ncfilename);
+		retval=system(strbuf);
+		fprintf(stderr,"%s will not be compressed.\n",nc.ncfilename);
+		return;
+	}
+
+	sprintf(strbuf,"%s.uncompressed",nc.ncfilename);
+	stat(strbuf,&st);
+	unc_fsize=st.st_size;
+
+	sprintf(strbuf,"%s",nc.ncfilename);
+	stat(strbuf,&st);
+	comp_fsize=st.st_size;
+
+	ratio = (float)unc_fsize/(float)comp_fsize;
+
+	sprintf(strbuf,"\n%12i bytes %s.uncompressed\n%12i bytes %s\nFile compression ratio of %7.2f:1\n",unc_fsize,nc.ncfilename,comp_fsize,nc.ncfilename,ratio);
+	printf("%s",strbuf);
+
+	sprintf(strbuf,"rm %s.uncompressed",nc.ncfilename);
+	retval=system(strbuf);
+	if(retval!=0)
+	{
+		fprintf(stderr,"Command: %s ...failed!\n",strbuf);
+		return;
+	}
 }
