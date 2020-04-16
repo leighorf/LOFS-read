@@ -1,9 +1,6 @@
 #ifndef DIRSTRUCT_H
 #define DIRSTRUCT_H
 
-#include <hdf5.h>
-//for hid_t below
-
 typedef struct dir_meta
 {
 	char **timedir;
@@ -79,12 +76,5 @@ typedef struct cmdline
 	float time;
 	int argc_hdf2nc_min;
 } cmdline;
-
-//void get_sorted_time_dirs    (dir_meta *dm, cmdline cmd);
-//void get_sorted_node_dirs    (dir_meta *dm, cmdline cmd);
-//void get_num_time_dirs       (dir_meta *dm, cmdline cmd);
-//void get_num_node_dirs       (dir_meta *dm, cmdline cmd);
-//void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
-//void get_hdf_metadata (dir_meta dm, hdf_meta *hm, cmdline *cm, char *argv[], hid_t *f_id);
 
 #endif
