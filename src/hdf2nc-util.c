@@ -324,15 +324,15 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "zf", NC_FLOAT, 1, &nc->nzf_dimid, &nc->zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "time", NC_DOUBLE, 1, &nc->time_dimid, &nc->timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->xfid, "long_name", strlen("x-coordinate for u in Cartesian system"), "x-coordinate for u in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "long_name", strlen("y-coordinate in Cartesian system"), "y-coordinate in Cartesian system");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->yfid, "long_name", strlen("y-coordinate for v in Cartesian system"), "y-coordinate for v in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->zfid, "long_name", strlen("z-coordinate for w in Cartesian system"), "z-coordinate for w in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -347,18 +347,12 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "Y1", NC_INT, 0, nc->dims, &nc->y1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "Z0", NC_INT, 0, nc->dims, &nc->z0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "Z1", NC_INT, 0, nc->dims, &nc->z1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	status = nc_put_att_text(nc->ncid, nc->x0id, "long_name", strlen("westmost grid index from LOFS data"), "westmost grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->x1id, "long_name", strlen("eastmost grid index from LOFS data"), "eastmost grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->y0id, "long_name", strlen("southmost grid index from LOFS data"), "southmost grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->y1id, "long_name", strlen("northmost grid index from LOFS data"), "northmost grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->z0id, "long_name", strlen("bottom grid index from LOFS data"), "bottom grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->z1id, "long_name", strlen("top grid index from LOFS data"), "top grid index from LOFS data");
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->x0id, "long_name", strlen("westmost grid index from LOFS data"), "westmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->x1id, "long_name", strlen("eastmost grid index from LOFS data"), "eastmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->y0id, "long_name", strlen("southmost grid index from LOFS data"), "southmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->y1id, "long_name", strlen("northmost grid index from LOFS data"), "northmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->z0id, "long_name", strlen("bottom grid index from LOFS data"), "bottom grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->z1id, "long_name", strlen("top grid index from LOFS data"), "top grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	nc->d2[0] = nc->time_dimid;
 	nc->d2[1] = nc->nyh_dimid;
@@ -610,12 +604,18 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 // We are still before the nc_enddef call, in case you are lost
 
-		if(same(var,"uinterp"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind","m/s");
-		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind","m/s");
-		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind","m/s");
+		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","pressure_perturbation","hPa");
-		else if(same(var,"thpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","potential_temperature_perturbation","K");
+		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","potential_temperature_perturbation","K");
+		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_perturbation","kg/m^3");
+		else if(same(var,"tke_sg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
 		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
@@ -625,20 +625,20 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","z_vorticity","s^-1");
 		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vorticity_magnitude","s^-1");
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
+		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qvpert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
-		else if(same(var,"qc"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
+		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qs"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","now_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_mixing_ratio","g/kg");
 		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ice_number_concenctration","cm^-3");
 		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_number_concenctration","cm^-3");
 		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","snow_number_concenctration","cm^-3");
 		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_number_concenctration","cm^-3");
 		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
 		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ground_relative_horizontal_wind_speed","m/s");
 
 		/* ORF 2020-04-16
@@ -662,13 +662,15 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "v0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->v0id,"standard_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->th0id,"standard_name","base_state_theta","m/s");
+	set_nc_meta(nc->ncid,nc->th0id,"standard_name","base_state_potential_temperature","m/s");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->pres0id,"standard_name","base_state_pressure","m/s");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_pi","m/s");
+	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_nondimensional_pressure","m/s");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_qv","m/s");
+	set_nc_meta(nc->ncid,nc->qv0id,"standard_name","base_state_water_vapor_mixing_ratio","m/s");
+	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -691,6 +693,7 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	status = nc_put_var_float (nc.ncid,nc.pres0id,snd.pres0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.pi0id,snd.pi0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.qv0id,snd.qv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (nc.ncid,nc.rho0id,snd.rho0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_int (nc.ncid,nc.x0id,&gd.X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.y0id,&gd.Y0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.x1id,&gd.X1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
@@ -856,11 +859,10 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 
 }
 
-// It is much, much faster to do this externally and also has the benefit of compressing all
-// arrays, not just the 3D ones. So for the best performance, just make sure nccopy is in
-// your path!
-//
-// TODO: return value checks, check for nccopy in path
+// It is much, much faster to do this externally and also has the benefit of compressing
+// all arrays, not just the 3D ones. So for the best performance, just make sure nccopy is
+// in your path!
+
 void compress_with_nccopy(ncstruct nc,cmdline cmd)
 {
 	char strbuf[MAXSTR];
@@ -878,8 +880,12 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 		return;
 	}
 	sprintf(strbuf,"nccopy -d9 -s %s.uncompressed %s",nc.ncfilename,nc.ncfilename);
-	if(cmd.verbose)printf("Calling external compression program: executing: %s ...\n",strbuf);fflush(stdout);
-	retval=system(strbuf); //we have compressed the file. Get file savings info.
+	if(cmd.verbose)
+	{
+		printf("Calling external compression program: executing:\n %s ...\n",strbuf);
+		fflush(stdout);
+	}
+	retval=system(strbuf);
 	if(retval!=0)
 	{
 		fprintf(stderr,"Command: %s ...failed!\n",strbuf);
@@ -889,6 +895,8 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 		fprintf(stderr,"%s will not be compressed.\n",nc.ncfilename);
 		return;
 	}
+
+//We have compressed the file. Get file savings info.
 
 	sprintf(strbuf,"%s.uncompressed",nc.ncfilename);
 	stat(strbuf,&st);
@@ -900,7 +908,8 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 
 	ratio = (float)unc_fsize/(float)comp_fsize;
 
-	sprintf(strbuf,"\n%12i bytes %s.uncompressed\n%12i bytes %s\nFile compression ratio of %7.2f:1\n",unc_fsize,nc.ncfilename,comp_fsize,nc.ncfilename,ratio);
+	sprintf(strbuf,"\n%12i bytes %s.uncompressed\n%12i bytes %s\nFile compression ratio of %7.2f:1\n",
+			unc_fsize,nc.ncfilename,comp_fsize,nc.ncfilename,ratio);
 	printf("%s",strbuf);
 
 	sprintf(strbuf,"rm %s.uncompressed",nc.ncfilename);

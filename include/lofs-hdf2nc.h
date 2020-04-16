@@ -19,7 +19,7 @@ typedef struct netcdf_struct
 	char *ncfilename;
 	int dims[4],d2[3];
 	size_t start[4],edges[4];//not used anymore, se do_requested_variables
-	int u0id,v0id,pres0id,pi0id,th0id,qv0id;
+	int u0id,v0id,pres0id,pi0id,th0id,qv0id,rho0id;
 	int twodslice;
 } ncstruct;
 
