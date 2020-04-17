@@ -594,7 +594,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	int ix,iy,iz,nx,ny,buf0nx,buf0ny,i,ixoff,iyoff,ivar,status;
 	requested_cube rc;
 	char *var;
-	float *twodbuf;
+	float *twodbuf,*threedbuf;
 	size_t writestart[4],writeedges[4];
 
 // For flexibility we always set rc in case we need to read outside of what we
@@ -609,7 +609,8 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	copy_grid_to_requested_cube(&rc,gd);
 
 	var = (char *) malloc (MAXSTR * sizeof(char));
-	twodbuf = (float *)malloc(gd.NX*gd.NY*sizeof(float));
+	if(cmd.twodwrite) twodbuf = (float *)malloc(gd.NX*gd.NY*sizeof(float));
+	else threedbuf = (float *)malloc(gd.NX*gd.NY*gd.NZ*sizeof(float));
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
@@ -694,49 +695,64 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 // externally now if --compress is passed at the command line. nccopy is part of netCDF so
 // it should be available to all users since LOFS-read depends on it.
 
-		for (iz=0; iz<gd.NZ; iz++)
+		if(cmd.twodwrite)
 		{
-//			if(cmd.verbose&&cmd.gzip) z_progress_bar(iz,gd.NZ);
-			for(iy=0;iy<gd.NY;iy++)
+			for (iz=0; iz<gd.NZ; iz++)
 			{
-				for(ix=0;ix<gd.NX;ix++)
+//				if(cmd.verbose&&cmd.gzip) z_progress_bar(iz,gd.NZ);
+#pragma omp parallel for private(iy,ix)
+				for(iy=0;iy<gd.NY;iy++)
 				{
-					twodbuf[P2(ix,iy,gd.NX)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+					for(ix=0;ix<gd.NX;ix++)
+					{
+						twodbuf[P2(ix,iy,gd.NX)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+					}
+				}
+				if(gd.X0==gd.X1)      //YZ slice
+				{
+					writestart[0]=0;  writeedges[0]=1;     //time
+					writestart[1]=iz; writeedges[1]=1;     //z
+					writestart[2]=0;  writeedges[2]=gd.NY; //y
+				}
+				else if(gd.Y0==gd.Y1) //XZ slice
+				{
+					writestart[0]=0;  writeedges[0]=1;     //time
+					writestart[1]=iz; writeedges[1]=1;     //z
+					writestart[2]=0;  writeedges[2]=gd.NX; //x
+				}
+				else if(gd.Z0==gd.Z1) //XY slice
+				{
+					writestart[0]=0;  writeedges[0]=1;     //time
+					writestart[1]=0;  writeedges[1]=gd.NY; //y
+					writestart[2]=0;  writeedges[2]=gd.NX; //x
+				}
+				else                  //XYZ tetrahedra (cubey thing)
+				{
+					writestart[0]=0;  writeedges[0]=1;     //time
+					writestart[1]=iz; writeedges[1]=1;     //z
+					writestart[2]=0;  writeedges[2]=gd.NY; //y
+					writestart[3]=0;  writeedges[3]=gd.NX; //x
+				}
+				status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
+			}
+		}
+		else
+		{
+#pragma omp parallel for private(ix,iy,iz)
+			for (iz=0; iz<gd.NZ; iz++)
+			{
+				for(iy=0;iy<gd.NY;iy++)
+				{
+					for(ix=0;ix<gd.NX;ix++)
+					{
+						threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+					}
 				}
 			}
 
-// If we requested a 2D slice, write accordingly
-			
-			if(gd.X0==gd.X1)      //YZ slice
-			{
-				writestart[0]=0;  writeedges[0]=1;     //time
-				writestart[1]=iz; writeedges[1]=1;     //z
-				writestart[2]=0;  writeedges[2]=gd.NY; //y
-			}
-			else if(gd.Y0==gd.Y1) //XZ slice
-			{
-				writestart[0]=0;  writeedges[0]=1;     //time
-				writestart[1]=iz; writeedges[1]=1;     //z
-				writestart[2]=0;  writeedges[2]=gd.NX; //x
-			}
-			else if(gd.Z0==gd.Z1) //XY slice
-			{
-				writestart[0]=0;  writeedges[0]=1;     //time
-				writestart[1]=0;  writeedges[1]=gd.NY; //y
-				writestart[2]=0;  writeedges[2]=gd.NX; //x
-			}
-			else                  //XYZ tetrahedra (cubey thing)
-			{
-				writestart[0]=0;  writeedges[0]=1;     //time
-				writestart[1]=iz; writeedges[1]=1;     //z
-				writestart[2]=0;  writeedges[2]=gd.NY; //y
-				writestart[3]=0;  writeedges[3]=gd.NX; //x
-			}
-			status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
+		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, threedbuf);
 		}
 		BL;
-		//The old 3D way, with wp pointing to our buffer
-		//status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, wp);
 	}
-	free(twodbuf);
+	if(cmd.twodwrite)free(twodbuf);else free(threedbuf);
 }

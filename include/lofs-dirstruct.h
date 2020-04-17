@@ -69,6 +69,7 @@ typedef struct cmdline
 	int filetype;
 	int nthreads;
 	int got_base;
+	int twodwrite;
 	int optcount;
 	int nvar,nvar_cmdline;
 	char *histpath,*base;

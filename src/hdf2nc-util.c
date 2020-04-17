@@ -33,6 +33,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->time=0.0;
 	cmd->got_base=0;
 	cmd->optcount=0;
+	cmd->nthreads=1;
+	cmd->twodwrite=0;
 	cmd->debug=0;
 	cmd->gzip=0;
 	cmd->verbose=0;

@@ -9,7 +9,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS,
-		OPT_NTHREADS, OPT_OFFSET, OPT_INTERP };
+		OPT_NTHREADS, OPT_OFFSET, OPT_INTERP, OPT_TWODWRITE };
 
 	static struct option long_options[] =
 	{
@@ -30,6 +30,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"compress", optional_argument, 0, OPT_COMPRESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
+		{"twodwrite",optional_argument, 0, OPT_TWODWRITE},
 		{"offset", optional_argument, 0, OPT_OFFSET},
 		{"interp", optional_argument, 0, OPT_INTERP},
 		{0, 0, 0, 0}//sentinel, needed!
@@ -127,6 +128,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_OFFSET:
 				cmd->use_box_offset=1;
+				cmd->optcount++;
+				break;
+			case OPT_TWODWRITE:
+				cmd->twodwrite=1;
 				cmd->optcount++;
 				break;
 			case OPT_NC3:
