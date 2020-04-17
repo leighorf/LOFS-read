@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-	int i,ni,nj,nk,status;
+	int i,status;
 
 	dir_meta dm;
 	hdf_meta hm;
@@ -63,7 +63,11 @@ int main(int argc, char *argv[])
 	if(cmd.debug)
 	{
 		printf("All available times: ");
-		for (i=0; i<dm.ntottimes; i++)printf("%lf ",dm.alltimes[i]); printf("\n");
+		for (i=0; i<dm.ntottimes; i++)
+		{
+			printf("%lf ",dm.alltimes[i]);
+			printf("\n");
+		}
 	}
 
 	if ((hdf_file_id = H5Fopen (dm.firstfilename, H5F_ACC_RDONLY,H5P_DEFAULT)) < 0)
@@ -76,7 +80,10 @@ int main(int argc, char *argv[])
 
 	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++)
-		printf("%s ",hm.varname_available[i]);printf("\n");
+	{
+		printf("%s ",hm.varname_available[i]);
+		printf("\n");
+	}
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
 	{
@@ -103,8 +110,6 @@ int main(int argc, char *argv[])
 	gd.NX = gd.X1 - gd.X0 + 1;
 	gd.NY = gd.Y1 - gd.Y0 + 1;
 	gd.NZ = gd.Z1 - gd.Z0 + 1;
-
-	nk=gd.NZ;nj=gd.NY;ni=gd.NX; //For cm1-like code
 
 	/* Allocate memory for 1d mesh and sounding arrays */
 	allocate_1d_arrays(hm, gd, &msh, &snd);
