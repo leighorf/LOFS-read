@@ -32,12 +32,8 @@ typedef struct sounding
 typedef struct buffers
 {
 	float *ustag, *vstag, *wstag;
-	float *twodfield,*twodfield0;
-	float *twodbuf,*twodbuf0;
-	float *buf,*buf0;
-	float *dum0,*dum00;
-	float *dum1,*dum10;
-	float *writeptr;
+	float *buf0, *buf, *dum0, *dum1;
+	float *threedbuf;
 } buffers;
 
 typedef struct readahead

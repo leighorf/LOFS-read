@@ -592,6 +592,7 @@ void z_progress_bar(int iz, int nz)
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
 	int ix,iy,iz,nx,ny,buf0nx,buf0ny,i,ixoff,iyoff,ivar,status;
+	long int bufsize;
 	requested_cube rc;
 	char *var;
 	float *twodbuf,*threedbuf;
@@ -609,8 +610,16 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	copy_grid_to_requested_cube(&rc,gd);
 
 	var = (char *) malloc (MAXSTR * sizeof(char));
-	if(cmd.twodwrite) twodbuf = (float *)malloc(gd.NX*gd.NY*sizeof(float));
-	else threedbuf = (float *)malloc(gd.NX*gd.NY*gd.NZ*sizeof(float));
+	if(cmd.twodwrite)
+	{
+		bufsize=gd.NX*gd.NY*sizeof(float);
+		twodbuf = (float *)malloc(bufsize);
+	}
+//	else
+//	{
+//		bufsize=(long)gd.NX*(long)gd.NY*(long)gd.NZ*(long)sizeof(float);
+//		threedbuf = (float *)malloc(bufsize*sizeof(float));
+//	}
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
@@ -682,18 +691,10 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		}
 		printf("writing...");FL;
 
-// ORF we write our netcdf files in Z slices now.
-//
-// This is done in order to handle our different array indexing issues. No appreciable
-// performance penalty for uncompressed writes, and we only have to malloc an additional
-// 2D array. This approach means this writeout routine is a little more complicated, but
-// everything else in LOFT/LOFS should be consistent, which is the big advantage.
-//
-// It turns out that the already bad performanace (CPU time) of doing gzip compression
-// here was made much worse by doing slices. I found that the external program nccopy
-// is much much more efficient when run as a standalone program, so we just call it
-// externally now if --compress is passed at the command line. nccopy is part of netCDF so
-// it should be available to all users since LOFS-read depends on it.
+// ORF I tried this and it kind of sucked performance wise for large-ish
+// data, but I leave the option available. This method writes our data
+// in 2D XY slices rather than one big 3D chunk (saves a bit of data).
+// Newsflash: 1 big 3D chunk writes a shit-ton faster.
 
 		if(cmd.twodwrite)
 		{
@@ -705,7 +706,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 				{
 					for(ix=0;ix<gd.NX;ix++)
 					{
-						twodbuf[P2(ix,iy,gd.NX)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+						twodbuf[P2(ix,iy,gd.NX)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
 					}
 				}
 				if(gd.X0==gd.X1)      //YZ slice
@@ -736,7 +737,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 				status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
 			}
 		}
-		else
+		else//This is the default
 		{
 #pragma omp parallel for private(ix,iy,iz)
 			for (iz=0; iz<gd.NZ; iz++)
@@ -745,7 +746,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 				{
 					for(ix=0;ix<gd.NX;ix++)
 					{
-						threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf0[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+						threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
 					}
 				}
 			}
@@ -754,5 +755,5 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		}
 		BL;
 	}
-	if(cmd.twodwrite)free(twodbuf);else free(threedbuf);
+	if(cmd.twodwrite)free(twodbuf);
 }

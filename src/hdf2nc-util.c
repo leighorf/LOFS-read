@@ -216,7 +216,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,hm.nz);
 	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
 	//ASSUMES Z0=0!!
-	for (k=gd.Z0; k<gd.NZ; k++) snd->qv0[k-gd.Z0] *= 1000.0; // g/kg now
+//	for (k=gd.Z0; k<gd.NZ; k++) snd->qv0[k-gd.Z0] *= 1000.0; // g/kg now
 	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/u0",snd->u0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/v0",snd->v0,gd.Z0,gd.NZ);
@@ -254,14 +254,12 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	else
 		for (iz=gd.Z0; iz<=gd.Z1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
 	
-	/* I prefer mesh values in km in netCDF files */
-	/* Note mixing ratios are g/kg in netCDF files as well */
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = 0.001*msh->zh[iz];
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = 0.001*msh->xffull[ix];
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = 0.001*msh->yhfull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = 0.001*msh->xhfull[ix];
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = msh->zf[iz]; 
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = msh->zh[iz];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = msh->yffull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = msh->xffull[ix];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = msh->yhfull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = msh->xhfull[ix];
 }
 
 
@@ -739,13 +737,20 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 {
 	if (cmd.nvar>0)
 	{
-		long bufsize,totbufsize;
+		long bufsize,bswrite,totbufsize;
 
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
+		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;
 
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
+		if(!cmd.twodwrite)//This is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
+		{
+			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
+				ERROR_STOP("Cannot allocate our 3D variable write array");
+			totbufsize+=bswrite;
+		}
 		if (rh.u)
 		{
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -766,13 +771,13 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		}
 		if (rh.u||rh.v||rh.w)
 		{
-			if ((b->dum00 = b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
+			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
 		if (rh.vortmag||rh.hvort||rh.streamvort)//Not really readahead, but if we calculated these we need another array
 		{
-			if ((b->dum10 = b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
+			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
@@ -785,6 +790,7 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	if (cmd.nvar>0)
 	{
 		free (b->buf);
+		if(!cmd.twodwrite) free (b->threedbuf);
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
