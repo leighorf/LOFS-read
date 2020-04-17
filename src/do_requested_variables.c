@@ -595,7 +595,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 	long int bufsize;
 	requested_cube rc;
 	char *var;
-	float *twodbuf,*threedbuf;
+	float *twodbuf;
 	size_t writestart[4],writeedges[4];
 
 // For flexibility we always set rc in case we need to read outside of what we
@@ -746,12 +746,12 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 				{
 					for(ix=0;ix<gd.NX;ix++)
 					{
-						threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+						b->threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
 					}
 				}
 			}
 
-		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, threedbuf);
+		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, b->threedbuf);
 		}
 		BL;
 	}
