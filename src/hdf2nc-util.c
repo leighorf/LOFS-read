@@ -252,14 +252,13 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	else
 		for (iz=gd.Z0; iz<=gd.Z1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
 	
-	/* I prefer mesh values in km in netCDF files */
 	/* Note mixing ratios are g/kg in netCDF files as well */
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = 0.001*msh->zf[iz]; 
-	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = 0.001*msh->zh[iz];
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = 0.001*msh->yffull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = 0.001*msh->xffull[ix];
-	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = 0.001*msh->yhfull[iy];
-	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = 0.001*msh->xhfull[ix];
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = msh->zf[iz]; 
+	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = msh->zh[iz];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yfout[iy-gd.Y0] = msh->yffull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xfout[ix-gd.X0] = msh->xffull[ix];
+	for (iy=gd.Y0; iy<=gd.Y1; iy++) msh->yhout[iy-gd.Y0] = msh->yhfull[iy];
+	for (ix=gd.X0; ix<=gd.X1; ix++) msh->xhout[ix-gd.X0] = msh->xhfull[ix];
 }
 
 
