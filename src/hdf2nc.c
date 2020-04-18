@@ -79,18 +79,14 @@ int main(int argc, char *argv[])
 	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
 
 	printf("3D variables available: ");
-	for (i = 0; i < hm.nvar_available; i++)
-	{
-		printf("%s ",hm.varname_available[i]);
-		printf("\n");
-	}
+	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
+	printf("\n");
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
 	{
 		printf("We are requesting the following variables: ");
-		for (i=0; i<cmd.nvar_cmdline; i++)
-			printf("%s ",cmd.varname_cmdline[i]);
-		 printf("\n");
+		for (i=0; i<cmd.nvar_cmdline; i++) printf("%s ",cmd.varname_cmdline[i]);
+		printf("\n");
 	}
 
 	if (cmd.debug)
