@@ -22,12 +22,12 @@ const float cpv = 1870.0;
 const float rv = 461.5;
 const float kdiff6 = 0.080;
 
-float rp00 = 1.0/p00;
-float cpinv = 1.0/cp;
-float rcp = 1.0/cp;
-float rovcp = rd/cp;
-float eps = rd/rv;
-float reps = rv/rd;
+#define  rp00  (1.0/p00)
+#define cpinv  (1.0/cp)
+#define rcp  (1.0/cp)
+#define rovcp  (rd/cp)
+#define eps  (rd/rv)
+#define reps  (rv/rd)
 
 
 #endif

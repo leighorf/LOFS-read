@@ -4,6 +4,8 @@
 #include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-limits.h"
 #include "../include/lofs-macros.h"
+#include "../include/lofs-constants.h"
+#include "./calc/calcvort.c"
 
 /* Note, we use George's i,j,k and ni,nj,nk approach although we personally prefer ix,iy,iz and
  * nx,ny,nz. Because some of our macros use the nx,ny,nz approach we copy ni,nj,nk to a local nx,ny,nz
@@ -148,7 +150,7 @@ void calc_hdiv(buffers *b, grid gd, mesh msh, cmdline cmd)
 /*******************************************************************************/
 
 #define XVORT BUFp
-void calc_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dwdy,dvdz,rdy,rdz;
@@ -184,7 +186,7 @@ void calc_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 /*******************************************************************************/
 
 #define YVORT BUFp
-void calc_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dudz,dwdx,rdx,rdz;
@@ -220,7 +222,7 @@ void calc_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 /*******************************************************************************/
 
 #define ZVORT BUFp
-void calc_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dvdx,dudy,rdx,rdy;
@@ -675,9 +677,9 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		else if(same(var,"hwin_gr"))	{CL;calc_hwin_gr(b,gd,msh,cmd);}
 		else if(same(var,"windmag_sr"))	{CL;calc_windmag_sr(b,gd,cmd);}
 		else if(same(var,"hdiv")) 		{CL;calc_hdiv(b,gd,msh,cmd);}
-		else if(same(var,"xvort"))		{CL;calc_xvort(b,gd,msh,cmd);}
-		else if(same(var,"yvort"))		{CL;calc_yvort(b,gd,msh,cmd);}
-		else if(same(var,"zvort"))		{CL;calc_zvort(b,gd,msh,cmd);}
+		else if(same(var,"xvort"))		{CL;do_xvort(b,gd,msh,cmd);}
+		else if(same(var,"yvort"))		{CL;do_yvort(b,gd,msh,cmd);}
+		else if(same(var,"zvort"))		{CL;do_zvort(b,gd,msh,cmd);}
 		else if(same(var,"hvort"))		{CL;calc_hvort(b,gd,msh,cmd);}
 		else if(same(var,"vortmag"))	{CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);}
