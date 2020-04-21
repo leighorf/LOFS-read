@@ -662,37 +662,68 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "v0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->v0id,"standard_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->th0id,"standard_name","base_state_potential_temperature","m/s");
+	set_nc_meta(nc->ncid,nc->th0id,"standard_name","base_state_potential_temperature","K");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pres0id,"standard_name","base_state_pressure","m/s");
+	set_nc_meta(nc->ncid,nc->pres0id,"standard_name","base_state_pressure","hPa");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_nondimensional_pressure","m/s");
+	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_nondimensional_pressure","#");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->qv0id,"standard_name","base_state_water_vapor_mixing_ratio","m/s");
+	set_nc_meta(nc->ncid,nc->qv0id,"standard_name","base_state_water_vapor_mixing_ratio","g/kg");
 	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","m/s");
+	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","kg/m^3");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
 {
 	double timearray[1];
+	float *tmparray;
 	//ORF for writing single time in unlimited time dimension/variable
 	const size_t timestart = 0;
 	const size_t timecount = 1;
 	int status;
+	int i;
 
-	status = nc_put_var_float (nc.ncid,nc.xhid,msh.xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.yhid,msh.yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.zhid,msh.zhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.xfid,msh.xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.yfid,msh.yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.zfid,msh.zfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	/* I do not want all MKS units in my netcdf files. But I set all
+	 * the arrays to MKS units for consistency. Here I make my
+	 * adjustments - mesh in km, mixing ratios in g/kg */
+
+	/* TODO: Make command line option */
+
+	tmparray = (float *)malloc (gd.NX*sizeof(float));
+	for (i=gd.X0; i<=gd.X1; i++) tmparray[i-gd.X0] = 0.001*msh.xhout[i-gd.X0];
+	status = nc_put_var_float (nc.ncid,nc.xhid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	for (i=gd.X0; i<=gd.X1; i++) tmparray[i-gd.X0] = 0.001*msh.xfout[i-gd.X0];
+	status = nc_put_var_float (nc.ncid,nc.xfid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	free(tmparray);
+	tmparray = (float *)malloc (gd.NY*sizeof(float));
+	for (i=gd.Y0; i<=gd.Y1; i++) tmparray[i-gd.Y0] = 0.001*msh.yhout[i-gd.Y0];
+	status = nc_put_var_float (nc.ncid,nc.yhid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	for (i=gd.Y0; i<=gd.Y1; i++) tmparray[i-gd.Y0] = 0.001*msh.yfout[i-gd.Y0];
+	status = nc_put_var_float (nc.ncid,nc.yfid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	free(tmparray);
+	tmparray = (float *)malloc (gd.NZ*sizeof(float));
+	for (i=gd.Z0; i<=gd.Z1; i++) tmparray[i-gd.Z0] = 0.001*msh.zhout[i-gd.Z0];
+	status = nc_put_var_float (nc.ncid,nc.zhid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	for (i=gd.Z0; i<=gd.Z1; i++) tmparray[i-gd.Z0] = 0.001*msh.zfout[i-gd.Z0];
+	status = nc_put_var_float (nc.ncid,nc.zfid,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	for (i=gd.Z0; i<=gd.Z1; i++) tmparray[i-gd.Z0] = 0.01*snd.pres0[i-gd.Z0];
+	status = nc_put_var_float (nc.ncid,nc.pres0id,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	for (i=gd.Z0; i<=gd.Z1; i++) tmparray[i-gd.Z0] = 1000.0*snd.qv0[i-gd.Z0];
+	status = nc_put_var_float (nc.ncid,nc.qv0id,tmparray); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	free(tmparray);
+
+//	status = nc_put_var_float (nc.ncid,nc.xhid,msh.xhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.yhid,msh.yhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.zhid,msh.zhout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.xfid,msh.xfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.yfid,msh.yfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.zfid,msh.zfout); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.pres0id,snd.pres0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+//	status = nc_put_var_float (nc.ncid,nc.qv0id,snd.qv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.u0id,snd.u0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.v0id,snd.v0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.th0id,snd.th0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.pres0id,snd.pres0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.pi0id,snd.pi0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
-	status = nc_put_var_float (nc.ncid,nc.qv0id,snd.qv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.rho0id,snd.rho0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_int (nc.ncid,nc.x0id,&gd.X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.y0id,&gd.Y0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
