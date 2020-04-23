@@ -180,7 +180,6 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 		}
 	}
 //This is dependent upon our current free slip bc, see CM1 for other decisions
-	#pragma omp parallel for private(i, j)
 	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni; i++)
 	{
@@ -218,7 +217,6 @@ void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	}
 //This is dependent upon our current free slip bc, see CM1 for other
 //decisions
-	#pragma omp parallel for private(i, j)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni+1; i++)
 	{
