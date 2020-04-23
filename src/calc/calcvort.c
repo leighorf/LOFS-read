@@ -64,11 +64,9 @@ void calc_pipert(float *prespert, float *p0, float *pipert, int i, int j, int k,
     OUTPUT:
     xvort: 1/second
  */
-void calc_xvort(float *vstag, float *wstag, float *xvort, float dy, float dz, int i, int j, int k, int nx, int ny) {
+inline void calc_xvort(float *vstag, float *wstag, float *xvort, float dy, float dz, int i, int j, int k, int nx, int ny) {
     float *dum0 = xvort;
-    float dwdy = ( ( WA(i, j, k) - WA(i, j-1, k) )/dy );
-    float dvdz = ( ( VA(i, j, k) - VA(i, j, k-1) )/dz );
-    TEM(i, j, k) = dwdy - dvdz; 
+    TEM(i, j, k) = ( ( WA(i, j, k) - WA(i, j-1, k) )/dy ) - ( ( VA(i, j, k) - VA(i, j, k-1) )/dz );
 }
 
 /*  Compute the component of vorticity along the y-axis.
@@ -85,11 +83,9 @@ void calc_xvort(float *vstag, float *wstag, float *xvort, float dy, float dz, in
     OUTPUT:
     yvort: 1/second
  */
-void calc_yvort(float *ustag, float *wstag, float *yvort, float dx, float dz, int i, int j, int k, int nx, int ny) {
+inline void calc_yvort(float *ustag, float *wstag, float *yvort, float dx, float dz, int i, int j, int k, int nx, int ny) {
     float *dum0 = yvort;
-    float dwdx = ( ( WA(i, j, k) - WA(i-1, j, k) )/dx );
-    float dudz = ( ( UA(i, j, k) - UA(i, j, k-1) )/dz );
-    TEM(i, j, k) = dudz - dwdx;
+    TEM(i, j, k) = ( ( UA(i, j, k) - UA(i, j, k-1) )/dz ) - ( ( WA(i, j, k) - WA(i-1, j, k) )/dx );
 }
 
 /*  Compute the component of vorticity along the z-axis.
@@ -106,11 +102,9 @@ void calc_yvort(float *ustag, float *wstag, float *yvort, float dx, float dz, in
     OUTPUT:
     zvort: 1/second
  */
-void calc_zvort(float *ustag, float *vstag, float *zvort, float dx, float dy, int i, int j, int k, int nx, int ny) {
+inline void calc_zvort(float *ustag, float *vstag, float *zvort, float dx, float dy, int i, int j, int k, int nx, int ny) {
     float *dum0 = zvort;
-    float dvdx = ( ( VA(i, j, k) - VA(i-1, j, k) )/dx);
-    float dudy = ( ( UA(i, j, k) - UA(i, j-1, k) )/dy);
-    TEM(i, j, k) = dvdx - dudy;
+    TEM(i, j, k) = ( ( VA(i, j, k) - VA(i-1, j, k) )/dx) - ( ( UA(i, j, k) - UA(i, j-1, k) )/dy);
 }
 
 void calc_dudy(float *ustag, float *dudy, float dy, int i, int j, int k, int nx, int ny) {
