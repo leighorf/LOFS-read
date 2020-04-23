@@ -247,7 +247,7 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 			dy = 1./(msh.rdy * VF(j)); 
 			for(i=0; i<ni+1; i++) {
 				dx = 1./(msh.rdx * UF(i)); 
-    			calc_zvort(b->ustag, b->wstag, b->dum0, dx, dy, i, j, k, ni, nj);
+    			calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
 			}
 		}
 	}
