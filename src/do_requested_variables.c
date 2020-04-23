@@ -149,26 +149,38 @@ void calc_hdiv(buffers *b, grid gd, mesh msh, cmdline cmd)
 
 /*******************************************************************************/
 
+/*
+ *typedef struct buffers
+ *{
+ *    float *ustag, *vstag, *wstag;
+ *    float *buf0, *buf, *dum0, *dum1;
+ *    float *threedbuf;
+ *} buffers;
+ */
 #define XVORT BUFp
 void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dwdy,dvdz,rdy,rdz;
+	float dy,dz;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
-	rdy=msh.rdy; rdz=msh.rdz;
 
-#pragma omp parallel for private(i,j,k,dwdy,dvdz)
-	for(k=1; k<nk; k++)
-	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni; i++)
-	{
-		dwdy = (WAp(i,j,k)-WAp(i,j-1,k))*rdy*VF(j);//was i
-		dvdz = (VAp(i,j,k)-VAp(i,j,k-1))*rdz*MF(k);
-		TEMp(i,j,k) = dwdy - dvdz;
+	#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
+		dz = 1./(msh.rdz * MF(k)); 
+		// If we parallelize over j and give each thread a row to
+		// work on, then we take advantage of caching and memory
+		// linearity. 
+		for(j=0; j<nj+1; j++) {
+			dy = 1./(msh.rdy * VF(j)); 
+			for(i=0; i<ni; i++) {
+    			calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
+			}
+		}
 	}
 //This is dependent upon our current free slip bc, see CM1 for other decisions
+	#pragma omp parallel for private(i, j)
 	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni; i++)
 	{
@@ -176,7 +188,7 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
 
-#pragma omp parallel for private(i,j,k)
+	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -189,30 +201,31 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dudz,dwdx,rdx,rdz;
+	float dx,dz;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
-	rdx=msh.rdx; rdz=msh.rdz;
 
-#pragma omp parallel for private(i,j,k,dudz,dwdx)
-	for(k=1; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni+1; i++)
-	{
-		dudz = (UAp(i,j,k)-UAp(i,j,k-1))*rdz*MF(k);
-		dwdx = (WAp(i,j,k)-WAp(i-1,j,k))*rdx*UF(i);
-		TEMp(i,j,k) = dudz - dwdx;
+	#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
+		dz = 1./(msh.rdz * MF(k)); 
+		for(j=0; j<nj; j++) {
+			for(i=0; i<ni+1; i++) {
+				dx = 1./(msh.rdx * UF(i)); 
+    			calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
+			}
+		}
 	}
 //This is dependent upon our current free slip bc, see CM1 for other
 //decisions
+	#pragma omp parallel for private(i, j)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni+1; i++)
 	{
 		TEMp(i,j,0)=TEMp(i,j,1);
 		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
-#pragma omp parallel for private(i,j,k)
+	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -225,22 +238,23 @@ void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dvdx,dudy,rdx,rdy;
+	float dx,dy;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
-	rdx=msh.rdx; rdy=msh.rdy;
 
-#pragma omp parallel for private(i,j,k,dvdx,dudy)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni+1; i++)
-	{
-		dvdx = (VAp(i,j,k)-VAp(i-1,j,k))*rdx*UF(i);
-		dudy = (UAp(i,j,k)-UAp(i,j-1,k))*rdy*VF(j);
-		TEMp(i,j,k) = dvdx - dudy;
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+		for(j=0; j<nj+1; j++) {
+			dy = 1./(msh.rdy * VF(j)); 
+			for(i=0; i<ni+1; i++) {
+				dx = 1./(msh.rdx * UF(i)); 
+    			calc_zvort(b->ustag, b->wstag, b->dum0, dx, dy, i, j, k, ni, nj);
+			}
+		}
 	}
-#pragma omp parallel for private(i,j,k)
+
+	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
