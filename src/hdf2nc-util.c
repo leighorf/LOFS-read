@@ -607,7 +607,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_on_native_mesh","m/s");
 		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_on_native_mesh","m/s");
 		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
 		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_interpolated_to_scalar_mesh","m/s");
@@ -627,7 +626,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
+		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","g/kg");
 		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
 		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
 		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
