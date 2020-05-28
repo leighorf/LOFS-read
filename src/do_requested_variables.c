@@ -721,7 +721,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 
 // ORF I tried this and it kind of sucked performance wise for large-ish
 // data, but I leave the option available. This method writes our data
-// in 2D XY slices rather than one big 3D chunk (saves a bit of data).
+// in 2D XY slices rather than one big 3D chunk (saves a bit of memory).
 // Newsflash: 1 big 3D chunk writes a shit-ton faster.
 
 		if(cmd.twodwrite)
