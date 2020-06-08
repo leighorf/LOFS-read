@@ -720,7 +720,6 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 			buf0nx=gd.NX;ixoff=0;
 			buf0ny=gd.NY;iyoff=0;
 			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
-			BL;
 		}
 		printf("writing...");FL;
 

@@ -847,7 +847,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	copy_grid_to_requested_cube(&rc,gd);
 
-	printf("swaths: writing...");FL; 
+	printf("swaths: reading...");FL; 
 
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) sizeof(float);
 	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -858,7 +858,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
-	if(cmd.verbose)printf("Writing swaths...\n");
+	printf("writing...");FL;
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
 		for (iy=0; iy<rc.NY; iy++)
@@ -885,21 +885,27 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("u: reading...");
 		read_lofs_buffer(b->ustag,"u",dm,hm,rc,cmd);
+		BL;
 	}
 	if (rh.v)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("v: reading...");
 		read_lofs_buffer(b->vstag,"v",dm,hm,rc,cmd);
+		BL;
 	}
 	if (rh.w)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("w: reading...");
 		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
+		BL;
 	}
 
 }
