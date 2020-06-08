@@ -277,8 +277,8 @@ void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *
 }
 
 // We need these global variables only for the H5Giter function 
-int n2d;
-const char **twodvarname;
+int n2d_hdf2nc;
+const char **twodvarname_hdf2nc;
 int *twodvarid;
 int ncid_g;
 int d2[3];
@@ -287,7 +287,7 @@ herr_t twod_first_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 {
     H5G_stat_t statbuf;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    n2d++;
+    n2d_hdf2nc++;
     return 0;
 }
 
@@ -295,9 +295,9 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 {
     H5G_stat_t statbuf;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    strcpy((char *)twodvarname[n2d],name);
-    nc_def_var (ncid_g, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
-    n2d++;
+    strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
+    nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
+    n2d_hdf2nc++;
     return 0;
 }
 
@@ -367,28 +367,28 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int i2d,bufsize;
 
-		n2d = 0;
+		n2d_hdf2nc = 0;
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
 
-		twodvarname = (const char **)malloc(n2d*sizeof(char *));
-		twodvarid =   (int *)        malloc(n2d*sizeof(int));
+		twodvarname_hdf2nc = (const char **)malloc(n2d_hdf2nc*sizeof(char *));
+		twodvarid =   (int *)        malloc(n2d_hdf2nc*sizeof(int));
 
-		hm->n2dswaths = n2d;
-		printf("There are %i 2D static/swath fields.\n",n2d);
+		hm->n2dswaths = n2d_hdf2nc;
+		printf("There are %i 2D static/swath fields.\n",n2d_hdf2nc);
 
-		for (i2d=0; i2d<n2d; i2d++)
+		for (i2d=0; i2d<n2d_hdf2nc; i2d++)
 		{
-			twodvarname[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
+			twodvarname_hdf2nc[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
 		}
 
-		n2d = 0;
+		n2d_hdf2nc = 0;
 		ncid_g=nc->ncid; //Needed for iteration func.
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_second_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_second_pass_hdf2nc,NULL);
 
-		for (i2d=0; i2d<n2d; i2d++) free((void *)twodvarname[i2d]); //shaddap compiler
-		free(twodvarname);
+		for (i2d=0; i2d<n2d_hdf2nc; i2d++) free((void *)twodvarname_hdf2nc[i2d]); //shaddap compiler
+		free(twodvarname_hdf2nc);
 
 		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
