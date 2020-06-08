@@ -654,7 +654,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 //	if (cmd->gzip>0) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, cmd->gzip); //shuffle=1,deflate=1,deflate_level=cmd->gzip value
 	}
 
-/* Write sounding data */
+/* Write sounding data attributes, also umove and vmove */
 
 	status = nc_def_var (nc->ncid, "u0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->u0id,"standard_name","base_state_u","m/s");
@@ -670,6 +670,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	set_nc_meta(nc->ncid,nc->qv0id,"standard_name","base_state_water_vapor_mixing_ratio","g/kg");
 	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","kg/m^3");
+
+	status = nc_def_var (nc->ncid, "umove", NC_FLOAT, 0, nc->dims, &nc->umoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","x_box_translation_component","m/s");
+	status = nc_def_var (nc->ncid, "vmove", NC_FLOAT, 0, nc->dims, &nc->vmoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","y_box_translation_component","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -730,6 +735,8 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	status = nc_put_var_int (nc.ncid,nc.y1id,&gd.Y1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.z0id,&gd.Z0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.z1id,&gd.Z1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
+	status = nc_put_var_float (nc.ncid,nc.umoveid,&msh.umove); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (nc.ncid,nc.vmoveid,&msh.vmove); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	timearray[0] = cmd.time;
 	status = nc_put_vara_double (nc.ncid,nc.timeid,&timestart,&timecount,timearray);
 	if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
