@@ -456,13 +456,65 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
-		int var_is_u = 0, var_is_v = 0, var_is_w = 0;
+		int mesh_is_u = 0, mesh_is_v = 0, mesh_is_w = 0;
 
 		strcpy(var,nc->varname[ivar]);
 
-		if (same(var,"u")) var_is_u=1;
-		if (same(var,"v")) var_is_v=1;
-		if (same(var,"w")) var_is_w=1;
+		if (same(var,"u")) mesh_is_u=1;
+		if (same(var,"v")) mesh_is_v=1;
+		if (same(var,"w")) mesh_is_w=1;
+		/* ORF these guys live on the w grid actually, time to
+		 * get this right. TODO: Have interp option available. */
+		if (same(var,"khh")) mesh_is_w=1;
+		if (same(var,"khv")) mesh_is_w=1;
+		if (same(var,"kmh")) mesh_is_w=1;
+		if (same(var,"kmv")) mesh_is_w=1;
+
+		/* ORF 2020-06-25
+		 * All of the budget stuff now matched to the right
+		 * mesh. */
+
+		if (same(var,"ub_cor"))    mesh_is_u=1;
+		if (same(var,"ub_hadv"))   mesh_is_u=1;
+		if (same(var,"ub_hediff")) mesh_is_u=1;
+		if (same(var,"ub_hidiff")) mesh_is_u=1;
+		if (same(var,"ub_hturb"))  mesh_is_u=1;
+		if (same(var,"ub_pbl"))    mesh_is_u=1;
+		if (same(var,"ub_pgrad"))  mesh_is_u=1;
+		if (same(var,"ub_rdamp"))  mesh_is_u=1;
+		if (same(var,"ub_subs"))   mesh_is_u=1;
+		if (same(var,"ub_vadv"))   mesh_is_u=1;
+		if (same(var,"ub_vediff")) mesh_is_u=1;
+		if (same(var,"ub_vidiff")) mesh_is_u=1;
+		if (same(var,"ub_vturb"))  mesh_is_u=1;
+
+		if (same(var,"vb_cor"))    mesh_is_v=1;
+		if (same(var,"vb_hadv"))   mesh_is_v=1;
+		if (same(var,"vb_hediff")) mesh_is_v=1;
+		if (same(var,"vb_hidiff")) mesh_is_v=1;
+		if (same(var,"vb_hturb"))  mesh_is_v=1;
+		if (same(var,"vb_pbl"))    mesh_is_v=1;
+		if (same(var,"vb_pgrad"))  mesh_is_v=1;
+		if (same(var,"vb_rdamp"))  mesh_is_v=1;
+		if (same(var,"vb_subs"))   mesh_is_v=1;
+		if (same(var,"vb_vadv"))   mesh_is_v=1;
+		if (same(var,"vb_vediff")) mesh_is_v=1;
+		if (same(var,"vb_vidiff")) mesh_is_v=1;
+		if (same(var,"vb_vturb"))  mesh_is_v=1;
+
+		if (same(var,"wb_buoy"))   mesh_is_w=1;
+		if (same(var,"wb_hadv"))   mesh_is_w=1;
+		if (same(var,"wb_hediff")) mesh_is_w=1;
+		if (same(var,"wb_hidiff")) mesh_is_w=1;
+		if (same(var,"wb_hturb"))  mesh_is_w=1;
+		if (same(var,"wb_pbl"))    mesh_is_w=1;
+		if (same(var,"wb_pgrad"))  mesh_is_w=1;
+		if (same(var,"wb_rdamp"))  mesh_is_w=1;
+		if (same(var,"wb_subs"))   mesh_is_w=1;
+		if (same(var,"wb_vadv"))   mesh_is_w=1;
+		if (same(var,"wb_vediff")) mesh_is_w=1;
+		if (same(var,"wb_vidiff")) mesh_is_w=1;
+		if (same(var,"wb_vturb"))  mesh_is_w=1;
 
 		/* u v and w live on their own mesh (Arakawa C grid)*/
 
@@ -481,7 +533,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		 * do_requested_variables. However the dimid stuff must still be done here and is
 		 * used */
 
-		if(var_is_u)
+		/* ORF 2020-06
+		 * I don't do Z slices any more, performance sucked
+		 */
+
+		if(mesh_is_u)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
@@ -498,7 +554,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[2] = gd.NY;
 			nc->edges[3] = gd.NX;
 		}
-		else if (var_is_v)
+		else if (mesh_is_v)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
@@ -515,7 +571,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[2] = gd.NY;
 			nc->edges[3] = gd.NX;
 		}
-		else if (var_is_w)
+		else if (mesh_is_w)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzf_dimid;
@@ -556,8 +612,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
-			nc->dims[2] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
+			nc->dims[1] = (mesh_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (mesh_is_v)?nc->nyf_dimid:nc->nyh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -570,8 +626,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
-			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
+			nc->dims[1] = (mesh_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (mesh_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -584,8 +640,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
-			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
+			nc->dims[1] = (mesh_is_v)?nc->nyf_dimid:nc->nyh_dimid;
+			nc->dims[2] = (mesh_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
