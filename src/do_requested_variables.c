@@ -244,7 +244,7 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++) {
 		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); 
+			dy = 1./(msh.rdy * VF(j)); //We might want to just do rdy, much cleaner... and dx,dy,dz are always in the denominator
 			for(i=0; i<ni+1; i++) {
 				dx = 1./(msh.rdx * UF(i)); 
     			calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
@@ -709,13 +709,17 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 		else if(same(var,"hvort"))		{CL;calc_hvort(b,gd,msh,cmd);}
 		else if(same(var,"vortmag"))	{CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);}
+// At some point after we've calculated all the stuff that requires
+// buffered u v w stuff we need to repurpose some of those buffers for
+// calculating other things - like temperature, which requires pressure
+// and density since I don't save pipert
+//		else if(same(var,"tempk"))	{CL;calc_tempk(b,gd,msh,cmd);}
 		else
 		{
 			printf("reading...");FL;
 			buf0nx=gd.NX;ixoff=0;
 			buf0ny=gd.NY;iyoff=0;
 			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
-			BL;
 		}
 		printf("writing...");FL;
 
