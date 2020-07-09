@@ -17,7 +17,7 @@ except:
 import datetime
 import argparse
 
-def read_sharp_txt(filename, dz=100.):
+def read_sharp_txt(filename, dz=100., desat=0.0):
     """
     Reads in the SHARPpy file format and then does the necessary
     unit conversions and computations to have it output as a CM1
@@ -34,7 +34,19 @@ def read_sharp_txt(filename, dz=100.):
         P = profile.pres
         H = profile.hght
         T = profile.tmpc
-        Td = profile.dwpc
+        if (desat > 0.0): 
+            relh = profile.relh
+            relh[relh >= 98.0] -= desat
+            relh[relh < 2.0] = 2.0
+            satvap = thermo.vappres(T)
+            vappres = (relh/100.0) * satvap
+            Td = thermo.temp_at_vappres(vappres)
+        else:
+            relh = profile.relh
+            relh[relh < 2.0] = 2.0
+            satvap = thermo.vappres(T)
+            vappres = (relh/100.0) * satvap
+            Td = thermo.temp_at_vappres(vappres)
         U = profile.u
         V = profile.v
 
@@ -54,6 +66,7 @@ def read_sharp_txt(filename, dz=100.):
         H = H[~mask]
         U = U[~mask]
         V = V[~mask]
+        profile = prof.create_profile(pres=P, hght=H, tmpc=T, dwpc=Td, u=U, v=V)
         
         ## interpolate the input data into a specified height interval
         ## for the output CM1 data. Defaults to 100 meters, can be specified via command line.
@@ -67,6 +80,9 @@ def read_sharp_txt(filename, dz=100.):
         
         new_u = utils.KTS2MS(new_u)
         new_v = utils.KTS2MS(new_v)
+
+        top_h = np.arange(new_h[-1], 20000.0+dz, dz)
+        top_t = np.zeros(top_h.shape)
         ## return the pre processed data for eventual writing
         return {"pres": new_p, "tmpc": new_t, "dwpc": new_td, "hght": new_h - new_h[0], "uwin": new_u, "vwin": new_v, 
             "theta": new_theta, "mixr": new_mixr}
@@ -103,9 +119,10 @@ def main():
     parser.add_argument('--snd', action='store', dest='ifile', help='Input sounding file path', default=None, required=True)
     parser.add_argument('--cm1', action='store', dest='ofile', help='The output path for the CM1 sounding format file', default=None, required=True)
     parser.add_argument('--dz', action='store', dest='dz', help='The interpolation interval for the output data. Defaults to 100m.', default=100., required=False)
+    parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 99% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
     args = parser.parse_args()
 
-    data = read_sharp_txt(args.ifile, dz=float(args.dz))
+    data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat))
     data_dict_to_file(data, args.ofile)
 
 if __name__ == '__main__':
