@@ -205,7 +205,15 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
 	get0dfloat (*f_id,(char *)"mesh/dy",&msh->dy); msh->rdy=1.0/msh->dy;
-	get0dfloat (*f_id,(char *)"mesh/dz",&msh->dz); msh->rdz=1.0/msh->dz;
+	if (H5Lexists(*f_id,"mesh/dz",H5P_DEFAULT)>0)
+	{
+		get0dfloat (*f_id,(char *)"mesh/dz",&msh->dz); msh->rdz=1.0/msh->dz;
+	}
+	else
+	{
+		printf("********* dz not found in LOFS metadata; assuming isotropic, setting dz=dx\n");
+		msh->dz = msh->dx; msh->rdz=1.0/msh->dz;
+	}
 	get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
 	get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
 	get1dfloat (*f_id,(char *)"mesh/xhfull",msh->xhfull,0,hm.nx);
