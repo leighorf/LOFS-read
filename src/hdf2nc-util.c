@@ -739,9 +739,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","kg/m^3");
 
 	status = nc_def_var (nc->ncid, "umove", NC_FLOAT, 0, nc->dims, &nc->umoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","x_box_translation_component","m/s");
+	set_nc_meta(nc->ncid,nc->umoveid,"standard_name","x_box_translation_component","m/s");
 	status = nc_def_var (nc->ncid, "vmove", NC_FLOAT, 0, nc->dims, &nc->vmoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","y_box_translation_component","m/s");
+	set_nc_meta(nc->ncid,nc->vmoveid,"standard_name","y_box_translation_component","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
