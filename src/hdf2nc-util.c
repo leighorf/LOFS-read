@@ -273,10 +273,14 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 
 void set_nc_meta_global_string(int ncid, char *name, char *value)
 {
-	int len,status;
+	int status;
+	size_t len;
+	const void *v;
+
+	v = value;
 
 	len=strlen(name);
-	status = nc_put_att(ncid,NC_GLOBAL,name,NC_STRING,len,value);
+	status = nc_put_att(ncid,NC_GLOBAL,name,NC_STRING,len,v);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att failed");
 }
 
