@@ -271,6 +271,25 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 }
 
 
+void set_nc_meta_global_string(int ncid, char *name, char *value)
+{
+	int len,status;
+
+	len=strlen(name);
+	status = nc_put_att(ncid,NC_GLOBAL,name,NC_STRING,len,value);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att failed");
+}
+
+void set_nc_meta_global_integer(int ncid, char *name, int *value)
+{
+	int len,status;
+
+	len=strlen(name);
+	status = nc_put_att(ncid,NC_GLOBAL,name,NC_INT,len,value);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+}
+
+
 //if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
 void set_nc_meta(int ncid, int varnameid, char *name_long, char *name, char *units)
 {
@@ -669,6 +688,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->varname[ivar],status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
+
+// Set some global metadata
+	 	set_nc_meta_global_string(nc->ncid,"cm1lofsversion", "r19.9");
 
 // We are still before the nc_enddef call, in case you are lost
 
