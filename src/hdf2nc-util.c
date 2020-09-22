@@ -271,12 +271,13 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 }
 
 
-void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *units)
+//if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
+void set_nc_meta(int ncid, int varnameid, char *name_long, char *name, char *units)
 {
 	int len,status;
 
 	len=strlen(name);
-	status = nc_put_att_text(ncid, varnameid,namestandard,len,name);
+	status = nc_put_att_text(ncid, varnameid,name_long,len,name);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	len=strlen(units);
