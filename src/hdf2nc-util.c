@@ -429,18 +429,18 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "yf", NC_FLOAT, 1, &nc->nyf_dimid, &nc->yfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "zf", NC_FLOAT, 1, &nc->nzf_dimid, &nc->zfid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "time", NC_DOUBLE, 1, &nc->time_dimid, &nc->timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	status = nc_put_att_text(nc->ncid, nc->xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");
-	status = nc_put_att_text(nc->ncid, nc->xfid, "long_name", strlen("x-coordinate for u in Cartesian system"), "x-coordinate for u in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->xhid, "long_name", strlen("x_coordinate_in_Cartesian_system"), "x-coordinate in Cartesian system");
+	status = nc_put_att_text(nc->ncid, nc->xfid, "long_name", strlen("x_coordinate_for_u_in_Cartesian_system"), "x-coordinate for u in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xfid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->yhid, "long_name", strlen("y-coordinate in Cartesian system"), "y-coordinate in Cartesian system");
-	status = nc_put_att_text(nc->ncid, nc->yfid, "long_name", strlen("y-coordinate for v in Cartesian system"), "y-coordinate for v in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->yhid, "long_name", strlen("y_coordinate_in_Cartesian_system"), "y-coordinate in Cartesian system");
+	status = nc_put_att_text(nc->ncid, nc->yfid, "long_name", strlen("y_coordinate_for_v_in_Cartesian_system"), "y-coordinate for v in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yfid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");
-	status = nc_put_att_text(nc->ncid, nc->zfid, "long_name", strlen("z-coordinate for w in Cartesian system"), "z-coordinate for w in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->zhid, "long_name", strlen("z_coordinate_in_Cartesian_system"), "z-coordinate in Cartesian system");
+	status = nc_put_att_text(nc->ncid, nc->zfid, "long_name", strlen("z_coordinate_for_w_in_Cartesian_system"), "z-coordinate for w in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zfid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -456,12 +456,12 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "Y1", NC_INT, 0, nc->dims, &nc->y1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "Z0", NC_INT, 0, nc->dims, &nc->z0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_def_var (nc->ncid, "Z1", NC_INT, 0, nc->dims, &nc->z1id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	status = nc_put_att_text(nc->ncid, nc->x0id, "long_name", strlen("westmost grid index from LOFS data"), "westmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->x1id, "long_name", strlen("eastmost grid index from LOFS data"), "eastmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->y0id, "long_name", strlen("southmost grid index from LOFS data"), "southmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->y1id, "long_name", strlen("northmost grid index from LOFS data"), "northmost grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->z0id, "long_name", strlen("bottom grid index from LOFS data"), "bottom grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
-	status = nc_put_att_text(nc->ncid, nc->z1id, "long_name", strlen("top grid index from LOFS data"), "top grid index from LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->x0id, "long_name", strlen("westmost_grid_index_from_LOFS_data"), "westmost_grid_index_from_LOFS_data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->x1id, "long_name", strlen("eastmost_grid_index_from_LOFS_data"), "eastmost_grid_index_from_LOFS data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->y0id, "long_name", strlen("southmost_grid_index_from_LOFS_data"), "southmost_grid_index_from_LOFS_data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->y1id, "long_name", strlen("northmost_grid_index_from_LOFS_data"), "northmost_grid_index_from_LOFS_data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->z0id, "long_name", strlen("bottom_grid_index_from_LOFS_data"), "bottom_grid_index_from_LOFS_data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->z1id, "long_name", strlen("top_grid_index_from_LOFS_data"), "top_grid_index_from_LOFS_data"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	nc->d2[0] = nc->time_dimid;
 	nc->d2[1] = nc->nyh_dimid;
@@ -772,6 +772,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
 
 // We are still before the nc_enddef call, in case you are lost
+// ORF 2020-09: We should just get description and units metadata from the hdf5 files like
+// we now do with the 2D data, for all stuff that isn't calculated in this code.
 
 		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
 		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_on_native_mesh","m/s");
