@@ -205,7 +205,15 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
 	get0dfloat (*f_id,(char *)"mesh/dy",&msh->dy); msh->rdy=1.0/msh->dy;
-	get0dfloat (*f_id,(char *)"mesh/dz",&msh->dz); msh->rdz=1.0/msh->dz;
+	if (H5Lexists(*f_id,"mesh/dz",H5P_DEFAULT)>0)
+	{
+		get0dfloat (*f_id,(char *)"mesh/dz",&msh->dz); msh->rdz=1.0/msh->dz;
+	}
+	else
+	{
+		printf("********* dz not found in LOFS metadata; assuming isotropic, setting dz=dx\n");
+		msh->dz = msh->dx; msh->rdz=1.0/msh->dz;
+	}
 	get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
 	get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
 	get1dfloat (*f_id,(char *)"mesh/xhfull",msh->xhfull,0,hm.nx);
@@ -263,12 +271,39 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 }
 
 
-void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *units)
+void set_nc_meta_global_string(int ncid, char *name, char *value)
+{
+	int status;
+	size_t len;
+	const void *v;
+
+	v = value;
+
+	len=strlen(value);
+	status = nc_put_att_text(ncid,NC_GLOBAL,name,len,v);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_txt failed");
+}
+
+void set_nc_meta_global_integer(int ncid, char *name, int *value)
+{
+	int status;
+	size_t len;
+	const void *v;
+
+	v = value;
+	len=1;
+	status = nc_put_att_int(ncid,NC_GLOBAL,name,NC_INT,len,value);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_int failed");
+}
+
+
+//set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_string);
+void set_nc_meta(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 
-	len=strlen(name);
-	status = nc_put_att_text(ncid, varnameid,namestandard,len,name);
+	len=strlen(long_name);
+	status = nc_put_att_text(ncid, varnameid,lnstring,len,long_name);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	len=strlen(units);
@@ -277,8 +312,8 @@ void set_nc_meta(int ncid, int varnameid, char *namestandard, char *name, char *
 }
 
 // We need these global variables only for the H5Giter function 
-int n2d;
-const char **twodvarname;
+int n2d_hdf2nc;
+const char **twodvarname_hdf2nc;
 int *twodvarid;
 int ncid_g;
 int d2[3];
@@ -287,17 +322,87 @@ herr_t twod_first_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 {
     H5G_stat_t statbuf;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    n2d++;
+    n2d_hdf2nc++;
     return 0;
 }
 
 herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 {
+//loc_id is just f_id, the hdf5 file id 
+    char attname[50];//ORF FIX 50
+    char **units_string,**description_string,*description_string_filtered,*units_for_nc;
     H5G_stat_t statbuf;
+    H5A_info_t ainfo;
+    hid_t attr,filetype,sdim,space,memtype,lapl_id,dset;
+    hsize_t dims[1];
+    herr_t status;
+    int i,ndims,stringlen;
+
+    dims[0]=1;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    strcpy((char *)twodvarname[n2d],name);
-    nc_def_var (ncid_g, twodvarname[n2d], NC_FLOAT, 3, d2, &(twodvarid[n2d]));
-    n2d++;
+    strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
+
+// The following h5_wank grabs the units and description strings
+// We then process the description a bit, as the netcdf long_name
+// attribute does not contain spaces or commas
+
+    strcpy(attname,"units");
+    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+    attr = H5Aopen(dset,attname,H5P_DEFAULT);
+    filetype = H5Aget_type(attr);
+    sdim = H5Tget_size(filetype);sdim++;
+    space = H5Aget_space(attr);
+    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+    units_string = (char **) malloc (dims[0] * sizeof (char *));
+    units_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+    for (i=1; i<dims[0]; i++) units_string[i] = units_string[0] + i * sdim;
+    memtype = H5Tcopy (H5T_C_S1);
+    status = H5Tset_size (memtype,sdim);
+    status = H5Aread(attr,memtype,units_string[0]);
+    status = H5Aclose(attr);
+    status = H5Dclose(dset);
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    status = H5Tclose(memtype);
+
+    strcpy(attname,"description");
+    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+    attr = H5Aopen(dset,attname,H5P_DEFAULT);
+    filetype = H5Aget_type(attr);
+    sdim = H5Tget_size(filetype);sdim++;
+    space = H5Aget_space(attr);
+    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+    description_string = (char **) malloc (dims[0] * sizeof (char *));
+    description_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+    for (i=1; i<dims[0]; i++) description_string[i] = description_string[0] + i * sdim;
+    memtype = H5Tcopy (H5T_C_S1);
+    status = H5Tset_size (memtype,sdim);
+    status = H5Aread(attr,memtype,description_string[0]);
+    status = H5Aclose(attr);
+    status = H5Dclose(dset);
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    status = H5Tclose(memtype);
+
+//end h5wank. begin ncwank.
+
+    stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
+    description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
+    for(i=0; i<stringlen; i++) description_string_filtered[i] = (description_string[0][i] == ' ' || description_string[0][i] == ',') ? '_' : description_string[0][i];
+    description_string_filtered[stringlen]='\0';
+    stringlen=strlen(units_string[0]); if(stringlen > 500) exit(0);
+    units_for_nc = (char *) malloc ((stringlen+1) * sizeof (char));
+    strcpy(units_for_nc,units_string[0]);
+
+    nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
+    set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
+
+    free(units_string[0]); free(units_string);
+    free(description_string[0]); free(description_string);
+    free(description_string_filtered);
+    free(units_for_nc);
+
+    n2d_hdf2nc++;
     return 0;
 }
 
@@ -306,6 +411,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	int status;
 	int nv;
 	int ivar;
+	int i;
 	char var[MAXSTR];
 
 	status = nc_def_dim (nc->ncid, "xh", gd.NX, &nc->nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
@@ -325,14 +431,17 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	status = nc_def_var (nc->ncid, "time", NC_DOUBLE, 1, &nc->time_dimid, &nc->timeid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "long_name", strlen("x-coordinate in Cartesian system"), "x-coordinate in Cartesian system");
 	status = nc_put_att_text(nc->ncid, nc->xfid, "long_name", strlen("x-coordinate for u in Cartesian system"), "x-coordinate for u in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->xfid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xhid, "axis", strlen("X"), "X");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "long_name", strlen("y-coordinate in Cartesian system"), "y-coordinate in Cartesian system");
 	status = nc_put_att_text(nc->ncid, nc->yfid, "long_name", strlen("y-coordinate for v in Cartesian system"), "y-coordinate for v in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->yfid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->yhid, "axis", strlen("Y"), "Y");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "long_name", strlen("z-coordinate in Cartesian system"), "z-coordinate in Cartesian system");
 	status = nc_put_att_text(nc->ncid, nc->zfid, "long_name", strlen("z-coordinate for w in Cartesian system"), "z-coordinate for w in Cartesian system"); if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	status = nc_put_att_text(nc->ncid, nc->zfid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->zhid, "axis", strlen("Z"), "Z");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 	status = nc_put_att_text(nc->ncid, nc->xfid, "units", strlen("km"), "km");if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -367,28 +476,28 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int i2d,bufsize;
 
-		n2d = 0;
+		n2d_hdf2nc = 0;
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
 
-		twodvarname = (const char **)malloc(n2d*sizeof(char *));
-		twodvarid =   (int *)        malloc(n2d*sizeof(int));
+		twodvarname_hdf2nc = (const char **)malloc(n2d_hdf2nc*sizeof(char *));
+		twodvarid =   (int *)        malloc(n2d_hdf2nc*sizeof(int));
 
-		hm->n2dswaths = n2d;
-		printf("There are %i 2D static/swath fields.\n",n2d);
+		hm->n2dswaths = n2d_hdf2nc;
+		printf("There are %i 2D static/swath fields.\n",n2d_hdf2nc);
 
-		for (i2d=0; i2d<n2d; i2d++)
+		for (i2d=0; i2d<n2d_hdf2nc; i2d++)
 		{
-			twodvarname[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
+			twodvarname_hdf2nc[i2d] = (char *)malloc(50*sizeof(char)); // 50 characters per variable
 		}
 
-		n2d = 0;
+		n2d_hdf2nc = 0;
 		ncid_g=nc->ncid; //Needed for iteration func.
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_second_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_second_pass_hdf2nc,NULL);
 
-		for (i2d=0; i2d<n2d; i2d++) free((void *)twodvarname[i2d]); //shaddap compiler
-		free(twodvarname);
+		for (i2d=0; i2d<n2d_hdf2nc; i2d++) free((void *)twodvarname_hdf2nc[i2d]); //shaddap compiler
+		free(twodvarname_hdf2nc);
 
 		/* And, like magic, we have populated our netcdf id arrays for all the swath slices */
 	}
@@ -456,13 +565,65 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
-		int var_is_u = 0, var_is_v = 0, var_is_w = 0;
+		int mesh_is_u = 0, mesh_is_v = 0, mesh_is_w = 0;
 
 		strcpy(var,nc->varname[ivar]);
 
-		if (same(var,"u")) var_is_u=1;
-		if (same(var,"v")) var_is_v=1;
-		if (same(var,"w")) var_is_w=1;
+		if (same(var,"u")) mesh_is_u=1;
+		if (same(var,"v")) mesh_is_v=1;
+		if (same(var,"w")) mesh_is_w=1;
+		/* ORF these guys live on the w grid actually, time to
+		 * get this right. TODO: Have interp option available. */
+		if (same(var,"khh")) mesh_is_w=1;
+		if (same(var,"khv")) mesh_is_w=1;
+		if (same(var,"kmh")) mesh_is_w=1;
+		if (same(var,"kmv")) mesh_is_w=1;
+
+		/* ORF 2020-06-25
+		 * All of the budget stuff now matched to the right
+		 * mesh. */
+
+		if (same(var,"ub_cor"))    mesh_is_u=1;
+		if (same(var,"ub_hadv"))   mesh_is_u=1;
+		if (same(var,"ub_hediff")) mesh_is_u=1;
+		if (same(var,"ub_hidiff")) mesh_is_u=1;
+		if (same(var,"ub_hturb"))  mesh_is_u=1;
+		if (same(var,"ub_pbl"))    mesh_is_u=1;
+		if (same(var,"ub_pgrad"))  mesh_is_u=1;
+		if (same(var,"ub_rdamp"))  mesh_is_u=1;
+		if (same(var,"ub_subs"))   mesh_is_u=1;
+		if (same(var,"ub_vadv"))   mesh_is_u=1;
+		if (same(var,"ub_vediff")) mesh_is_u=1;
+		if (same(var,"ub_vidiff")) mesh_is_u=1;
+		if (same(var,"ub_vturb"))  mesh_is_u=1;
+
+		if (same(var,"vb_cor"))    mesh_is_v=1;
+		if (same(var,"vb_hadv"))   mesh_is_v=1;
+		if (same(var,"vb_hediff")) mesh_is_v=1;
+		if (same(var,"vb_hidiff")) mesh_is_v=1;
+		if (same(var,"vb_hturb"))  mesh_is_v=1;
+		if (same(var,"vb_pbl"))    mesh_is_v=1;
+		if (same(var,"vb_pgrad"))  mesh_is_v=1;
+		if (same(var,"vb_rdamp"))  mesh_is_v=1;
+		if (same(var,"vb_subs"))   mesh_is_v=1;
+		if (same(var,"vb_vadv"))   mesh_is_v=1;
+		if (same(var,"vb_vediff")) mesh_is_v=1;
+		if (same(var,"vb_vidiff")) mesh_is_v=1;
+		if (same(var,"vb_vturb"))  mesh_is_v=1;
+
+		if (same(var,"wb_buoy"))   mesh_is_w=1;
+		if (same(var,"wb_hadv"))   mesh_is_w=1;
+		if (same(var,"wb_hediff")) mesh_is_w=1;
+		if (same(var,"wb_hidiff")) mesh_is_w=1;
+		if (same(var,"wb_hturb"))  mesh_is_w=1;
+		if (same(var,"wb_pbl"))    mesh_is_w=1;
+		if (same(var,"wb_pgrad"))  mesh_is_w=1;
+		if (same(var,"wb_rdamp"))  mesh_is_w=1;
+		if (same(var,"wb_subs"))   mesh_is_w=1;
+		if (same(var,"wb_vadv"))   mesh_is_w=1;
+		if (same(var,"wb_vediff")) mesh_is_w=1;
+		if (same(var,"wb_vidiff")) mesh_is_w=1;
+		if (same(var,"wb_vturb"))  mesh_is_w=1;
 
 		/* u v and w live on their own mesh (Arakawa C grid)*/
 
@@ -481,7 +642,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		 * do_requested_variables. However the dimid stuff must still be done here and is
 		 * used */
 
-		if(var_is_u)
+		/* ORF 2020-06
+		 * I don't do Z slices any more, performance sucked
+		 */
+
+		if(mesh_is_u)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
@@ -498,7 +663,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[2] = gd.NY;
 			nc->edges[3] = gd.NX;
 		}
-		else if (var_is_v)
+		else if (mesh_is_v)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzh_dimid;
@@ -515,7 +680,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[2] = gd.NY;
 			nc->edges[3] = gd.NX;
 		}
-		else if (var_is_w)
+		else if (mesh_is_w)
 		{
 			nc->dims[0] = nc->time_dimid;
 			nc->dims[1] = nc->nzf_dimid;
@@ -556,8 +721,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
-			nc->dims[2] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
+			nc->dims[1] = (mesh_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (mesh_is_v)?nc->nyf_dimid:nc->nyh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -570,8 +735,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_w)?nc->nzf_dimid:nc->nzh_dimid;
-			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
+			nc->dims[1] = (mesh_is_w)?nc->nzf_dimid:nc->nzh_dimid;
+			nc->dims[2] = (mesh_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -584,8 +749,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			nc->twodslice = TRUE;
 			nc->dims[0] = nc->time_dimid;
-			nc->dims[1] = (var_is_v)?nc->nyf_dimid:nc->nyh_dimid;
-			nc->dims[2] = (var_is_u)?nc->nxf_dimid:nc->nxh_dimid;
+			nc->dims[1] = (mesh_is_v)?nc->nyf_dimid:nc->nyh_dimid;
+			nc->dims[2] = (mesh_is_u)?nc->nxf_dimid:nc->nxh_dimid;
 			nc->start[0] = 0;
 			nc->start[1] = 0;
 			nc->start[2] = 0;
@@ -602,44 +767,47 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			ERROR_STOP("nc_def_var failed");
 		}
 
+// Set some global metadata
+	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
+		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
+
 // We are still before the nc_enddef call, in case you are lost
 
-		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","pressure_perturbation","hPa");
-		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","potential_temperature_perturbation","K");
-		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","density_perturbation","kg/m^3");
-		else if(same(var,"tke_sg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
-		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","z_vorticity","s^-1");
-		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","vorticity_magnitude","s^-1");
-		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","streamwise_vorticity","s^-1");
-		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","water_vapor_perturbation_mixing_ratio","cm^-3");
-		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ice_number_concenctration","cm^-3");
-		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","rain_number_concenctration","cm^-3");
-		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"standard_name","ground_relative_horizontal_wind_speed","m/s");
+		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
+		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
+		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_perturbation","kg/m^3");
+		else if(same(var,"tke_sg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
+		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","x_vorticity","s^-1");
+		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","y_vorticity","s^-1");
+		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","z_vorticity","s^-1");
+		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
+		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
+		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
+		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
+		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qs"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","now_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_number_concenctration","cm^-3");
+		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","snow_number_concenctration","cm^-3");
+		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_number_concenctration","cm^-3");
+		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ground_relative_horizontal_wind_speed","m/s");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
@@ -655,22 +823,27 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 //	if (cmd->gzip>0) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, cmd->gzip); //shuffle=1,deflate=1,deflate_level=cmd->gzip value
 	}
 
-/* Write sounding data */
+/* Write sounding data attributes, also umove and vmove */
 
 	status = nc_def_var (nc->ncid, "u0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->u0id,"standard_name","base_state_u","m/s");
+	set_nc_meta(nc->ncid,nc->u0id,"long_name","base_state_u","m/s");
 	status = nc_def_var (nc->ncid, "v0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->v0id,"standard_name","base_state_v","m/s");
+	set_nc_meta(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->th0id,"standard_name","base_state_potential_temperature","K");
+	set_nc_meta(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pres0id,"standard_name","base_state_pressure","hPa");
+	set_nc_meta(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"standard_name","base_state_nondimensional_pressure","#");
+	set_nc_meta(nc->ncid,nc->pi0id,"long_name","base_state_nondimensional_pressure","#");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->qv0id,"standard_name","base_state_water_vapor_mixing_ratio","g/kg");
+	set_nc_meta(nc->ncid,nc->qv0id,"long_name","base_state_water_vapor_mixing_ratio","g/kg");
 	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"standard_name","base_state_density","kg/m^3");
+	set_nc_meta(nc->ncid,nc->rho0id,"long_name","base_state_density","kg/m^3");
+
+	status = nc_def_var (nc->ncid, "umove", NC_FLOAT, 0, nc->dims, &nc->umoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta(nc->ncid,nc->umoveid,"long_name","x_box_translation_component","m/s");
+	status = nc_def_var (nc->ncid, "vmove", NC_FLOAT, 0, nc->dims, &nc->vmoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta(nc->ncid,nc->vmoveid,"long_name","y_box_translation_component","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -731,6 +904,8 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	status = nc_put_var_int (nc.ncid,nc.y1id,&gd.Y1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.z0id,&gd.Z0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
 	status = nc_put_var_int (nc.ncid,nc.z1id,&gd.Z1); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
+	status = nc_put_var_float (nc.ncid,nc.umoveid,&msh.umove); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (nc.ncid,nc.vmoveid,&msh.vmove); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	timearray[0] = cmd.time;
 	status = nc_put_vara_double (nc.ncid,nc.timeid,&timestart,&timecount,timearray);
 	if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
@@ -841,7 +1016,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	copy_grid_to_requested_cube(&rc,gd);
 
-	printf("swaths: writing...");FL; 
+	printf("swaths: reading...");FL; 
 
 	bufsize = (long) (rc.NX) * (long) (rc.NY) * (long) sizeof(float);
 	if ((twodfield = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -852,7 +1027,7 @@ void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 
 	read_lofs_buffer(swathbuf,"swaths",dm,hm,rc,cmd);
 
-	if(cmd.verbose)printf("Writing swaths...\n");
+	printf("writing...");FL;
 	for (i2d=0;i2d<hm.n2dswaths;i2d++)
 	{
 		for (iy=0; iy<rc.NY; iy++)
@@ -879,21 +1054,27 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("u: reading...");
 		read_lofs_buffer(b->ustag,"u",dm,hm,rc,cmd);
+		BL;
 	}
 	if (rh.v)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("v: reading...");
 		read_lofs_buffer(b->vstag,"v",dm,hm,rc,cmd);
+		BL;
 	}
 	if (rh.w)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("w: reading...");
 		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
+		BL;
 	}
 
 }

@@ -11,6 +11,7 @@ typedef struct netcdf_struct
 	int nxh_dimid,nyh_dimid,nzh_dimid;
 	int nxf_dimid,nyf_dimid,nzf_dimid,time_dimid,timeid;
 	int thsfcid,dbzsfcid;
+	int umoveid,vmoveid;
 	int x0id,y0id,z0id,x1id,y1id,z1id;
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
