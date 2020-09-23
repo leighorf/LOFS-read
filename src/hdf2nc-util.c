@@ -279,28 +279,31 @@ void set_nc_meta_global_string(int ncid, char *name, char *value)
 
 	v = value;
 
-	len=strlen(name);
-	status = nc_put_att(ncid,NC_GLOBAL,name,NC_STRING,len,v);
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att failed");
+	len=strlen(value);
+	status = nc_put_att_text(ncid,NC_GLOBAL,name,len,v);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_txt failed");
 }
 
 void set_nc_meta_global_integer(int ncid, char *name, int *value)
 {
-	int len,status;
+	int status;
+	size_t len;
+	const void *v;
 
-	len=strlen(name);
-	status = nc_put_att(ncid,NC_GLOBAL,name,NC_INT,len,value);
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+	v = value;
+	len=1;
+	status = nc_put_att_int(ncid,NC_GLOBAL,name,NC_INT,len,value);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_int failed");
 }
 
 
-//if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
-void set_nc_meta(int ncid, int varnameid, char *name_long, char *name, char *units)
+//set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_string);
+void set_nc_meta(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 
-	len=strlen(name);
-	status = nc_put_att_text(ncid, varnameid,name_long,len,name);
+	len=strlen(long_name);
+	status = nc_put_att_text(ncid, varnameid,lnstring,len,long_name);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
 	len=strlen(units);
@@ -325,10 +328,80 @@ herr_t twod_first_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 
 herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 {
+//loc_id is just f_id, the hdf5 file id 
+    char attname[50];//ORF FIX 50
+    char **units_string,**description_string,*description_string_filtered,*units_for_nc;
     H5G_stat_t statbuf;
+    H5A_info_t ainfo;
+    hid_t attr,filetype,sdim,space,memtype,lapl_id,dset;
+    hsize_t dims[1];
+    herr_t status;
+    int i,ndims,stringlen;
+
+    dims[0]=1;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
     strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
+
+// The following h5_wank grabs the units and description strings
+// We then process the description a bit, as the netcdf long_name
+// attribute does not contain spaces or commas
+
+    strcpy(attname,"units");
+    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+    attr = H5Aopen(dset,attname,H5P_DEFAULT);
+    filetype = H5Aget_type(attr);
+    sdim = H5Tget_size(filetype);sdim++;
+    space = H5Aget_space(attr);
+    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+    units_string = (char **) malloc (dims[0] * sizeof (char *));
+    units_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+    for (i=1; i<dims[0]; i++) units_string[i] = units_string[0] + i * sdim;
+    memtype = H5Tcopy (H5T_C_S1);
+    status = H5Tset_size (memtype,sdim);
+    status = H5Aread(attr,memtype,units_string[0]);
+    status = H5Aclose(attr);
+    status = H5Dclose(dset);
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    status = H5Tclose(memtype);
+
+    strcpy(attname,"description");
+    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+    attr = H5Aopen(dset,attname,H5P_DEFAULT);
+    filetype = H5Aget_type(attr);
+    sdim = H5Tget_size(filetype);sdim++;
+    space = H5Aget_space(attr);
+    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+    description_string = (char **) malloc (dims[0] * sizeof (char *));
+    description_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+    for (i=1; i<dims[0]; i++) description_string[i] = description_string[0] + i * sdim;
+    memtype = H5Tcopy (H5T_C_S1);
+    status = H5Tset_size (memtype,sdim);
+    status = H5Aread(attr,memtype,description_string[0]);
+    status = H5Aclose(attr);
+    status = H5Dclose(dset);
+    status = H5Sclose(space);
+    status = H5Tclose(filetype);
+    status = H5Tclose(memtype);
+
+//end h5wank. begin ncwank.
+
+    stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
+    description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
+    for(i=0; i<stringlen; i++) description_string_filtered[i] = (description_string[0][i] == ' ' || description_string[0][i] == ',') ? '_' : description_string[0][i];
+    description_string_filtered[stringlen]='\0';
+    stringlen=strlen(units_string[0]); if(stringlen > 500) exit(0);
+    units_for_nc = (char *) malloc ((stringlen+1) * sizeof (char));
+    strcpy(units_for_nc,units_string[0]);
+
     nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
+    set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
+
+    free(units_string[0]); free(units_string);
+    free(description_string[0]); free(description_string);
+    free(description_string_filtered);
+    free(units_for_nc);
+
     n2d_hdf2nc++;
     return 0;
 }
@@ -338,6 +411,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	int status;
 	int nv;
 	int ivar;
+	int i;
 	char var[MAXSTR];
 
 	status = nc_def_dim (nc->ncid, "xh", gd.NX, &nc->nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
@@ -694,7 +768,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		}
 
 // Set some global metadata
-	 	set_nc_meta_global_string(nc->ncid,"cm1lofsversion", "r19.9");
+	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
+		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
 
 // We are still before the nc_enddef call, in case you are lost
 
