@@ -17,7 +17,7 @@ except:
 import datetime
 import argparse
 
-def read_sharp_txt(filename, dz=100., desat=0.0, fill_to=0.0):
+def read_sharp_txt(filename, dz=100., desat=0.0, fill_to=0.0, adiabatic=0.0):
     """
     Reads in the SHARPpy file format and then does the necessary
     unit conversions and computations to have it output as a CM1
@@ -112,7 +112,15 @@ def read_sharp_txt(filename, dz=100., desat=0.0, fill_to=0.0):
         new_t = interp.temp(profile, new_p)
         new_td = interp.dwpt(profile, new_p)
         new_u, new_v = interp.components(profile, new_p)
+
         new_theta = interp.theta(profile, new_p)
+        if (adiabatic > 0.0):
+            zmax = np.where(new_h >= adiabatic)[0][0]
+            for zidx in range(len(new_h[:zmax+1])):
+                T_lower = new_theta[zidx]
+                T_upper = new_theta[zidx+1]
+                if T_upper < T_lower:
+                    new_theta[zidx+1] = T_lower
         new_mixr = interp.mixratio(profile, new_p)
         new_mixr[new_mixr < 0.01] = 0.01
         
@@ -157,9 +165,10 @@ def main():
     parser.add_argument('--dz', action='store', dest='dz', help='The interpolation interval for the output data. Defaults to 100m.', default=100., required=False)
     parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 99% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
     parser.add_argument('--fill-top', action='store', dest='fill_top', help='Specify a height in meters that is above the data top and fill it isothermally with constant winds', default=0.0, required=False)
+    parser.add_argument('--adiabatic', action='store', dest='adiabatic', help='Ensures that the lapse rate from the surface to the given height in meters does not exceed the adiabatic lapse rate, starting at the surface. It will NOT adjust the surface T. If the surface T is in question, modify manually. ', default=0.0, required=False)
     args = parser.parse_args()
 
-    data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat), fill_to=float(args.fill_top))
+    data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat), fill_to=float(args.fill_top), adiabatic=float(args.adiabatic))
     data_dict_to_file(data, args.ofile)
 
 if __name__ == '__main__':
