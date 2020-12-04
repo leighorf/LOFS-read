@@ -782,6 +782,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
 		else if(same(var,"wb_buoy"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_buoyancy","m/s^2");
+		else if(same(var,"wb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_pressure_gradient","m/s^2");
 		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
@@ -927,6 +928,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 
 		if(same(var,"pipert"))  {rh->prespert=1;}
 		if(same(var,"wb_buoy")) {rh->thrhopert=1;}
+		if(same(var,"wb_pgrad")) {rh->prespert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
@@ -992,7 +994,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
 		}
-		if (rh.u||rh.v||rh.w)
+		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");

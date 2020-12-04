@@ -52,6 +52,39 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 /*******************************************************************************/
 
+#define WPGRAD BUFp
+void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+    float dz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
+    	calc_pipert(b->prespert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dz) 
+	for(k=1; k<nk; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
+		dz = 1./(msh.rdz * MF(k)); 
+    	calc_pgrad_w(b->dum0, b->thrhopert, snd->qv0, snd->th0, b->buf0, dz, i, j, k, ni, nj);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
 #define UINTERP BUFp
 void calc_uinterp(buffers *b, grid gd, cmdline cmd)
 {
@@ -737,6 +770,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		}
 		else if(same(var,"pipert"))     {CL;do_pipert(b,gd,snd,cmd);}
 		else if(same(var,"wb_buoy"))    {CL;do_wbuoy(b,gd,snd,cmd);}
+		else if(same(var,"wb_pgrad"))   {CL;do_wpgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
 		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
 		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);}
