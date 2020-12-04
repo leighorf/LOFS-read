@@ -31,6 +31,27 @@ void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 /*******************************************************************************/
 
+#define WBUOY BUFp
+void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk+1; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
+    	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
 #define UINTERP BUFp
 void calc_uinterp(buffers *b, grid gd, cmdline cmd)
 {
@@ -715,6 +736,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			}
 		}
 		else if(same(var,"pipert"))     {CL;do_pipert(b,gd,snd,cmd);}
+		else if(same(var,"wb_buoy"))    {CL;do_wbuoy(b,gd,snd,cmd);}
 		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
 		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
 		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);}

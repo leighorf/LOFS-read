@@ -781,6 +781,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
+		else if(same(var,"wb_buoy"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_buoyancy","m/s^2");
 		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
@@ -925,6 +926,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		var=nc.varname[ivar];
 
 		if(same(var,"pipert"))  {rh->prespert=1;}
+		if(same(var,"wb_buoy")) {rh->thrhopert=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
