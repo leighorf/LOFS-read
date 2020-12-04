@@ -43,7 +43,7 @@ extern "C" {
    RETURNS
    pipert: unitless
  */
-void calc_pipert(float *prespert, float *p0, float *pipert, int i, int j, int k, int nx, int ny) {
+inline void calc_pipert(float *prespert, float *p0, float *pipert, int i, int j, int k, int nx, int ny) {
     float *buf0 = prespert; 
     float p = BUF(i, j, k)*100 + p0[k]; ; // convert from hPa to Pa 
     buf0 = pipert;
@@ -107,39 +107,39 @@ inline void calc_zvort(float *ustag, float *vstag, float *zvort, float dx, float
     TEM(i, j, k) = ( ( VA(i, j, k) - VA(i-1, j, k) )/dx) - ( ( UA(i, j, k) - UA(i, j-1, k) )/dy);
 }
 
-void calc_dudy(float *ustag, float *dudy, float dy, int i, int j, int k, int nx, int ny) {
+inline void calc_dudy(float *ustag, float *dudy, float dy, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dudy;
 	TEM(i, j, k) = ( UA(i, j, k) - UA(i, j-1, k) ) / dy;
 }
 
-void calc_dudz(float *ustag, float *dudz, float dz, int i, int j, int k, int nx, int ny) {
+inline void calc_dudz(float *ustag, float *dudz, float dz, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dudz;
 	TEM(i, j, k) = ( UA(i, j, k) - UA(i, j, k-1) ) / dz;
 }
 
-void calc_dvdx(float *vstag, float *dvdx, float dx, int i, int j, int k, int nx, int ny) {
+inline void calc_dvdx(float *vstag, float *dvdx, float dx, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dvdx;
 	TEM(i, j, k) = ( VA(i, j, k) - VA(i-1, j, k) ) / dx;
 }
 
-void calc_dvdz(float *vstag, float *dvdz, float dz, int i, int j, int k, int nx, int ny) {
+inline void calc_dvdz(float *vstag, float *dvdz, float dz, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dvdz;
 	TEM(i, j, k) = ( VA(i, j, k) - VA(i, j, k-1) ) / dz;
 }
 
-void calc_dwdx(float *wstag, float *dwdx, float dx, int i, int j, int k, int nx, int ny) {
+inline void calc_dwdx(float *wstag, float *dwdx, float dx, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dwdx;
 	TEM(i, j, k) = ( WA(i, j, k) - WA(i-1, j, k) ) / dx;
 }
 
-void calc_dwdy(float *wstag, float *dwdy, float dy, int i, int j, int k, int nx, int ny) {
+inline void calc_dwdy(float *wstag, float *dwdy, float dy, int i, int j, int k, int nx, int ny) {
 	float *dum0 = dwdy;
 	TEM(i, j, k) = ( WA(i, j, k) - WA(i, j-1, k) ) / dy;
 }
 
 /* Compute the X component of vorticity tendency due
    to tilting Y and Z components into the X direction */
-void calc_xvort_tilt(float *yvort, float *zvort, float *dudy, float *dudz, float *xvtilt, int i, int j, int k, int nx, int ny) {
+inline void calc_xvort_tilt(float *yvort, float *zvort, float *dudy, float *dudz, float *xvtilt, int i, int j, int k, int nx, int ny) {
 
 	float *buf0, *dum0;
 	
@@ -153,7 +153,7 @@ void calc_xvort_tilt(float *yvort, float *zvort, float *dudy, float *dudz, float
 	TEM(i, j, k) = (zv * tem2) + (yv * tem1);
 }
 
-void calc_yvort_tilt(float *xvort, float *zvort, float *dvdx, float *dvdz, float *yvtilt, int i, int j, int k, int nx, int ny) {
+inline void calc_yvort_tilt(float *xvort, float *zvort, float *dvdx, float *dvdz, float *yvtilt, int i, int j, int k, int nx, int ny) {
 
 	float *buf0, *dum0;
 	
@@ -167,7 +167,7 @@ void calc_yvort_tilt(float *xvort, float *zvort, float *dvdx, float *dvdz, float
 	TEM(i, j, k) = (zv * tem2) + (xv * tem1);
 }
 
-void calc_zvort_tilt(float *xvort, float *yvort, float *dwdx, float *dwdy, float *zvtilt, int i, int j, int k, int nx, int ny) {
+inline void calc_zvort_tilt(float *xvort, float *yvort, float *dwdx, float *dwdy, float *zvtilt, int i, int j, int k, int nx, int ny) {
 
 	float *buf0, *dum0;
 	
@@ -183,7 +183,7 @@ void calc_zvort_tilt(float *xvort, float *yvort, float *dwdx, float *dwdy, float
 
 /* Compute the X component of vorticity tendency due
    to stretching of the vorticity along the X axis. */
-void calc_xvort_stretch(float *vstag, float *wstag, float *xvort, float *xvort_stretch, \
+inline void calc_xvort_stretch(float *vstag, float *wstag, float *xvort, float *xvort_stretch, \
                                    float dy, float dz, int i, int j, int k, int nx, int ny) {
 
     // this stencil conveniently lands itself on the scalar grid,
@@ -200,7 +200,7 @@ void calc_xvort_stretch(float *vstag, float *wstag, float *xvort, float *xvort_s
 
 /* Compute the Y component of vorticity tendency due
    to stretching of the vorticity along the Y axis. */
-void calc_yvort_stretch(float *ustag, float *wstag, float *yvort, float *yvort_stretch, \
+inline void calc_yvort_stretch(float *ustag, float *wstag, float *yvort, float *yvort_stretch, \
                                    float dx, float dz, int i, int j, int k, int nx, int ny) {
     // this stencil conveniently lands itself on the scalar grid,
     // so we won't have to worry about doing any averaging. I think.
@@ -216,7 +216,7 @@ void calc_yvort_stretch(float *ustag, float *wstag, float *yvort, float *yvort_s
 
 /* Compute the Z component of vorticity tendency due
    to stretching of the vorticity along the Z axis. */
-void calc_zvort_stretch(float *ustag, float *vstag, float *zvort, float *zvort_stretch, \
+inline void calc_zvort_stretch(float *ustag, float *vstag, float *zvort, float *zvort_stretch, \
                                    float dx, float dy, int i, int j, int k, int nx, int ny) {
     // this stencil conveniently lands itself on the scalar grid,
     // so we won't have to worry about doing any averaging. I think.
@@ -229,7 +229,7 @@ void calc_zvort_stretch(float *ustag, float *vstag, float *zvort, float *zvort_s
     BUF(i, j, k) = -zv*( dudx + dvdy);
 }
 
-void calc_xvort_baro(float *thrhopert, float *th0, float *qv0, float *xvort_baro, \
+inline void calc_xvort_baro(float *thrhopert, float *th0, float *qv0, float *xvort_baro, \
                                 float dy, int i, int j, int k, int nx, int ny) {
     float *buf0 = thrhopert;
     float qvbar1 = qv0[k];
@@ -242,7 +242,7 @@ void calc_xvort_baro(float *thrhopert, float *th0, float *qv0, float *xvort_baro
     BUF(i, j, k) = (g/thbar1)*dthdy; 
 }
 
-void calc_yvort_baro(float *thrhopert, float *th0, float *qv0, float *yvort_baro, \
+inline void calc_yvort_baro(float *thrhopert, float *th0, float *qv0, float *yvort_baro, \
                                 float dx, int i, int j, int k, int nx, int ny) {
     float *buf0 = thrhopert;
     float qvbar1 = qv0[k];
@@ -254,7 +254,7 @@ void calc_yvort_baro(float *thrhopert, float *th0, float *qv0, float *yvort_baro
     buf0 = yvort_baro; 
     BUF(i, j, k) = -1.0*(g/thbar1)*dthdx; 
 }
-void calc_xvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0, float *xvort_solenoid, \
+inline void calc_xvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0, float *xvort_solenoid, \
                                     float dy, float dz, int i, int j, int k, int nx, int ny) {
     float *buf0 = pipert;
     float dpidz = ( (BUF(i, j, k+1) - BUF(i, j, k-1)) / ( dz ) );
@@ -273,7 +273,7 @@ void calc_xvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0
     BUF(i, j, k) = -cp*(dthdy*dpidz - dthdz*dpidy); 
 }
 
-void calc_yvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0, float *yvort_solenoid, \
+inline void calc_yvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0, float *yvort_solenoid, \
                                     float dx, float dz, int i, int j, int k, int nx, int ny) {
     float *buf0 = pipert;
     float dpidz = ( (BUF(i, j, k+1) - BUF(i, j, k-1)) / ( dz ) );
@@ -292,7 +292,7 @@ void calc_yvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0
     BUF(i, j, k) = -cp*(dthdz*dpidx - dthdx*dpidz); 
 }
 
-void calc_zvort_solenoid(float *pipert, float *thrhopert, float *zvort_solenoid, \
+inline void calc_zvort_solenoid(float *pipert, float *thrhopert, float *zvort_solenoid, \
                                     float dx, float dy, int i, int j, int k, int nx, int ny) {
     float *buf0 = pipert;
     float dpidx = ( (BUF(i+1, j, k) - BUF(i-1, j, k)) / ( 2*dx ) );
