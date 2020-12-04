@@ -6,10 +6,28 @@
 #include "../include/lofs-macros.h"
 #include "../include/lofs-constants.h"
 #include "./calc/calcvort.c"
+#include "./calc/calcmomentum.c"
 
-/* Note, we use George's i,j,k and ni,nj,nk approach although we personally prefer ix,iy,iz and
- * nx,ny,nz. Because some of our macros use the nx,ny,nz approach we copy ni,nj,nk to a local nx,ny,nz
- * in some of the functions that is then used in the macro */
+/*******************************************************************************/
+
+#define PIPERT BUFp
+void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
+    	calc_pipert(b->prespert, snd->pres0, b->buf0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+}
 
 /*******************************************************************************/
 
@@ -617,7 +635,7 @@ void z_progress_bar(int iz, int nz)
 
 /*******************************************************************************/
 
-void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
+void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
 	int ix,iy,iz,nx,ny,buf0nx,buf0ny,i,ixoff,iyoff,ivar,status;
 	long int bufsize;
@@ -696,6 +714,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahea
 				buf_w(b,gd);
 			}
 		}
+		else if(same(var,"pipert"))     {CL;do_pipert(b,gd,snd,cmd);}
 		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
 		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
 		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);}

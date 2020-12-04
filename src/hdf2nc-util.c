@@ -49,6 +49,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 	rh->u=0; rh->v=0; rh->w=0;
+	rh->prespert=0; rh->thrhopert=0;
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
@@ -780,6 +781,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
+		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_perturbation","kg/m^3");
@@ -922,6 +924,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 	{
 		var=nc.varname[ivar];
 
+		if(same(var,"pipert"))  {rh->prespert=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
@@ -956,6 +959,18 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
+		}
+		if (rh.prespert)
+		{
+			if((b->prespert = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our prespert buffer array");
+			totbufsize+=bufsize;
+		}
+		if (rh.thrhopert)
+		{
+			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our thrhopert buffer array");
+			totbufsize+=bufsize;
 		}
 		if (rh.u)
 		{
@@ -997,6 +1012,8 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	{
 		free (b->buf);
 		if(!cmd.twodwrite) free (b->threedbuf);
+		if (rh.prespert) free (b->prespert);
+		if (rh.thrhopert) free (b->thrhopert);
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
@@ -1049,6 +1066,24 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	/* By shrinking in saved_x0,saved_x1 etc by 1 point on either side (see set_span), this will not fail
 	 * if we do not specify X0, X1 etc.*/
 
+	if (rh.prespert)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("prespert: reading...");
+		read_lofs_buffer(b->prespert,"prespert",dm,hm,rc,cmd);
+		BL;
+	}
+	if (rh.thrhopert)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("thrhopert: reading...");
+		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
+		BL;
+	}
 	if (rh.u)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;

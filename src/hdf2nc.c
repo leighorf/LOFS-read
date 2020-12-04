@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 
 	do_readahead(&b,gd,rh,dm,hm,cmd);
 
-	do_requested_variables(&b,nc,gd,msh,rh,dm,hm,cmd);
+	do_requested_variables(&b,nc,gd,msh,&snd,rh,dm,hm,cmd);
 
 	status = nc_close(nc.ncid);  if (status != NC_NOERR)
 	{
