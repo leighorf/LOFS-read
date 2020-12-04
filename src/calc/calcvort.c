@@ -45,7 +45,7 @@ extern "C" {
  */
 inline void calc_pipert(float *prespert, float *p0, float *pipert, int i, int j, int k, int nx, int ny) {
     float *buf0 = prespert; 
-    float p = BUF(i, j, k)*100 + p0[k]; ; // convert from hPa to Pa 
+    float p = BUF(i, j, k)*100 + p0[k] ; // convert from hPa to Pa 
     buf0 = pipert;
     BUF(i, j, k) = pow( p * rp00, rovcp) - pow( p0[k] * rp00, rovcp); 
 }
