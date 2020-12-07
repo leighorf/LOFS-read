@@ -49,7 +49,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 	rh->u=0; rh->v=0; rh->w=0;
-	rh->prespert=0; rh->thrhopert=0;
+	rh->ppert=0; rh->thrhopert=0;
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
@@ -926,9 +926,9 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 	{
 		var=nc.varname[ivar];
 
-		if(same(var,"pipert"))  {rh->prespert=1;}
+		if(same(var,"pipert"))  {rh->ppert=1;}
 		if(same(var,"wb_buoy")) {rh->thrhopert=1;}
-		if(same(var,"wb_pgrad")) {rh->prespert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"wb_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
@@ -964,10 +964,10 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
 		}
-		if (rh.prespert)
+		if (rh.ppert)
 		{
-			if((b->prespert = (float *) malloc ((size_t)bufsize)) == NULL)
-				ERROR_STOP("Cannot allocate our prespert buffer array");
+			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.thrhopert)
@@ -1016,7 +1016,7 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	{
 		free (b->buf);
 		if(!cmd.twodwrite) free (b->threedbuf);
-		if (rh.prespert) free (b->prespert);
+		if (rh.ppert) free (b->ppert);
 		if (rh.thrhopert) free (b->thrhopert);
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
@@ -1070,13 +1070,13 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	/* By shrinking in saved_x0,saved_x1 etc by 1 point on either side (see set_span), this will not fail
 	 * if we do not specify X0, X1 etc.*/
 
-	if (rh.prespert)
+	if (rh.ppert)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		printf("prespert: reading...");
-		read_lofs_buffer(b->prespert,"prespert",dm,hm,rc,cmd);
+		read_lofs_buffer(b->ppert,"prespert",dm,hm,rc,cmd);
 		BL;
 	}
 	if (rh.thrhopert)

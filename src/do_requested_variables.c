@@ -10,7 +10,6 @@
 
 /*******************************************************************************/
 
-#define PIPERT BUFp
 void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
@@ -19,10 +18,14 @@ void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
-	for(j=0; j<nj; j++) {
-	for(i=0; i<ni; i++) {
-    	calc_pipert(b->prespert, snd->pres0, b->buf0, i, j, k, ni, nj);
+	// We're going to calculate over the whole
+	// domain size read because often times
+	// derivatives operate on this data. The
+	// index macros ensure that -1 is considered in-bounds.
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->buf0, i, j, k, ni, nj);
 	}
 	}
 	}
@@ -41,10 +44,18 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 	#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk+1; k++) {
-	for(j=0; j<nj; j++) {
-	for(i=0; i<ni; i++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
     	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
 	}
+	}
+	}
+
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		WBUOY(i, j, 0) = 0.0;
 	}
 	}
 
@@ -63,21 +74,29 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 
 	// need to calculate pipert first
 	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
-	for(j=0; j<nj; j++) {
-	for(i=0; i<ni; i++) {
-    	calc_pipert(b->prespert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
 	}
 	}
 	}
 
 	#pragma omp parallel for private(i,j,k,dz) 
 	for(k=1; k<nk; k++) {
-	for(j=0; j<nj; j++) {
-	for(i=0; i<ni; i++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
 		dz = 1./(msh.rdz * MF(k)); 
     	calc_pgrad_w(b->dum0, b->thrhopert, snd->qv0, snd->th0, b->buf0, dz, i, j, k, ni, nj);
 	}
+	}
+	}
+
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		WPGRAD(i, j, 0) = 0.0;
 	}
 	}
 
