@@ -83,7 +83,7 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 
 	#pragma omp parallel for private(i,j,k,dz) 
-	for(k=1; k<nk; k++) {
+	for(k=1; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
 		dz = 1./(msh.rdz * MF(k)); 
@@ -100,6 +100,71 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
+}
+
+/*******************************************************************************/
+
+#define UPGRAD BUFp
+void do_upgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+    float dx;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dx) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=0; i<ni+1; i++) {
+		dx = 1./(msh.rdx * UF(i)); 
+    	calc_pgrad_u(b->dum0, b->thrhopert, snd->qv0, snd->th0, b->buf0, dx, i, j, k, ni, nj);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define VPGRAD BUFp
+void do_vpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+    float dy;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dy) 
+	for(k=0; k<nk+1; k++) {
+	for(j=0; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+		dy = 1./(msh.rdy * VF(j)); 
+    	calc_pgrad_v(b->dum0, b->thrhopert, snd->qv0, snd->th0, b->buf0, dy, i, j, k, ni, nj);
+	}
+	}
+	}
 }
 
 /*******************************************************************************/
@@ -789,6 +854,8 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		}
 		else if(same(var,"pipert"))     {CL;do_pipert(b,gd,snd,cmd);}
 		else if(same(var,"wb_buoy"))    {CL;do_wbuoy(b,gd,snd,cmd);}
+		else if(same(var,"ub_pgrad"))   {CL;do_upgrad(b,gd,snd,msh,cmd);}
+		else if(same(var,"vb_pgrad"))   {CL;do_vpgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"wb_pgrad"))   {CL;do_wpgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
 		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
