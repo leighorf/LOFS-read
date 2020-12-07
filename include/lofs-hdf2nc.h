@@ -33,15 +33,16 @@ typedef struct sounding
 typedef struct buffers
 {
 	float *ustag, *vstag, *wstag;
-	float *prespert, *thrhopert;
+	float *ppert, *thrhopert;
 	float *buf0, *buf, *dum0, *dum1;
 	float *threedbuf;
 } buffers;
 
 typedef struct readahead
 {
-	int u,v,w,prespert,thrhopert;
+	int u,v,w,ppert,thrhopert;
 	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
+	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
