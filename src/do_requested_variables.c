@@ -322,22 +322,20 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
+	#pragma omp parallel for private(i,j,k,dy,dz) 
+	for(k=1; k<nk+1; k++) {
+	for(j=0; j<nj+1; j++) {
+	for(i=0; i<ni+1; i++) {
+		dy = 1./(msh.rdy * VF(j)); 
 		dz = 1./(msh.rdz * MF(k)); 
-		// If we parallelize over j and give each thread a row to
-		// work on, then we take advantage of caching and memory
-		// linearity. 
-		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); 
-			for(i=0; i<ni; i++) {
-    			calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
-			}
-		}
+		calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
 	}
+	}
+	}
+
 //This is dependent upon our current free slip bc, see CM1 for other decisions
 	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni; i++)
+	for(i=0; i<ni+1; i++)
 	{
 		TEMp(i,j,0)=TEMp(i,j,1);
 		TEMp(i,j,nk)=TEMp(i,j,nk-1);
@@ -361,24 +359,25 @@ void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
+	#pragma omp parallel for private(i,j,k,dx,dz) 
+	for(k=1; k<nk+1; k++) {
+	for(j=0; j<nj+1; j++) {
+	for(i=0; i<ni+1; i++) {
 		dz = 1./(msh.rdz * MF(k)); 
-		for(j=0; j<nj; j++) {
-			for(i=0; i<ni+1; i++) {
-				dx = 1./(msh.rdx * UF(i)); 
-    			calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
-			}
-		}
+		dx = 1./(msh.rdx * UF(i)); 
+		calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
 	}
-//This is dependent upon our current free slip bc, see CM1 for other
-//decisions
-	for(j=0; j<nj; j++)
+	}
+	}
+
+//This is dependent upon our current free slip bc, see CM1 for other decisions
+	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni+1; i++)
 	{
 		TEMp(i,j,0)=TEMp(i,j,1);
 		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
+
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
@@ -397,15 +396,15 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
-		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); //We might want to just do rdy, much cleaner... and dx,dy,dz are always in the denominator
-			for(i=0; i<ni+1; i++) {
-				dx = 1./(msh.rdx * UF(i)); 
-    			calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
-			}
-		}
+	#pragma omp parallel for private(i,j,k,dx,dy) 
+	for(k=0; k<nk+1; k++) {
+	for(j=0; j<nj+1; j++) {
+	for(i=0; i<ni+1; i++) {
+		dy = 1./(msh.rdy * VF(j));
+		dx = 1./(msh.rdx * UF(i)); 
+    	calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
+	}
+	}
 	}
 
 	#pragma omp parallel for private(i,j,k) 
@@ -413,6 +412,167 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		ZVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j+1,k)+TEMp(i+1,j+1,k));
+}
+
+/*******************************************************************************/
+
+#define XVSTRETCH BUFp
+void do_xvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dy, dz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// calculate xvort and average it to the scalar mesh
+    do_xvort(b, gd, msh, cmd);
+	// xvort will be in the buf0 array, and we want/need
+	// to copy it to dum0 so that the stretching rate
+	// can be stored in buf0 for writing.
+	long size = (nk+1)*(nj+2)*(ni+2);
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+
+	#pragma omp parallel for private(i,j,k,dy,dz) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		//
+		dy = 1./(msh.rdy * VF(j));
+		dz = 1./(msh.rdz * MF(k));
+		calc_xvort_stretch(b->vstag, b->wstag, b->dum0, b->buf0, dy, dz, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define YVSTRETCH BUFp
+void do_yvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx, dz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// calculate xvort and average it to the scalar mesh
+    do_yvort(b, gd, msh, cmd);
+	// yvort will be in the buf0 array, and we want/need
+	// to copy it to dum0 so that the stretching rate
+	// can be stored in buf0 for writing.
+	long size = (nk+1)*(nj+2)*(ni+2);
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+
+	#pragma omp parallel for private(i,j,k,dx,dz) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		//
+		dx = 1./(msh.rdy * UF(i));
+		dz = 1./(msh.rdz * MF(k));
+		calc_yvort_stretch(b->ustag, b->wstag, b->dum0, b->buf0, dx, dz, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define ZVSTRETCH BUFp
+void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx, dy;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// calculate xvort and average it to the scalar mesh
+    do_zvort(b, gd, msh, cmd);
+	// zvort will be in the buf0 array, and we want/need
+	// to copy it to dum0 so that the stretching rate
+	// can be stored in buf0 for writing.
+	long size = (nk+1)*(nj+2)*(ni+2);
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+
+	#pragma omp parallel for private(i,j,k,dx,dy) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		//
+		dx = 1./(msh.rdy * UF(i));
+		dy = 1./(msh.rdz * VF(j));
+		calc_zvort_stretch(b->ustag, b->vstag, b->dum0, b->buf0, dx, dy, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define XVBARO BUFp
+void do_xvort_baro(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dy;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	#pragma omp parallel for private(i,j,k,dy) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
+		calc_xvort_baro(b->thrhopert, snd->th0, snd->qv0, b->buf0, dy, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define YVBARO BUFp
+void do_yvort_baro(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	#pragma omp parallel for private(i,j,k,dx) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+		calc_yvort_baro(b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, i, j, k, nx, ny);
+	}
+	}
+	}
+
 }
 
 /*******************************************************************************/
@@ -852,24 +1012,29 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 				buf_w(b,gd);
 			}
 		}
-		else if(same(var,"pipert"))     {CL;do_pipert(b,gd,snd,cmd);}
-		else if(same(var,"wb_buoy"))    {CL;do_wbuoy(b,gd,snd,cmd);}
-		else if(same(var,"ub_pgrad"))   {CL;do_upgrad(b,gd,snd,msh,cmd);}
-		else if(same(var,"vb_pgrad"))   {CL;do_vpgrad(b,gd,snd,msh,cmd);}
-		else if(same(var,"wb_pgrad"))   {CL;do_wpgrad(b,gd,snd,msh,cmd);}
-		else if(same(var,"uinterp"))	{CL;calc_uinterp(b,gd,cmd);}
-		else if(same(var,"vinterp"))	{CL;calc_vinterp(b,gd,cmd);}
-		else if(same(var,"winterp"))	{CL;calc_winterp(b,gd,cmd);}
-		else if(same(var,"hwin_sr"))	{CL;calc_hwin_sr(b,gd,cmd);}
-		else if(same(var,"hwin_gr"))	{CL;calc_hwin_gr(b,gd,msh,cmd);}
-		else if(same(var,"windmag_sr"))	{CL;calc_windmag_sr(b,gd,cmd);}
-		else if(same(var,"hdiv")) 		{CL;calc_hdiv(b,gd,msh,cmd);}
-		else if(same(var,"xvort"))		{CL;do_xvort(b,gd,msh,cmd);}
-		else if(same(var,"yvort"))		{CL;do_yvort(b,gd,msh,cmd);}
-		else if(same(var,"zvort"))		{CL;do_zvort(b,gd,msh,cmd);}
-		else if(same(var,"hvort"))		{CL;calc_hvort(b,gd,msh,cmd);}
-		else if(same(var,"vortmag"))	{CL;calc_vortmag(b,gd,msh,cmd);}
-		else if(same(var,"streamvort"))	{CL;calc_streamvort(b,gd,msh,cmd);}
+		else if(same(var,"pipert"))        {CL;do_pipert(b,gd,snd,cmd);}
+		else if(same(var,"wb_buoy"))       {CL;do_wbuoy(b,gd,snd,cmd);}
+		else if(same(var,"ub_pgrad"))      {CL;do_upgrad(b,gd,snd,msh,cmd);}
+		else if(same(var,"vb_pgrad"))      {CL;do_vpgrad(b,gd,snd,msh,cmd);}
+		else if(same(var,"wb_pgrad"))      {CL;do_wpgrad(b,gd,snd,msh,cmd);}
+		else if(same(var,"uinterp"))	   {CL;calc_uinterp(b,gd,cmd);}
+		else if(same(var,"vinterp")) 	   {CL;calc_vinterp(b,gd,cmd);}
+		else if(same(var,"winterp"))	   {CL;calc_winterp(b,gd,cmd);}
+		else if(same(var,"hwin_sr"))	   {CL;calc_hwin_sr(b,gd,cmd);}
+		else if(same(var,"hwin_gr"))	   {CL;calc_hwin_gr(b,gd,msh,cmd);}
+		else if(same(var,"windmag_sr"))	   {CL;calc_windmag_sr(b,gd,cmd);}
+		else if(same(var,"hdiv")) 		   {CL;calc_hdiv(b,gd,msh,cmd);}
+		else if(same(var,"xvort"))		   {CL;do_xvort(b,gd,msh,cmd);}
+		else if(same(var,"yvort"))		   {CL;do_yvort(b,gd,msh,cmd);}
+		else if(same(var,"zvort"))		   {CL;do_zvort(b,gd,msh,cmd);}
+		else if(same(var,"xvort_stretch")) {CL;do_xvort_stretch(b,gd,msh,cmd);} 
+		else if(same(var,"yvort_stretch")) {CL;do_yvort_stretch(b,gd,msh,cmd);} 
+		else if(same(var,"zvort_stretch")) {CL;do_zvort_stretch(b,gd,msh,cmd);} 
+	    else if(same(var,"xvort_baro"))    {CL;do_xvort_baro(b,gd,snd,msh,cmd);}
+	    else if(same(var,"yvort_baro"))    {CL;do_yvort_baro(b,gd,snd,msh,cmd);}
+		else if(same(var,"hvort"))		   {CL;calc_hvort(b,gd,msh,cmd);}
+		else if(same(var,"vortmag"))	   {CL;calc_vortmag(b,gd,msh,cmd);}
+		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}
 // At some point after we've calculated all the stuff that requires
 // buffered u v w stuff we need to repurpose some of those buffers for
 // calculating other things - like temperature, which requires pressure

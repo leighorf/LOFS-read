@@ -797,6 +797,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","x_vorticity","s^-1");
 		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","y_vorticity","s^-1");
 		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","z_vorticity","s^-1");
+		else if(same(var,"xvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_x","s^-2");
+		else if(same(var,"yvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_y","s^-2");
+		else if(same(var,"zvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_z","s^-2");
+		else if(same(var,"xvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_y","s^-2");
 		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
@@ -943,6 +948,11 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"xvort")) {rh->v=1;rh->w=1;}
 		if(same(var,"yvort")) {rh->u=1;rh->w=1;}
 		if(same(var,"zvort")) {rh->u=1;rh->v=1;}
+		if(same(var,"xvort_stretch")) {rh->v=1;rh->w=1;}
+		if(same(var,"yvort_stretch")) {rh->u=1;rh->w=1;}
+		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;}
+		if(same(var,"xvort_baro")) {rh->thrhopert=1;}
+		if(same(var,"yvort_baro")) {rh->thrhopert=1;}
 		if(same(var,"hvort")) {rh->u=1;rh->v=1;rh->w=1;rh->hvort=1;}
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
