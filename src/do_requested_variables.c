@@ -609,6 +609,14 @@ void do_xvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 	}
 	}
 
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		XVSOL(i, j, 0) = 0.0;
+	}
+	}
+
 }
 /*******************************************************************************/
 
@@ -641,6 +649,14 @@ void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
 		calc_yvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, dz, i, j, k, nx, ny);
 	}
+	}
+	}
+
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		XVSOL(i, j, 0) = 0.0;
 	}
 	}
 
