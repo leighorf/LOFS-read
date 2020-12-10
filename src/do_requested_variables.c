@@ -656,7 +656,7 @@ void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 	#pragma omp parallel for private(i, j)
 	for (j=-1; j<nj+1; j++) {
 	for (i=-1; i<ni+1; i++) {
-		XVSOL(i, j, 0) = 0.0;
+		YVSOL(i, j, 0) = 0.0;
 	}
 	}
 
