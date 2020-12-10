@@ -577,6 +577,113 @@ void do_yvort_baro(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 
 /*******************************************************************************/
 
+#define XVSOL BUFp
+void do_xvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dy, dz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dy,dz) 
+	for (k=1; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
+		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdy * MH(k+1));
+		calc_xvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dy, dz, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+/*******************************************************************************/
+
+#define YVSOL BUFp
+void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx, dz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dx,dz) 
+	for (k=1; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
+		calc_yvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, dz, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
+#define ZVSOL BUFp
+void do_zvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx, dy;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	#pragma omp parallel for private(i,j,k,dx,dy) 
+	for (k=0; k<nk+1; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		// This routine uses a centerd difference - so dy 
+		// needs to be set appropriately for the increased distance
+		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
+		calc_zvort_solenoid(b->dum0, b->thrhopert, b->buf0, dx, dy, i, j, k, nx, ny);
+	}
+	}
+	}
+
+}
+
+/*******************************************************************************/
+
 void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
@@ -1032,6 +1139,9 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"zvort_stretch")) {CL;do_zvort_stretch(b,gd,msh,cmd);} 
 	    else if(same(var,"xvort_baro"))    {CL;do_xvort_baro(b,gd,snd,msh,cmd);}
 	    else if(same(var,"yvort_baro"))    {CL;do_yvort_baro(b,gd,snd,msh,cmd);}
+	    else if(same(var,"xvort_solenoid")){CL;do_xvort_solenoid(b,gd,snd,msh,cmd);}
+	    else if(same(var,"yvort_solenoid")){CL;do_yvort_solenoid(b,gd,snd,msh,cmd);}
+	    else if(same(var,"zvort_solenoid")){CL;do_zvort_solenoid(b,gd,snd,msh,cmd);}
 		else if(same(var,"hvort"))		   {CL;calc_hvort(b,gd,msh,cmd);}
 		else if(same(var,"vortmag"))	   {CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}

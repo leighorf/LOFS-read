@@ -802,6 +802,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"zvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_z","s^-2");
 		else if(same(var,"xvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_x","s^-2");
 		else if(same(var,"yvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_y","s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_y","s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_z","s^-2");
 		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
@@ -953,6 +956,9 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;}
 		if(same(var,"xvort_baro")) {rh->thrhopert=1;}
 		if(same(var,"yvort_baro")) {rh->thrhopert=1;}
+		if(same(var,"xvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
+		if(same(var,"yvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
+		if(same(var,"zvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"hvort")) {rh->u=1;rh->v=1;rh->w=1;rh->hvort=1;}
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
@@ -1014,7 +1020,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)//Not really readahead, but if we calculated these we need another array
 		{
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
@@ -1035,8 +1041,8 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.u||rh.v||rh.w) free (b->dum0);
-		if (rh.vortmag||rh.hvort||rh.streamvort)free(b->dum1);
+		if (rh.u||rh.v||rh.w||rh.budgets) free (b->dum0);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)free(b->dum1);
 	}
 }
 

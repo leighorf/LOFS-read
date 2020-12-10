@@ -254,6 +254,7 @@ inline void calc_yvort_baro(float *thrhopert, float *th0, float *qv0, float *yvo
     buf0 = yvort_baro; 
     BUF(i, j, k) = -1.0*(g/thbar1)*dthdx; 
 }
+
 inline void calc_xvort_solenoid(float *pipert, float *thrhopert, float *th0, float *qv0, float *xvort_solenoid, \
                                     float dy, float dz, int i, int j, int k, int nx, int ny) {
     float *buf0 = pipert;
@@ -295,12 +296,12 @@ inline void calc_yvort_solenoid(float *pipert, float *thrhopert, float *th0, flo
 inline void calc_zvort_solenoid(float *pipert, float *thrhopert, float *zvort_solenoid, \
                                     float dx, float dy, int i, int j, int k, int nx, int ny) {
     float *buf0 = pipert;
-    float dpidx = ( (BUF(i+1, j, k) - BUF(i-1, j, k)) / ( 2*dx ) );
-    float dpidy = ( (BUF(i, j+1, k) - BUF(i, j-1, k)) / ( 2*dy ) );
+    float dpidx = ( (BUF(i+1, j, k) - BUF(i-1, j, k)) / ( dx ) );
+    float dpidy = ( (BUF(i, j+1, k) - BUF(i, j-1, k)) / ( dy ) );
 
     buf0 = thrhopert;
-    float dthdx = ( (BUF(i+1, j, k) - BUF(i-1, j, k)) / ( 2*dx ) );
-    float dthdy = ( (BUF(i, j+1, k) - BUF(i, j-1, k)) / ( 2*dy ) );
+    float dthdx = ( (BUF(i+1, j, k) - BUF(i-1, j, k)) / ( dx ) );
+    float dthdy = ( (BUF(i, j+1, k) - BUF(i, j-1, k)) / ( dy ) );
 
     // compute and save to the array
 
