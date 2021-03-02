@@ -795,6 +795,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_mixing_ratio","g/kg");
 		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
 		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_water_mixing_ratio","g/kg");
 		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_water_mixing_ratio","g/kg");
