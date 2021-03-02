@@ -101,10 +101,13 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 	int i,j,iret,ns;
 	char tmpstr[256]; //size of dit->d_name
 	char timedir_full[MAXSTR];
+	char cachefile_sorted_node_dirs[MAXSTR];
 
 	FILE *fp;
 
-	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_node_dirs","r")) == NULL)
+	sprintf(cachefile_sorted_node_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_sorted_node_dirs");
+
+	if (dm->regenerate_cache||(fp = fopen(cachefile_sorted_node_dirs,"r")) == NULL)
 	{
 		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir[0]);
 
@@ -126,7 +129,7 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
 
-		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","w")) != NULL)
+		if ((fp = fopen(cachefile_sorted_node_dirs,"w")) != NULL)
 		{
 			fprintf(fp,"%i\n",dm->dn);
 			fprintf(fp,"%i\n",dm->nnodedirs);
@@ -140,7 +143,7 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 	else
 	{
 		if (!dm->regenerate_cache)
-		if ((fp = fopen(".cm1hdf5_sorted_node_dirs","r")) != NULL)
+		if ((fp = fopen(cachefile_sorted_node_dirs,"r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i\n",&(dm->dn)))==EOF)ERROR_STOP("fscanf failed");
 			if((iret=fscanf(fp,"%i",&(dm->nnodedirs)))==EOF)ERROR_STOP("fscanf failed");
@@ -162,10 +165,12 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	char firstbase[MAXSTR], base[MAXSTR],dstring[MAXSTR];
 	char rhsstr[8];
 	char lhsstr[6];
+	char cachefile_sorted_time_dirs[MAXSTR];
 
 	FILE *fp;
 
-	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_sorted_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	sprintf(cachefile_sorted_time_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_sorted_time_dirs");
+	if (dm->regenerate_cache||(fp = fopen(cachefile_sorted_time_dirs,"r")) == NULL) // First time, haven't created metadata files yet
 	{
 		if(cmd.verbose)printf("Grabbing and caching metadata (only done once):");
 		j = 0;
@@ -235,7 +240,7 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 				strcpy (dm->timedir[j], dit->d_name);
 				j++;
 			}
-			else if( !strcmp(tmpstr,".") || !strcmp(tmpstr,".."))
+			else if( !strcmp(tmpstr,".") || !strcmp(tmpstr,"..") || !strcmp(tmpstr,".lofs_cache"))
 			{
 				// do nothing; we have happened upon '.' or '..'
 			}
@@ -244,7 +249,7 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 		close_directory();
 		sortchararray (dm->timedir, dm->ntimedirs);
 		sortdoublearray (dm->dirtimes, dm->ntimedirs);
-		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","w")) != NULL) 
+		if ((fp = fopen(cachefile_sorted_time_dirs,"w")) != NULL)
 		{
 			fprintf(fp,"%i\n",dm->ntimedirs);
 			for (i = 0; i < dm->ntimedirs; i++) fprintf(fp,"%s %lf\n",dm->timedir[i],dm->dirtimes[i]);
@@ -254,7 +259,7 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	else
 	{
 		if (!dm->regenerate_cache)
-		if ((fp = fopen(".cm1hdf5_sorted_time_dirs","r")) != NULL) 
+		if ((fp = fopen(cachefile_sorted_time_dirs,"r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i\n",&(dm->ntimedirs)))==EOF)ERROR_STOP("fscanf failed");
 			for (i = 0; i < dm->ntimedirs; i++) if((iret=fscanf(fp,"%s %lf",dm->timedir[i],&(dm->dirtimes[i])))==EOF)ERROR_STOP("fscanf failed");
@@ -272,10 +277,34 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 	char rhsstr[8]; // 7 digits to right hand side of . in time which is SSSSS.FFFFFFF (plus null termination char)
 	char lhsstr[6]; // 5 digits to left hand side of . in time (plus null termination char)
 	char sd;
+	char cachedir[MAXSTR];
+	char cachefile_num_time_dirs[MAXSTR];
 	
 	FILE *fp;
 
-	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_num_time_dirs","r")) == NULL) // First time, haven't created metadata files yet
+	/* ORF 2021-03-02 This is our first cache operation. Here we
+	 * check for the existence of the .lofs_cache directory, which
+	 * now lives in dm->topdir along with all the other top level
+	 * LOFS directories.
+	 * If the dm->topdir/.lofs_cache directory doesn't exist we
+	 * create it here. Later, when sorting the time directories,
+	 * we check for the special name ".lofs_cache" 
+	 * and we ignore it along with '.' and '..'*/
+
+	sprintf(cachedir,"%s/%s",dm->topdir,".lofs_cache");
+	if ((dip = opendir (cachedir)) == NULL)
+	{
+		int stat;
+		stat = mkdir(cachedir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+	}
+	else
+	{
+		closedir(dip);
+	}
+
+	sprintf(cachefile_num_time_dirs,"%s/%s",cachedir,"lofs_num_time_dirs");
+
+	if (dm->regenerate_cache||(fp = fopen(cachefile_num_time_dirs,"r")) == NULL) // First time, haven't created metadata files yet
 	{
 		open_directory (dm->topdir);
 		j = 0;
@@ -328,27 +357,27 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 				}
 				j++;
 			}
-			else if( !strncmp(tmpstr,".",1) || !strncmp(tmpstr,"..",2))
+			else if( !strncmp(tmpstr,".",1) || !strncmp(tmpstr,"..",2) || !strncmp(tmpstr,".lofs_cache",11))
 			{
-				// do nothing; we have happened upon '.' or '..'
+				// do nothing; we have happened upon '.' or '..' or the .lofs_cache directory
 			}
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
-		if ((fp = fopen(".cm1hdf5_num_time_dirs","w")) != NULL)
+		if ((fp = fopen(cachefile_num_time_dirs,"w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
 			fclose(fp);
 		}
 		else
 		{
-			printf("CANNOT WRITE .num_time_dirs\n");
+			printf("CANNOT WRITE %s\n",cachefile_num_time_dirs);
 		}
 	}
 	else
 	{
 		if (!dm->regenerate_cache)
-		if ((fp = fopen(".cm1hdf5_num_time_dirs","r")) != NULL)
+		if ((fp = fopen(cachefile_num_time_dirs,"r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
@@ -364,10 +393,13 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 	int j, ns,iret;
 	char timedir_full[MAXSTR];
 	char tmpstr[256]; // size of dit->d_name
+	char cachefile_num_node_dirs[MAXSTR];
 
 	FILE *fp;
 
-	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_num_node_dirs","r")) == NULL)
+	sprintf(cachefile_num_node_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_num_node_dirs");
+
+	if (dm->regenerate_cache||(fp = fopen(cachefile_num_node_dirs,"r")) == NULL)
 	{
 		sprintf (timedir_full, "%s/%s", dm->topdir, dm->timedir[0]);
 		open_directory (timedir_full);
@@ -380,7 +412,7 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 				j++;
 		}
 		close_directory();
-		if ((fp = fopen(".cm1hdf5_num_node_dirs","w")) != NULL)
+		if ((fp = fopen(cachefile_num_node_dirs,"w")) != NULL)
 		{
 			fprintf(fp,"%i\n",j);
 			fclose(fp);
@@ -389,7 +421,7 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 	else
 	{
 		if (!dm->regenerate_cache)
-		if ((fp = fopen(".cm1hdf5_num_node_dirs","r")) != NULL)
+		if ((fp = fopen(cachefile_num_node_dirs,"r")) != NULL)
 		{
 			if((iret=fscanf(fp,"%i",&j))==EOF)ERROR_STOP("fscanf failed");
 			fclose(fp);
@@ -461,13 +493,16 @@ void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd)
 	int firstnodedir,lastnodedir,nfiles;
 	char **cm1hdf5file;
 	char *hdf5filename;
+	char cachefile_all_available_times[MAXSTR];
 
 	FILE *fp;
+
+	sprintf(cachefile_all_available_times,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_all_available_times");
 
 	hdf5filename = (char *)malloc(MAXSTR*sizeof(char));
 	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
 	nodedirmask = (int *)malloc(dm->nnodedirs*sizeof(int));
-	if (dm->regenerate_cache||(fp = fopen(".cm1hdf5_all_available_times","r")) == NULL)
+	if (dm->regenerate_cache||(fp = fopen(cachefile_all_available_times,"r")) == NULL)
 	{
 		dm->ntottimes = 0;
 		k = 0;
@@ -700,7 +735,7 @@ crave electrolytes.
 
 		}
 		printf("\n");
-		if ((fp = fopen(".cm1hdf5_all_available_times","w")) != NULL)
+		if ((fp = fopen(cachefile_all_available_times,"w")) != NULL)
 		{
 			fprintf(fp,"%s\n",dm->firstfilename);
 			fprintf(fp,"%i %i %i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
@@ -715,7 +750,7 @@ crave electrolytes.
 	else
 	{
 		if (!dm->regenerate_cache)
-		if ((fp = fopen(".cm1hdf5_all_available_times","r")) != NULL)
+		if ((fp = fopen(cachefile_all_available_times,"r")) != NULL)
 		{
 			iret=fscanf(fp,"%s",dm->firstfilename);
 //			if(iret!=EOF) fprintf(stderr,"Cached: firstfilename = %s\n",dm->firstfilename);
