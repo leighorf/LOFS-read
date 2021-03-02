@@ -69,10 +69,11 @@ typedef struct cmdline
 	int filetype;
 	int nthreads;
 	int got_base;
+	int got_ncdir;
 	int twodwrite;
 	int optcount;
 	int nvar,nvar_cmdline;
-	char *histpath,*base;
+	char *histpath,*base,*ncdir;
 	char **varname_cmdline;
 	float time;
 	int argc_hdf2nc_min;

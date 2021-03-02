@@ -32,6 +32,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	gd->saved_Z1=0;
 	cmd->time=0.0;
 	cmd->got_base=0;
+	cmd->got_ncdir=0;
 	cmd->optcount=0;
 	cmd->nthreads=1;
 	cmd->twodwrite=0;
@@ -44,7 +45,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
-
+	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
 	nc->varname = (char **)malloc(MAXVARIABLES * sizeof(char *));
 	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
