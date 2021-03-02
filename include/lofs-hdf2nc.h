@@ -3,6 +3,9 @@
 
 #include <stdlib.h>
 #include <hdf5.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
 //Above is for size_t, not picked up from lofs-read.h
 
 //Trashcan struct for all things netcdf I guess

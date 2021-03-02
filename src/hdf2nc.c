@@ -101,7 +101,36 @@ int main(int argc, char *argv[])
 	/* Set base if not at command line and create netcdf file name */
 
 	if (!cmd.got_base) strcpy(cmd.base,dm.saved_base);
-	sprintf(nc.ncfilename,"%s.%012.6f.nc",cmd.base,cmd.time);
+
+ /* ORF 2021-03-02 We can now specify a directory for the netCDF files.
+ By default it is the directory from which you execute hdf2nc. If the
+ ncdir directory does not exist it will be created. This is optional but
+ will be useful for things like ensembles where we are chewing through
+ many simulations */
+
+	if (cmd.got_ncdir)
+	{
+		DIR* dir; int stat;
+		dir = opendir(cmd.ncdir);
+		if(dir) // Already exists, do nothing
+		{
+			closedir(dir);
+		}
+		else
+		{
+			stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+			if(stat==-1)
+			{
+				fprintf(stderr,"%s: Cannot create directory\n",cmd.ncdir);
+				ERROR_STOP("mkdir failed");
+			}
+		}
+		sprintf(nc.ncfilename,"%s/%s.%012.6f.nc",cmd.ncdir,cmd.base,cmd.time);
+	}
+	else
+	{
+		sprintf(nc.ncfilename,"%s.%012.6f.nc",cmd.base,cmd.time);
+	}
 
 	gd.NX = gd.X1 - gd.X0 + 1;
 	gd.NY = gd.Y1 - gd.Y0 + 1;

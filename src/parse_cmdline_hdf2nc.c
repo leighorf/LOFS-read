@@ -7,13 +7,14 @@
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)
 {
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
-	enum { OPT_HISTPATH = 1000, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
+	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS,
 		OPT_NTHREADS, OPT_OFFSET, OPT_INTERP, OPT_TWODWRITE };
 
 	static struct option long_options[] =
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
+		{"ncdir", optional_argument, 0, OPT_NCDIR},
 		{"base",     optional_argument, 0, OPT_BASE},
 		{"time",     required_argument, 0, OPT_TIME},
 		{"x0",       optional_argument, 0, OPT_X0},
@@ -58,6 +59,11 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_HISTPATH:
 				strcpy(cmd->histpath,optarg);
 				got_histpath=1;
+				break;
+			case OPT_NCDIR:
+				strcpy(cmd->ncdir,optarg);
+				cmd->got_ncdir=1;
+				cmd->optcount++;
 				break;
 			case OPT_BASE:
 				strcpy(cmd->base,optarg);

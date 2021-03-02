@@ -32,6 +32,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	gd->saved_Z1=0;
 	cmd->time=0.0;
 	cmd->got_base=0;
+	cmd->got_ncdir=0;
 	cmd->optcount=0;
 	cmd->nthreads=1;
 	cmd->twodwrite=0;
@@ -44,7 +45,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
-
+	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
 	nc->varname = (char **)malloc(MAXVARIABLES * sizeof(char *));
 	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
@@ -809,6 +810,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_mixing_ratio","g/kg");
 		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
 		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_water_mixing_ratio","g/kg");
 		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_water_mixing_ratio","g/kg");
