@@ -36,14 +36,16 @@ typedef struct sounding
 typedef struct buffers
 {
 	float *ustag, *vstag, *wstag;
+	float *ppert, *thrhopert;
 	float *buf0, *buf, *dum0, *dum1;
 	float *threedbuf;
 } buffers;
 
 typedef struct readahead
 {
-	int u,v,w;
+	int u,v,w,ppert,thrhopert;
 	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
+	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
@@ -65,7 +67,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
 void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
 void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd);
 void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
-void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
+void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
 void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
 void copy_grid_to_requested_cube (requested_cube *rc, grid gd);
 void sortchararray (char **strarray, int nel);

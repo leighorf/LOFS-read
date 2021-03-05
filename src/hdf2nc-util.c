@@ -50,6 +50,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 	rh->u=0; rh->v=0; rh->w=0;
+	rh->ppert=0; rh->thrhopert=0;
 	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
 }
 
@@ -781,6 +782,11 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
+		else if(same(var,"wb_buoy"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_buoyancy","m/s^2");
+		else if(same(var,"ub_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","u_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"vb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","v_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"wb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_perturbation","kg/m^3");
@@ -792,6 +798,14 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","x_vorticity","s^-1");
 		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","y_vorticity","s^-1");
 		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","z_vorticity","s^-1");
+		else if(same(var,"xvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_x","s^-2");
+		else if(same(var,"yvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_y","s^-2");
+		else if(same(var,"zvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_z","s^-2");
+		else if(same(var,"xvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_y","s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_y","s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_z","s^-2");
 		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
 		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
@@ -924,6 +938,11 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 	{
 		var=nc.varname[ivar];
 
+		if(same(var,"pipert"))  {rh->ppert=1;}
+		if(same(var,"wb_buoy")) {rh->thrhopert=1;}
+		if(same(var,"ub_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"vb_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"wb_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
@@ -934,6 +953,14 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"xvort")) {rh->v=1;rh->w=1;}
 		if(same(var,"yvort")) {rh->u=1;rh->w=1;}
 		if(same(var,"zvort")) {rh->u=1;rh->v=1;}
+		if(same(var,"xvort_stretch")) {rh->v=1;rh->w=1;}
+		if(same(var,"yvort_stretch")) {rh->u=1;rh->w=1;}
+		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;}
+		if(same(var,"xvort_baro")) {rh->thrhopert=1;}
+		if(same(var,"yvort_baro")) {rh->thrhopert=1;}
+		if(same(var,"xvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
+		if(same(var,"yvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
+		if(same(var,"zvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"hvort")) {rh->u=1;rh->v=1;rh->w=1;rh->hvort=1;}
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
@@ -959,6 +986,18 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
 		}
+		if (rh.ppert)
+		{
+			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
+			totbufsize+=bufsize;
+		}
+		if (rh.thrhopert)
+		{
+			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
+				ERROR_STOP("Cannot allocate our thrhopert buffer array");
+			totbufsize+=bufsize;
+		}
 		if (rh.u)
 		{
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -977,13 +1016,13 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
 		}
-		if (rh.u||rh.v||rh.w)
+		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)//Not really readahead, but if we calculated these we need another array
 		{
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
@@ -999,11 +1038,13 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	{
 		free (b->buf);
 		if(!cmd.twodwrite) free (b->threedbuf);
+		if (rh.ppert) free (b->ppert);
+		if (rh.thrhopert) free (b->thrhopert);
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.u||rh.v||rh.w) free (b->dum0);
-		if (rh.vortmag||rh.hvort||rh.streamvort)free(b->dum1);
+		if (rh.u||rh.v||rh.w||rh.budgets) free (b->dum0);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)free(b->dum1);
 	}
 }
 
@@ -1051,6 +1092,24 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	/* By shrinking in saved_x0,saved_x1 etc by 1 point on either side (see set_span), this will not fail
 	 * if we do not specify X0, X1 etc.*/
 
+	if (rh.ppert)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("prespert: reading...");
+		read_lofs_buffer(b->ppert,"prespert",dm,hm,rc,cmd);
+		BL;
+	}
+	if (rh.thrhopert)
+	{
+		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+		printf("thrhopert: reading...");
+		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
+		BL;
+	}
 	if (rh.u)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
