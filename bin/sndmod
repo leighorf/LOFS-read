@@ -11,6 +11,7 @@ try:
     import sharppy.sharptab.profile as prof
     import sharppy.sharptab.interp as interp
     from sharppy.io import spc_decoder as spcdc
+    from sharppy.sharptab.constants import *
 except:
     print("Error importing SHARPpy. Is it installed?")
 
@@ -59,22 +60,28 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
 
         ## Fill up data above the top if requested
         if (fill_to > 0.0):
-            top_h = np.arange(H[-1], fill_to+dz, dz)
+            ## the 3*dz here is just an ugly way of dealing
+            ## with the fact that the user will expect data up
+            ## to the fill-to height, and we have to integrate 
+            ## pressure using height layers. It's a process. 
+            top_h = np.arange(H[-1], fill_to+3*dz, dz)
+            ## create emtpy arrays to fill with the appropriate values
             top_p = np.zeros(top_h.shape)
             top_t = np.zeros(top_h.shape)
             top_td = np.zeros(top_h.shape)
+            top_mr = np.zeros(top_h.shape)
             top_rh = np.zeros(top_h.shape)
             top_u = np.zeros(top_h.shape)
             top_v = np.zeros(top_h.shape)
 
             ## set the new top to be isothermal
             top_t[:] = T[-1]
-            top_rh[:] = RH[-1]
-            top_td[:] = Td[-1]
             top_u[:] = U[-1]
             top_v[:] = V[-1]
             ## get the last pressure value
             top_p[0] = P[-1]
+            ## get the last dewpoint value so we can get mixing ratio later
+            top_td[0] = Td[-1]
 
             ## We need to integrate the hypsometric equation to
             ## get pressure values in dz thickness increments
@@ -83,6 +90,15 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
                 pupper = plower * np.exp( (dz*9.81)/(top_t[pidx]*287.04) )
                 top_p[pidx+1] = pupper 
 
+            ## now that we have pressure and temperature, we can set
+            ## our stratospheric water vapor mixing ratio, relative humidity,
+            ## and dewpoint
+            top_mr[:] = thermo.mixratio(top_p[0], top_td[0])
+            satmr = thermo.mixratio(top_p, top_t)
+            top_rh[:] = (top_mr / satmr) * 100.0
+            top_td = thermo.temp_at_mixrat(top_mr, top_p)
+
+            ## concatenate the arrays to marge our new top into the profile
             H = np.concatenate((H, top_h[1:]))
             P = np.concatenate((P, top_p[1:]))
             T = np.concatenate((T, top_t[1:]))
@@ -91,24 +107,37 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
             U = np.concatenate((U, top_u[1:]))
             V = np.concatenate((V, top_v[1:]))
 
-        if (desat > 0.0): 
-            RH[RH >= 98.0] -= desat
-            RH[RH < 2.0] = 2.0
-            satvap = thermo.vappres(T)
-            vappres = (RH/100.0) * satvap
-            Td = thermo.temp_at_vappres(vappres)
-        elif (desat_layer):
-            desat_idx = np.where(np.logical_and(H>=desat_layer[0], H<=desat_layer[1]))
-            RH[desat_idx] -= desat_layer[2]
-            RH[RH < 2.0] = 2.0
-            satvap = thermo.vappres(T)
-            vappres = (RH/100.0) * satvap
-            Td = thermo.temp_at_vappres(vappres)
+        ## if the layer is to be desaturated...
+        if (desat > 0.0):
+            RH[RH >= 97.0] -= desat
+            RH[RH < 0.0001] = 0.0001
+            satmr = thermo.mixratio(P, T)
+            mr = (RH/100.0) * satmr
+            mr[mr < 0.003] = 0.003
+            Td = thermo.temp_at_mixrat(mr, P)
         else:
-            RH[RH < 2.0] = 2.0
-            satvap = thermo.vappres(T)
-            vappres = (RH/100.0) * satvap
-            Td = thermo.temp_at_vappres(vappres)
+            satmr = thermo.mixratio(P, T)
+            mr = (RH/100.0) * satmr
+            mr[mr < 0.003] = 0.003
+            Td = thermo.temp_at_mixrat(mr, P)
+        if (desat_layer):
+            ## find the height layer to desaturate
+            desat_idx = np.where(np.logical_and(H>=desat_layer[0], H<=desat_layer[1]))
+            ## reduce the relative humidity by the given percentage
+            RH[desat_idx] -= desat_layer[2]
+            ## RH below zero makes no sense, so cap here
+            RH[RH < 0.0001] = 0.0001
+            ## get our new mixing ratio value and then
+            ## turn that into dewpoint
+            satmr = thermo.mixratio(P, T)
+            mr = (RH/100.0) * satmr
+            mr[mr < 0.003] = 0.003
+            Td = thermo.temp_at_mixrat(mr, P)
+        else:
+            satmr = thermo.mixratio(P, T)
+            mr = (RH/100.0) * satmr
+            mr[mr < 0.003] = 0.003
+            Td = thermo.temp_at_mixrat(mr, P)
 
         profile = prof.create_profile(pres=P, hght=H, tmpc=T, dwpc=Td, u=U, v=V)
         
@@ -121,6 +150,8 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
         new_u, new_v = interp.components(profile, new_p)
 
         new_theta = interp.theta(profile, new_p)
+        ## If the flag to force adiabatic surface conditions is passed,
+        ## loop through the profile to warm any superadiabatic layers
         if (adiabatic > 0.0):
             zmax = np.where(new_h >= adiabatic)[0][0]
             for zidx in range(len(new_h[:zmax+1])):
@@ -128,15 +159,21 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
                 T_upper = new_theta[zidx+1]
                 if T_upper < T_lower:
                     new_theta[zidx+1] = T_lower
+        ## now that we've modified the theta while keeping
+        ## pressure constant, we have to recalulate our temp
+        new_t = (new_theta / np.power((1000.0/new_p), ROCP)) - ZEROCNK
         new_mixr = interp.mixratio(profile, new_p)
-        new_mixr[new_mixr < 0.01] = 0.01
+        new_mixr[new_mixr < 0.003] = 0.003
+        new_td = thermo.temp_at_mixrat(new_mixr, new_p)
         
         new_u = utils.KTS2MS(new_u)
         new_v = utils.KTS2MS(new_v)
+        new_wdir, new_wspd = interp.vec(profile, new_p)
+
 
         ## return the pre processed data for eventual writing
         return {"pres": new_p, "tmpc": new_t, "dwpc": new_td, "hght": new_h - new_h[0], "uwin": new_u, "vwin": new_v, 
-            "theta": new_theta, "mixr": new_mixr}
+                "wdir": new_wdir, "wspd": new_wspd, "theta": new_theta, "mixr": new_mixr}
 
 def data_dict_to_file(data_dict, outfilename, delimiter=''):
     """
@@ -149,35 +186,60 @@ def data_dict_to_file(data_dict, outfilename, delimiter=''):
     for idx in range(num_lines):
         if idx == 0:
             line_str = ""
-            line_str += "%8s" % str(format(np.around(data_dict["pres"][0], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["theta"][0], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["mixr"][0], 2), "0.2f")) + delimiter + str("\n")
+            line_str += "%12s" % str(format(np.around(data_dict["pres"][0], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["theta"][0], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["mixr"][0], 6), "0.6f")) + delimiter + str("\n")
             outfile.write(line_str)
         else:
             line_str = ""
-            line_str += "%8s" % str(format(np.around(data_dict["hght"][idx], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["theta"][idx], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["mixr"][idx], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["uwin"][idx], 2), "0.2f")) + delimiter + str("\t")
-            line_str += "%8s" % str(format(np.around(data_dict["vwin"][idx], 2), "0.2f")) + str("\n")
+            line_str += "%12s" % str(format(np.around(data_dict["hght"][idx], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["theta"][idx], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["mixr"][idx], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["uwin"][idx], 6), "0.6f")) + delimiter + str("\t")
+            line_str += "%12s" % str(format(np.around(data_dict["vwin"][idx], 6), "0.6f")) + str("\n")
             outfile.write(line_str)
         
     outfile.close()
     
+def write_sharp(file_name, data):
+    snd_file = open(file_name, 'w')
+
+    snd_loc = ("****")
+
+    now = datetime.datetime.utcnow()
+    snd_file.write("%TITLE%\n")
+    snd_file.write("%s   %s\n" % (snd_loc, now.strftime("%y%m%d/%H%M")))
+    snd_file.write("   LEVEL       HGHT       TEMP       DWPT       WDIR       WSPD\n")
+    snd_file.write("-------------------------------------------------------------------\n")
+    snd_file.write("%RAW%\n")
+    for idx in range(data['pres'].shape[0]):
+        str = ""
+        for col in ['pres', 'hght', 'tmpc', 'dwpc', 'wdir', 'wspd']:
+            str += "%12.6f,  " % data[col][idx]
+
+        snd_file.write(str[:-3] + "\n")
+    snd_file.write("%END%\n")
+    snd_file.close()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--snd', action='store', dest='ifile', help='Input sounding file path', default=None, required=True)
+    parser.add_argument('--snd', action='store', dest='ifile', help='Input sounding file path, file must be readable by SHARPpy', default=None, required=True)
     parser.add_argument('--cm1', action='store', dest='ofile', help='The output path for the CM1 sounding format file', default=None, required=True)
+    parser.add_argument('--output-sharppy', action='store_true', dest='osharp', help='Flags whether or not to output as a SHARPpy sounding as well as a CM1 input file.', default=False, required=False)
     parser.add_argument('--dz', action='store', dest='dz', help='The interpolation interval for the output data. Defaults to 100m.', default=100., required=False)
-    parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 99% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
+    parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 97% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
     parser.add_argument('--desat-layer', nargs=3, action='store', type=float, dest='desat_layer', help='Desaturate the layer in height coordinates (first two values) by the specified percentage of RH (third value), i.e. --desat-layer 1000 3000 5.5', default=[], required=False)
     parser.add_argument('--fill-top', action='store', dest='fill_top', help='Specify a height in meters that is above the data top and fill it isothermally with constant winds', default=0.0, required=False)
     parser.add_argument('--adiabatic', action='store', dest='adiabatic', help='Ensures that the lapse rate from the surface to the given height in meters does not exceed the adiabatic lapse rate, starting at the surface. It will NOT adjust the surface T. If the surface T is in question, modify manually. ', default=0.0, required=False)
     args = parser.parse_args()
-    print(args.desat_layer)
+    
+    if not args.ofile.endswith(".cm1"):
+        args.ofile = args.ofile + ".cm1"
+
     data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat), desat_layer=args.desat_layer, fill_to=float(args.fill_top), adiabatic=float(args.adiabatic))
-    data_dict_to_file(data, args.ofile)
+    data_dict_to_file(data, args.ofile, delimiter="\t")
+    if args.osharp:
+        write_sharp(args.ofile.replace(".cm1", ".sharppy"), data)
 
 if __name__ == '__main__':
     main()
