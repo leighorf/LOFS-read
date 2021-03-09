@@ -115,11 +115,7 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
             mr = (RH/100.0) * satmr
             mr[mr < 0.003] = 0.003
             Td = thermo.temp_at_mixrat(mr, P)
-        else:
-            satmr = thermo.mixratio(P, T)
-            mr = (RH/100.0) * satmr
-            mr[mr < 0.003] = 0.003
-            Td = thermo.temp_at_mixrat(mr, P)
+
         if (desat_layer):
             ## find the height layer to desaturate
             desat_idx = np.where(np.logical_and(H>=desat_layer[0], H<=desat_layer[1]))
@@ -133,7 +129,8 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
             mr = (RH/100.0) * satmr
             mr[mr < 0.003] = 0.003
             Td = thermo.temp_at_mixrat(mr, P)
-        else:
+
+        if not desat_layer and desat == 0.0:
             satmr = thermo.mixratio(P, T)
             mr = (RH/100.0) * satmr
             mr[mr < 0.003] = 0.003
