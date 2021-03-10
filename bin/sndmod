@@ -18,7 +18,7 @@ except:
 import datetime
 import argparse
 
-def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, adiabatic=0.0):
+def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, adiabatic=[0.0, 0.04]):
     """
     Reads in the SHARPpy file format and then does the necessary
     unit conversions and computations to have it output as a CM1
@@ -149,13 +149,15 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
         new_theta = interp.theta(profile, new_p)
         ## If the flag to force adiabatic surface conditions is passed,
         ## loop through the profile to warm any superadiabatic layers
-        if (adiabatic > 0.0):
-            zmax = np.where(new_h >= adiabatic)[0][0]
+        if (adiabatic[0] > 0.0):
+            zmax = np.where(new_h >= adiabatic[0])[0][0]
             for zidx in range(len(new_h[:zmax+1])):
+                dztheta = (new_h[zidx+1] - new_h[zidx]) / 1000.0 ## get dz in km for stability param
                 T_lower = new_theta[zidx]
                 T_upper = new_theta[zidx+1]
-                if T_upper < T_lower:
-                    new_theta[zidx+1] = T_lower
+                stability_mod = dztheta * adiabatic[1]
+                if T_upper < T_lower + stability_mod:
+                    new_theta[zidx+1] = T_lower + stability_mod
         ## now that we've modified the theta while keeping
         ## pressure constant, we have to recalulate our temp
         new_t = (new_theta / np.power((1000.0/new_p), ROCP)) - ZEROCNK
@@ -224,16 +226,16 @@ def main():
     parser.add_argument('--cm1', action='store', dest='ofile', help='The output path for the CM1 sounding format file', default=None, required=True)
     parser.add_argument('--output-sharppy', action='store_true', dest='osharp', help='Flags whether or not to output as a SHARPpy sounding as well as a CM1 input file.', default=False, required=False)
     parser.add_argument('--dz', action='store', dest='dz', help='The interpolation interval for the output data. Defaults to 100m.', default=100., required=False)
-    parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 97% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
+    parser.add_argument('--desat', action='store', dest='desat', help='Anywhere the profile exceeds 97%% Relative Humidity, reduce the RH by this percentage', default=0.0, required=False)
     parser.add_argument('--desat-layer', nargs=3, action='store', type=float, dest='desat_layer', help='Desaturate the layer in height coordinates (first two values) by the specified percentage of RH (third value), i.e. --desat-layer 1000 3000 5.5', default=[], required=False)
     parser.add_argument('--fill-top', action='store', dest='fill_top', help='Specify a height in meters that is above the data top and fill it isothermally with constant winds', default=0.0, required=False)
-    parser.add_argument('--adiabatic', action='store', dest='adiabatic', help='Ensures that the lapse rate from the surface to the given height in meters does not exceed the adiabatic lapse rate, starting at the surface. It will NOT adjust the surface T. If the surface T is in question, modify manually. ', default=0.0, required=False)
+    parser.add_argument('--adiabatic', nargs=2, action='store', type=float, dest='adiabatic', help='Ensures that the lapse rate from the surface to the given height in meters does not exceed the adiabatic lapse rate, starting at the surface. It will NOT adjust the surface T. If the surface T is in question, modify manually. Second argument is a stability parameter, with 0.0 being neutral stability and positive values increasing the stability. Units in K/km.', default=[0.0, 0.04], required=False)
     args = parser.parse_args()
     
     if not args.ofile.endswith(".cm1"):
         args.ofile = args.ofile + ".cm1"
 
-    data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat), desat_layer=args.desat_layer, fill_to=float(args.fill_top), adiabatic=float(args.adiabatic))
+    data = read_sharp_txt(args.ifile, dz=float(args.dz), desat=float(args.desat), desat_layer=args.desat_layer, fill_to=float(args.fill_top), adiabatic=args.adiabatic)
     data_dict_to_file(data, args.ofile, delimiter="\t")
     if args.osharp:
         write_sharp(args.ofile.replace(".cm1", ".sharppy"), data)
