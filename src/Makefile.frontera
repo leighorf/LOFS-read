@@ -44,7 +44,7 @@ install: hdf2nc stash
 	install -d $(PREFIX)/lib
 	install -d $(PREFIX)/include
 	install -d $(PREFIX)/bin
-	install -m 0755 ../bin/snd2cm1 $(PREFIX)/bin
+	install -m 0755 ../bin/sndmod $(PREFIX)/bin
 	install -m 0755 ../bin/cm12snd $(PREFIX)/bin
 	install -m 0755 ../bin/hdf2nc $(PREFIX)/bin
 	install -m 0755 ../bin/stash $(PREFIX)/bin
