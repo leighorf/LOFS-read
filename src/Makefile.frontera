@@ -10,7 +10,7 @@ CC = h5cc
 ZFP=/work/06618/orf/frontera/build/2020/zfp-0.5.5
 #H5ZZFP=/work/06618/orf/frontera/build/git/H5Z-ZFP/src
 H5ZZFP=/home1/06618/orf/H5Z-ZFP-install
-CFLAGS = -fopenmp -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC)
+CFLAGS = -fopenmp -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64
 LINKOPTS  = -L$(ZFP)/lib -L$(H5ZZFP)/lib -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
 SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c
