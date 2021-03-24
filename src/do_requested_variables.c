@@ -1211,7 +1211,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 					writestart[1]=0;  writeedges[1]=gd.NY; //y
 					writestart[2]=0;  writeedges[2]=gd.NX; //x
 				}
-				else                  //XYZ tetrahedra (cubey thing)
+				else                  //XYZ rectangular prism (cubey thing)
 				{
 					writestart[0]=0;  writeedges[0]=1;     //time
 					writestart[1]=iz; writeedges[1]=1;     //z

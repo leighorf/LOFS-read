@@ -39,6 +39,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->twodwrite=0;
 	cmd->debug=0;
 	cmd->gzip=0;
+	cmd->zfp=0;
 	cmd->verbose=0;
 	cmd->do_allvars=0;
 	cmd->use_box_offset=0;
@@ -311,7 +312,7 @@ void set_nc_meta_name_units(int ncid, int varnameid, char *lnstring, char *long_
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 }
 
-/* basically lifted from ZFP code, keep it simple */
+/* basically lifted from HDF5-ZFP code, keep it simple */
 
 #define set_zfp_accuracy_cdata(A, CD) \
 { double *p = (double *) &CD[2];      \
@@ -320,7 +321,7 @@ CD[0]=3; *p=A;}
 
 #define ZFP_ID 32013
 
-void set_nc_meta_zfp_name_units(double zfpacc, int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
+void set_nc_meta_zfp_name_units(double zfpacc,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 	int varnameid;
@@ -334,15 +335,17 @@ void set_nc_meta_zfp_name_units(double zfpacc, int ncid, var3dstruct *v3d, char 
 	status = nc_put_att_text(ncid,v3d->varnameid, "units",len,units);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
-	v3d->zfpacc = zfpacc; // Here we set the value in the struct
+	if (do_zfp)
+	{
+		v3d->zfpacc = zfpacc; // Here we set the value in the struct. Not that we actually do anything with it.
 
-	status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy",NC_DOUBLE,1,&zfpacc);
-	if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
+		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy",NC_DOUBLE,1,&zfpacc);
+		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
 
-	set_zfp_accuracy_cdata(zfpacc,cdata);
+		set_zfp_accuracy_cdata(zfpacc,cdata);
 
-	status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
-
+		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
+	}
 }
 
 // We need these global variables only for the H5Giter function 
@@ -816,55 +819,55 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 //void set_nc_meta_zfp_name_units(double acc, int ncid, int varnameid, char *lnstring, char *long_name, char *units)
 
-		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
-		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","v_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","w_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","nondimensional_pressure_perturbation","None");
-		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","potential_temperature_perturbation","K");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,nid,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
-		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","z_vorticity","s^-1");
-		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","vorticity_stretching_rate_x","s^-2");
-		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","vorticity_stretching_rate_y","s^-2");
-		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","vorticity_stretching_rate_z","s^-2");
-		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","baroclinic_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","baroclinic_vorticity_rate_y","s^-2");
-		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","solenoidal_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","solenoidal_vorticity_rate_y","s^-2");
-		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,v3did,"long_name","solenoidal_vorticity_rate_z","s^-2");
-		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,v3did,"long_name","streamwise_vorticity","s^-1");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(2.0,   nid,v3did,"long_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(3.0e-3,nid,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,nid,v3did,"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,v3did,"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e3, nid,v3did,"long_name","ice_number_concenctration","cm^-3");
-		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, nid,v3did,"long_name","rain_number_concenctration","cm^-3");
-		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, nid,v3did,"long_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, nid,v3did,"long_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","pressure_perturbation","hPa");
+		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
+		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","v_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","w_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","nondimensional_pressure_perturbation","None");
+		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","potential_temperature_perturbation","K");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","density_perturbation","kg/m^3");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
+		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","x_vorticity","s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","y_vorticity","s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","z_vorticity","s^-1");
+		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","vorticity_stretching_rate_x","s^-2");
+		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","vorticity_stretching_rate_y","s^-2");
+		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","vorticity_stretching_rate_z","s^-2");
+		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","baroclinic_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","baroclinic_vorticity_rate_y","s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","solenoidal_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","solenoidal_vorticity_rate_y","s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,v3did,"long_name","solenoidal_vorticity_rate_z","s^-2");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","vorticity_magnitude","s^-1");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,v3did,"long_name","streamwise_vorticity","s^-1");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(2.0,   cmd->zfp,nid,v3did,"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(3.0e-3,cmd->zfp,nid,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,v3did,"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","now_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,v3did,"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,v3did,"long_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, cmd->zfp,nid,v3did,"long_name","rain_number_concenctration","cm^-3");
+		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,v3did,"long_name","snow_number_concenctration","cm^-3");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, cmd->zfp,nid,v3did,"long_name","hail_number_concenctration","cm^-3");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
@@ -1021,7 +1024,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
-		if(!cmd.twodwrite)//This is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
+		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
 		{
 			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
