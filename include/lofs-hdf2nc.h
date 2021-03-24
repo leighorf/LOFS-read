@@ -8,12 +8,12 @@
 
 //Above is for size_t, not picked up from lofs-read.h
 
-typedef struct var_struct
+typedef struct var3d_struct
 {
 	char varname[MAXSTR];
-	double acc;
+	double zfpacc;
 	int varnameid;
-} varstruct;
+} var3dstruct;
 
 typedef struct netcdf_struct
 {
@@ -25,7 +25,7 @@ typedef struct netcdf_struct
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
 	int ncid;
-	varstruct var3d[MAXVARIABLES];
+	var3dstruct var3d[MAXVARIABLES];
 	char *ncfilename;
 	int dims[4],d2[3];
 	size_t start[4],edges[4];//not used anymore, se do_requested_variables
