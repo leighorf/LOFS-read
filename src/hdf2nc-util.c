@@ -10,13 +10,14 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	cmd->histpath        = (char *) malloc(MAXSTR*sizeof(char));
 	cmd->base            = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> firstfilename   = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> saved_base      = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> topdir          = (char *) malloc(MAXSTR*sizeof(char));
+	dm->firstfilename    = (char *) malloc(MAXSTR*sizeof(char));
+	dm->saved_base       = (char *) malloc(MAXSTR*sizeof(char));
+	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
-	nc->varnameid        = (int  *) malloc(MAXVARIABLES*sizeof(int));
 
-	dm-> regenerate_cache = 0;
+	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
+
+	dm->regenerate_cache = 0;
 
 	gd->X0=-1;
 	gd->Y0=-1;
@@ -45,9 +46,6 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
-	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
-	nc->varname = (char **)malloc(MAXVARIABLES * sizeof(char *));
-	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
@@ -300,7 +298,20 @@ void set_nc_meta_global_integer(int ncid, char *name, int *value)
 
 
 //set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_string);
-void set_nc_meta(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
+void set_nc_meta_name_units(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
+{
+	int len,status;
+
+	len=strlen(long_name);
+	status = nc_put_att_text(ncid, varnameid,lnstring,len,long_name);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+
+	len=strlen(units);
+	status = nc_put_att_text(ncid,varnameid, "units",len,units);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+}
+
+void set_nc_meta_zfp_name_units(double acc, int ncid, int varnameid, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 
@@ -397,7 +408,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     strcpy(units_for_nc,units_string[0]);
 
     nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
-    set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
+    set_nc_meta_name_units(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
 
     free(units_string[0]); free(units_string);
     free(description_string[0]); free(description_string);
@@ -540,14 +551,15 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 		sortchararray (varname_tmp,nv+cmd->nvar_cmdline);
 
-		strcpy(nc->varname[0],varname_tmp[0]);
+		strcpy(nc->var3d[0].varname,varname_tmp[0]);
 		j=1;
 		/* Get rid of accidental duplicates */
 		for (i=0; i<nv+cmd->nvar_cmdline-1; i++)
 		{
 			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
 			{
-				strcpy(nc->varname[j],varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+//				strcpy(nc->varname[j],varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+				strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
 				j++;
 			}
 		}
@@ -560,7 +572,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 // Now that we have nvar, allocate the netcdf varnameid array
 
-	nc->varnameid        = (int *) malloc(cmd->nvar*sizeof(int));
+//ORF we already allocated
+//	nc->varnameid        = (int *) malloc(cmd->nvar*sizeof(int));
 
 // This is our main "loop over all requested variable names" loop that
 // sets all the metadata shit.
@@ -568,8 +581,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
 		int mesh_is_u = 0, mesh_is_v = 0, mesh_is_w = 0;
+		int nid, vid;
 
-		strcpy(var,nc->varname[ivar]);
+		strcpy(var,nc->var3d[ivar].varname);
 
 		if (same(var,"u")) mesh_is_u=1;
 		if (same(var,"v")) mesh_is_v=1;
@@ -731,7 +745,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NZ;
 			nc->edges[2] = gd.NY;
-			status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &(nc->varnameid[ivar]));
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
 		else if(gd.Y0==gd.Y1)
 		{
@@ -745,7 +759,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NZ;
 			nc->edges[2] = gd.NX;
-			status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &(nc->varnameid[ivar]));
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
 		else if(gd.Z0==gd.Z1)
 		{
@@ -759,13 +773,13 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NY;
 			nc->edges[2] = gd.NX;
-			status =  nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &nc->varnameid[ivar]);
+			status =  nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
-		else status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 4, nc->dims, &nc->varnameid[ivar]);
+		else status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
 
 		if (status != NC_NOERR) 
 		{
-			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->varname[ivar],status,nc_strerror(status));
+			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->var3d[ivar].varname,status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
 
@@ -775,55 +789,60 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 // We are still before the nc_enddef call, in case you are lost
 
-		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
-		else if(same(var,"wb_buoy"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_buoyancy","m/s^2");
-		else if(same(var,"ub_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","u_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"vb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","v_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"wb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
-		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
-		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"tke_sg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
-		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","z_vorticity","s^-1");
-		else if(same(var,"xvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_x","s^-2");
-		else if(same(var,"yvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_y","s^-2");
-		else if(same(var,"zvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_z","s^-2");
-		else if(same(var,"xvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_y","s^-2");
-		else if(same(var,"xvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_y","s^-2");
-		else if(same(var,"zvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_z","s^-2");
-		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
-		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ice_number_concenctration","cm^-3");
-		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_number_concenctration","cm^-3");
-		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ground_relative_horizontal_wind_speed","m/s");
+		nid = nc->ncid;
+		vid = nc->var3d[ivar].varnameid;
+
+//void set_nc_meta_zfp_name_units(double acc, int ncid, int varnameid, char *lnstring, char *long_name, char *units)
+
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","pressure_perturbation","hPa");
+		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","w_acceleration_from_buoyancy","m/s^2");
+		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","v_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","w_acceleration_from_pressure_gradient","m/s^2");
+		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","nondimensional_pressure_perturbation","None");
+		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","potential_temperature_perturbation","K");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","density_perturbation","kg/m^3");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,nid,vid,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
+		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
+		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","x_vorticity","s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","y_vorticity","s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","z_vorticity","s^-1");
+		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","vorticity_stretching_rate_x","s^-2");
+		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","vorticity_stretching_rate_y","s^-2");
+		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","vorticity_stretching_rate_z","s^-2");
+		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","baroclinic_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","baroclinic_vorticity_rate_y","s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","solenoidal_vorticity_rate_x","s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","solenoidal_vorticity_rate_y","s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,nid,vid,"long_name","solenoidal_vorticity_rate_z","s^-2");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","vorticity_magnitude","s^-1");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","horizontal_vorticity_magnitude","s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(5.0e-4,nid,vid,"long_name","streamwise_vorticity","s^-1");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(2.0,   nid,vid,"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","water_vapor_mixing_ratio","g/kg");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(3.0e-3,nid,vid,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,nid,vid,"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","now_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(5.0e-2,nid,vid,"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e3, nid,vid,"long_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, nid,vid,"long_name","rain_number_concenctration","cm^-3");
+		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, nid,vid,"long_name","snow_number_concenctration","cm^-3");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, nid,vid,"long_name","hail_number_concenctration","cm^-3");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","storm_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,nid,vid,"long_name","ground_relative_horizontal_wind_speed","m/s");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
@@ -842,24 +861,24 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 /* Write sounding data attributes, also umove and vmove */
 
 	status = nc_def_var (nc->ncid, "u0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->u0id,"long_name","base_state_u","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->u0id,"long_name","base_state_u","m/s");
 	status = nc_def_var (nc->ncid, "v0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
+	set_nc_meta_name_units(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
+	set_nc_meta_name_units(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"long_name","base_state_nondimensional_pressure","#");
+	set_nc_meta_name_units(nc->ncid,nc->pi0id,"long_name","base_state_nondimensional_pressure","#");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->qv0id,"long_name","base_state_water_vapor_mixing_ratio","g/kg");
+	set_nc_meta_name_units(nc->ncid,nc->qv0id,"long_name","base_state_water_vapor_mixing_ratio","g/kg");
 	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"long_name","base_state_density","kg/m^3");
+	set_nc_meta_name_units(nc->ncid,nc->rho0id,"long_name","base_state_density","kg/m^3");
 
 	status = nc_def_var (nc->ncid, "umove", NC_FLOAT, 0, nc->dims, &nc->umoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->umoveid,"long_name","x_box_translation_component","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->umoveid,"long_name","x_box_translation_component","m/s");
 	status = nc_def_var (nc->ncid, "vmove", NC_FLOAT, 0, nc->dims, &nc->vmoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->vmoveid,"long_name","y_box_translation_component","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->vmoveid,"long_name","y_box_translation_component","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -936,7 +955,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
-		var=nc.varname[ivar];
+		var=nc.var3d[ivar].varname;
 
 		if(same(var,"pipert"))  {rh->ppert=1;}
 		if(same(var,"wb_buoy")) {rh->thrhopert=1;}

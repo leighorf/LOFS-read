@@ -1093,7 +1093,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		buf0nx=gd.NX+2;ixoff=1;
 		buf0ny=gd.NY+2;iyoff=1;
 
-		var=nc.varname[ivar];
+		var=nc.var3d[ivar].varname;
 		printf("%s: ",var);FL;
 
 		if(same(var,"u"))
@@ -1171,7 +1171,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			printf("reading...");FL;
 			buf0nx=gd.NX;ixoff=0;
 			buf0ny=gd.NY;iyoff=0;
-			read_lofs_buffer(b->buf,nc.varname[ivar],dm,hm,rc,cmd);
+			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
 		}
 		printf("writing...");FL;
 
@@ -1218,7 +1218,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 					writestart[2]=0;  writeedges[2]=gd.NY; //y
 					writestart[3]=0;  writeedges[3]=gd.NX; //x
 				}
-				status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], writestart, writeedges, twodbuf);
+				status = nc_put_vara_float (nc.ncid, nc.var3d[ivar].varnameid, writestart, writeedges, twodbuf);
 			}
 		}
 		else//This is the default
@@ -1235,7 +1235,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 				}
 			}
 
-		status = nc_put_vara_float (nc.ncid, nc.varnameid[ivar], nc.start, nc.edges, b->threedbuf);
+		status = nc_put_vara_float (nc.ncid, nc.var3d[ivar].varnameid, nc.start, nc.edges, b->threedbuf);
 		}
 		BL;
 	}

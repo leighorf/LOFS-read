@@ -8,7 +8,13 @@
 
 //Above is for size_t, not picked up from lofs-read.h
 
-//Trashcan struct for all things netcdf I guess
+typedef struct var_struct
+{
+	char varname[MAXSTR];
+	double acc;
+	int varnameid;
+} varstruct;
+
 typedef struct netcdf_struct
 {
 	int nxh_dimid,nyh_dimid,nzh_dimid;
@@ -19,8 +25,7 @@ typedef struct netcdf_struct
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
 	int ncid;
-	int *varnameid;
-	char **varname;
+	varstruct var3d[MAXVARIABLES];
 	char *ncfilename;
 	int dims[4],d2[3];
 	size_t start[4],edges[4];//not used anymore, se do_requested_variables
