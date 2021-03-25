@@ -181,7 +181,6 @@ int main(int argc, char *argv[])
 
 	if(cmd.gzip) compress_with_nccopy(nc,cmd);
 
-
 	exit(0);
 
 }
