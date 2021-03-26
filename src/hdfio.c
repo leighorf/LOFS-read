@@ -81,13 +81,17 @@ void get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 
 }
 
-//ORF this will fill our hdf_meta struct
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id)
+//ORF this will fill our hdf_meta struct and some other things
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id)
 {
-	hid_t g_id;
+	hid_t g_id,d_id,attr_id,attr_memtype;
+	herr_t status;
+	H5O_info_t dset_info;
 	H5G_info_t group_info;
-	int i,status;
+	int i,j,nattr;
+	double *zptr;
 	char groupname[MAXSTR];
+	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
 
 	get0dint (*f_id, "grid/nodex", &hm->nodex);
 	get0dint (*f_id, "grid/nodey", &hm->nodey);
@@ -108,14 +112,47 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid
 
 	for (i = 0; i < hm->nvar_available; i++)
 	{
-	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,hm->varname_available[i],40,H5P_DEFAULT); //40 characters per varname
-		//ORF TODO make 40 a constant somewhere
+	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,hm->varname_available[i],40,H5P_DEFAULT);  //ORF TODO make 40 a constant somewhere
 	}
-	H5Gclose(g_id);
 
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
 	}
+/*
+ *
+ * ORF 2021-03-26
+ * Now we get all of the 3D zfp_accuracy_LOFS data to store in our netCDF files
+ * We loop over our available 3D variables
+ * We sweep through each 3D variable's attributes
+ * We look for the "zfp_accuracy_LOFS" attribute
+ * If it exists, we grab the value and stash it in the appropriate place
+ * It will be written to the netCDF file as well as the ZFP value for the netCDF data,
+ * which is allowed to be whatever you want... it's up to the user to make sure that they
+   aren't choosing stupid accuracy parameters
+ *
+ *
+ */
+
+	for (i = 0; i < hm->nvar_available; i++)
+	{
+		if ((d_id = H5Dopen (g_id,hm->varname_available[i],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+		if ((status = H5Oget_info(d_id,&dset_info)) < 0) ERROR_STOP("Could not H5Oget_info");
+		nattr=dset_info.num_attrs;
+		for (j=0; j<nattr; j++)
+		{
+			if ((status=H5Aget_name_by_idx(d_id,".",H5_INDEX_NAME,H5_ITER_INC,j,attrname[j],40,H5P_DEFAULT))<0) ERROR_STOP("Could not H5Aget_name_by_idex");
+			if ((attr_id=H5Aopen(d_id,attrname[j],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Aopen");
+			if (same(attrname[j],"zfp_accuracy_LOFS"))
+			{
+				zptr=&(nc->var3d[i].zfpacc_LOFS);
+				if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
+				if ((status=H5Aread(attr_id,attr_memtype,zptr)) < 0) ERROR_STOP("Could not H5Aread"); //grab ZFP accuracy from LOFS 3dvar
+				if (cmd->verbose) printf("%10s: %s = %12.7f\n",hm->varname_available[i],attrname[j],*zptr);
+			}
+		}
+	}
+	H5Dclose(d_id);
+	H5Gclose(g_id);
 }
 

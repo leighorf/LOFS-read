@@ -76,7 +76,8 @@ int main(int argc, char *argv[])
 		ERROR_STOP("Can't open firstfilename! Weird...");
 	} // Keep open as we need metadata, 1d sounding data, etc.
 
-	get_hdf_metadata(dm,&hm,&cmd,argv,&hdf_file_id);
+	//ORF 2021-03-26 we now also collect have ZFP accuracy attributes for all 3D LOFS vars
+	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id);
 
 	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);

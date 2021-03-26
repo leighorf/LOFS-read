@@ -47,6 +47,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
+	for (i=0; i < MAXVARIABLES; i++)nc->var3d[i].zfpacc_LOFS=(double) -1.0;
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
@@ -321,7 +322,8 @@ CD[0]=3; *p=A;}
 
 #define ZFP_ID 32013
 
-void set_nc_meta_zfp_name_units(double zfpacc,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
+//		if(same(var,"u"))	  set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
+void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 	int varnameid;
@@ -337,15 +339,19 @@ void set_nc_meta_zfp_name_units(double zfpacc,int do_zfp,int ncid, var3dstruct *
 
 	if (do_zfp)
 	{
-		v3d->zfpacc = zfpacc; // Here we set the value in the struct. Not that we actually do anything with it.
+		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
 
-		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy",NC_DOUBLE,1,&zfpacc);
+		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
 		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
 
-		set_zfp_accuracy_cdata(zfpacc,cdata);
+		set_zfp_accuracy_cdata(zfpacc_netcdf,cdata);
 
 		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
 	}
+//ORF now we stick the LOFS zfp parameter here, this always exists, unless someone's not
+//usig ZFP with CM1... should check for that... or just force them to and you can always
+//use lossless/reversible...?
+		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_LOFS",NC_DOUBLE,1,&(v3d->zfpacc_LOFS));
 }
 
 // We need these global variables only for the H5Giter function 
@@ -422,6 +428,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     status = H5Tclose(memtype);
 
 //end h5wank. begin ncwank.
+//ORF: What is with the stringlen exit?? Buffer overflow...
 
     stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
     description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
@@ -817,7 +824,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		nid = nc->ncid;
 		v3did = &(nc->var3d[ivar]);
 
-//void set_nc_meta_zfp_name_units(double acc, int ncid, int varnameid, char *lnstring, char *long_name, char *units)
+//void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 
 		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
 		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","northward_wind_on_native_mesh","m/s");

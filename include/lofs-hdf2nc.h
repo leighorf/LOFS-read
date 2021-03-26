@@ -11,7 +11,8 @@
 typedef struct var3d_struct
 {
 	char varname[MAXSTR];
-	double zfpacc;
+	double zfpacc_LOFS;
+	double zfpacc_netcdf;
 	int varnameid;
 } var3dstruct;
 
@@ -61,7 +62,7 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd);
 void get_num_node_dirs (dir_meta *dm,cmdline cmd);
 void get_sorted_node_dirs (dir_meta *dm,cmdline cmd);
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid_t *f_id);
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id);
 void set_span(grid *gd,hdf_meta hm,cmdline cmd);
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd);
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id);
