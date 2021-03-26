@@ -79,6 +79,11 @@ int main(int argc, char *argv[])
 	//ORF 2021-03-26 we now also collect have ZFP accuracy attributes for all 3D LOFS vars
 	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id);
 
+	for (i = 0; i < cmd.nvar_cmdline; i++)
+	{
+		printf("Index %i var3dvarname=%s zfp_accuracy_LOFS = %f\n",i , nc.var3d[i].varname, nc.var3d[i].zfpacc_LOFS);
+	}
+
 	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
 	printf("\n");
