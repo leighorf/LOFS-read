@@ -1147,7 +1147,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 void compress_with_nccopy(ncstruct nc,cmdline cmd)
 {
 	char strbuf[MAXSTR];
-	off_t unc_fsize,comp_fsize;
+	long int unc_fsize,comp_fsize;
 	float ratio;
 	struct stat st;
 	int retval;
