@@ -7,7 +7,7 @@ endif
 
 CC = h5cc
 #ZFP=/work/06618/orf/frontera/build/git/zfp/build
-ZFP=/work/06618/orf/frontera/build/2020/zfp-0.5.5
+ZFP=/home1/06618/orf/build/2020/zfp-0.5.5
 #H5ZZFP=/work/06618/orf/frontera/build/git/H5Z-ZFP/src
 H5ZZFP=/home1/06618/orf/H5Z-ZFP-install
 CFLAGS = -fopenmp -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64

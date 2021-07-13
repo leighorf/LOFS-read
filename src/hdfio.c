@@ -88,7 +88,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	herr_t status;
 	H5O_info_t dset_info;
 	H5G_info_t group_info;
-	int i,j,nattr,is_LOFS_var;
+	int i,j,nattr,is_LOFS_var=0;
 	double *zptr;
 	char groupname[MAXSTR];
 	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO

@@ -216,6 +216,42 @@ void calc_winterp(buffers *b, grid gd, cmdline cmd)
 }
 
 /*******************************************************************************/
+//else if(same(var,"qiqvpert"))	   {CL;calc_qiqvpert(b,gd,msh,cmd,dm,hm,rc);}
+//void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
+//Just read in sequentially and add, don't bother with readahead (except
+//the use of readahead flag to allocate an additional buffer in
+//do_readahead)
+//
+#define QIQVPERT BUFp
+void calc_qiqvpert(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+//Just read two fields and add them
+	read_lofs_buffer(b->buf0,"qvpert",dm,hm,rc,cmd);
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) = BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		QIQVPERT(i,j,k) += TEM1p(i,j,k);
+}
+
+/*******************************************************************************/
 
 #define HWIN_SR BUFp
 void calc_hwin_sr(buffers *b, grid gd, cmdline cmd)
@@ -1161,6 +1197,10 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"hvort"))		   {CL;calc_hvort(b,gd,msh,cmd);}
 		else if(same(var,"vortmag"))	   {CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}
+		else if(same(var,"qiqvpert"))	   {CL;calc_qiqvpert(b,gd,msh,cmd,dm,hm,rc);}
+//void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
+//			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
+
 // At some point after we've calculated all the stuff that requires
 // buffered u v w stuff we need to repurpose some of those buffers for
 // calculating other things - like temperature, which requires pressure

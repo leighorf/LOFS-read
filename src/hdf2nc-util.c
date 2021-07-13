@@ -51,7 +51,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
-	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
+	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;rh->qiqvpert;//Not really readahead, used for mallocs
 }
 
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
@@ -1095,7 +1095,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert)//Not really readahead, but if we calculated these we need another array
 		{
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");

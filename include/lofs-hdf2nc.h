@@ -50,7 +50,7 @@ typedef struct buffers
 typedef struct readahead
 {
 	int u,v,w,ppert,thrhopert;
-	int vortmag,hvort,streamvort;//Not really readahead, used for mallocs
+	int vortmag,hvort,streamvort,qiqvpert;//Not really readahead, used for mallocs
 	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
