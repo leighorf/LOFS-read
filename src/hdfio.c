@@ -88,7 +88,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	herr_t status;
 	H5O_info_t dset_info;
 	H5G_info_t group_info;
-	int i,j,nattr,is_LOFS_var=0;
+	int i,j,nattr,is_LOFS_var;
 	double *zptr;
 	char groupname[MAXSTR];
 	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
@@ -143,14 +143,16 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 //		if ((d_id = H5Dopen (g_id,hm->varname_available[i],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 //
 //	for (i = 0; i < hm->nvar_available; i++)
+	is_LOFS_var = 0;
 	for (i = 0; i < cmd->nvar_cmdline; i++)
 	{
 		for (j=0; j<hm->nvar_available; j++) //check against all available vars to see if we have ZFP data to retrieve
 		{
+//			printf("%s %s\n",hm->varname_available[j],nc->var3d[i].varname);
 			if (same(hm->varname_available[j],nc->var3d[i].varname)) // Is this a native LOFS variable?
 			{
 				is_LOFS_var=1;
-				printf("%s is a native LOFS variable\n");
+				printf("%s is a native LOFS variable\n",nc->var3d[i].varname);
 				break;
 			}
 		}
@@ -163,7 +165,8 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 			{
 				if ((status=H5Aget_name_by_idx(d_id,".",H5_INDEX_NAME,H5_ITER_INC,j,attrname[j],40,H5P_DEFAULT))<0) ERROR_STOP("Could not H5Aget_name_by_idex");
 				if ((attr_id=H5Aopen(d_id,attrname[j],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Aopen");
-				if (same(attrname[j],"zfp_accuracy_LOFS"))
+//				printf ("%s %s\n",attrname[j],"zfp_accuracy_LOFS");
+				if (same(attrname[j],"zfp_accuracy"))//Just called zfp_accuracy in the LOFS HDF5 files
 				{
 					zptr=&(nc->var3d[i].zfpacc_LOFS);
 					if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
@@ -173,6 +176,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 				}
 			}
 		}
+		is_LOFS_var = 0; //reset
 	}
 	H5Dclose(d_id);
 	H5Gclose(g_id);

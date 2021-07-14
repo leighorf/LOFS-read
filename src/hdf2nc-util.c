@@ -51,7 +51,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
-	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;rh->qiqvpert;//Not really readahead, used for mallocs
+	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;rh->qiqvpert=0;//Not really readahead, used for mallocs
 }
 
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
@@ -345,13 +345,26 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	if (do_zfp)
 	{
 		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
+		printf("Setting zfpacc_netcdf to %f for %s\n",zfpacc_netcdf,long_name);
 
 		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
 		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
 
 		set_zfp_accuracy_cdata(zfpacc_netcdf,cdata);
+		if (!H5Zfilter_avail(ZFP_ID))
+		{
+			char *hdf5_plugin_path;
+			printf("ZFP filter not available!\n");
+			hdf5_plugin_path = getenv("HDF5_PLUGIN_PATH");
+			printf("Check your HDF5_PLUGIN_PATH; it is currently %s\n",hdf5_plugin_path);
+			ERROR_STOP("ZFP filter not available");
+		}
 
 		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
+		if(status != NC_NOERR)
+		{
+			ERROR_STOP("nc_def_var_filter failed");
+		}
 	}
 //ORF now we stick the LOFS zfp parameter here, this always exists, unless someone's not
 //usig ZFP with CM1... should check for that... or just force them to and you can always
@@ -897,6 +910,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_wind_speed","m/s");
 		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","sum_of_cloud_ice_and_water_vapor_mixing_ratios","g/kg");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
@@ -1037,6 +1051,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"hvort")) {rh->u=1;rh->v=1;rh->w=1;rh->hvort=1;}
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
+		if(same(var,"qiqvpert")) {rh->qiqvpert=1;}
 	}
 	//free(var);
 }

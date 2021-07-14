@@ -235,7 +235,9 @@ void calc_qiqvpert(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_me
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 //Just read two fields and add them
+
 	read_lofs_buffer(b->buf0,"qvpert",dm,hm,rc,cmd);
+
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
@@ -1271,6 +1273,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 					for(ix=0;ix<gd.NX;ix++)
 					{
 						b->threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
+//						if(iz==gd.NZ-1)printf("%f\n",b->threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)]);
 					}
 				}
 			}
