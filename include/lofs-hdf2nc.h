@@ -11,6 +11,7 @@
 typedef struct var3d_struct
 {
 	char varname[MAXSTR];
+	int is_LOFS_var;
 	double zfpacc_LOFS;
 	double zfpacc_netcdf;
 	int varnameid;
@@ -50,7 +51,9 @@ typedef struct buffers
 typedef struct readahead
 {
 	int u,v,w,ppert,thrhopert;
-	int vortmag,hvort,streamvort,qiqvpert;//Not really readahead, used for mallocs
+	int vortmag,hvort;
+	int streamvort,qiqvpert,qtot;
+	int temp;
 	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);

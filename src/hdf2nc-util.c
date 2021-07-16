@@ -47,11 +47,18 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
-	for (i=0; i < MAXVARIABLES; i++)nc->var3d[i].zfpacc_LOFS=(double) -1.0;
+	for (i=0; i < MAXVARIABLES; i++)nc->var3d[i].zfpacc_LOFS=(double) -9999.0;
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
-	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;rh->qiqvpert=0;//Not really readahead, used for mallocs
+	rh->vortmag=0;
+	rh->hvort=0;
+	rh->streamvort=0;
+
+//Below not really readahead, used for mallocs
+	rh->qiqvpert=0;
+	rh->qtot=0;
+	rh->temp=0;
 }
 
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
@@ -331,7 +338,7 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 {
 	int len,status;
 	int varnameid;
-	int i,is_LOFS_var=0;
+	int i;
 	unsigned int cdata[4]; /* for the ZFP stuff */
 
 	len=strlen(long_name);
@@ -342,6 +349,9 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	status = nc_put_att_text(ncid,v3d->varnameid, "units",len,units);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 
+	// SOmewhere in here we need to loop over all requested(?) variables
+	// and match variable names, and then once we have matched for sure
+	// we can set the zfp_accuracy_LOFS
 	if (do_zfp)
 	{
 		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
@@ -373,20 +383,47 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 //derived value. This is dumb. I just check against the variable names. Is there a better
 //way to do this? Probably...
 
-		for (i=0; i<hm->nvar_available; i++)
-		{
-			if (same(hm->varname_available[i],v3d->varname)) // Is this a native LOFS variable?
-			{
-				is_LOFS_var=1;
-				break;
-			}
-		}
-		if (is_LOFS_var)
-		{
-			printf("%s is native LOFS\n",v3d->varname);
-			printf("Setting %s zfp_accuracy_LOFS to %f\n",v3d->varname,v3d->zfpacc_LOFS);
-			status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_LOFS",NC_DOUBLE,1,&(v3d->zfpacc_LOFS));
-		}
+//		for (i=0; i<hm->nvar_available; i++)
+//		{
+//			if (same(hm->varname_available[i],v3d->varname)) // Is this a native LOFS variable?
+//			{
+//			/* GET FUCKING zfp_accuracy_LOFS from HDF5 file here */
+//			/* GET FUCKING zfp_accuracy_LOFS from HDF5 file here */
+//			/* GET FUCKING zfp_accuracy_LOFS from HDF5 file here */
+//			/* GET FUCKING zfp_accuracy_LOFS from HDF5 file here... not
+//			in hdf5io.c*/
+//				is_LOFS_var=1;
+//				break;
+//			}
+//		}
+//		ACTUALLY NOW WE CAN USE THE INDEX OF i TO DO THINGS???
+//
+//
+// We need to go out and get the zfp_accuracy_LOFS data based upon varname NOW
+// We need to go out and get the zfp_accuracy_LOFS data based upon varname NOW
+// We need to go out and get the zfp_accuracy_LOFS data based upon varname NOW
+// We need to go out and get the zfp_accuracy_LOFS data based upon varname NOW
+//
+//
+/* get_LOFS_ZFP(varname)  is what we need, here */
+/* get_LOFS_ZFP(varname)  is what we need, here */
+/* get_LOFS_ZFP(varname)  is what we need, here */
+/* get_LOFS_ZFP(varname)  is what we need, here */
+/* get_LOFS_ZFP(varname)  is what we need, here */
+//
+//THIS IS FUCKING BROKEN
+//We can't sort by keys or whatever, each time we need to do a loop
+//through everything, or something, I am giving up for now again
+//Just know that the zfp_netcd parameters are good
+//and the zfpacc_LOFS numbers are bad
+//		if (v3d->is_LOFS_var) //THIS IS NOT DOING WHAT YOU THINK
+//		{
+//			printf("%s is native LOFS\n",v3d->varname);
+//			printf("Setting %s zfp_accuracy_LOFS to %f\n",v3d->varname,v3d->zfpacc_LOFS);
+//			status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_LOFS",NC_DOUBLE,1,&(v3d->zfpacc_LOFS));
+//		}
+//
+//		printf("UGH 2: v3d->varname=%s v3d->is_LOFS_var=%i v3d->zfpacc_LOFS=%f v3d->zfpacc_netcdf=%f\n",v3d->varname,v3d->is_LOFS_var,v3d->zfpacc_LOFS,v3d->zfpacc_netcdf);
 }
 
 // We need these global variables only for the H5Giter function 
@@ -842,7 +879,15 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[2] = gd.NX;
 			status =  nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
-		else status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
+		else
+		{
+//ORF DEBUG TRY CHUNKING
+//Each of the 3 spatial dimensions needs to be divisible by 4 for ZFP
+//And our horizontal grid dimensions as well!
+			size_t chunkdims[4] = {1,40,40,40};
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
+			status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
+		}
 
 		if (status != NC_NOERR) 
 		{
@@ -866,7 +911,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
 		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
 		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
 		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
@@ -892,9 +937,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_x","s^-2");
 		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_y","s^-2");
 		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_z","s^-2");
-		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","streamwise_vorticity","s^-1");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(2.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
 		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(3.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
@@ -907,10 +952,12 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, cmd->zfp,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
 		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,hm,v3did,"long_name","snow_number_concenctration","cm^-3");
 		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, cmd->zfp,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_wind_speed","m/s");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_wind_speed","m/s");
 		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","sum_of_cloud_ice_and_water_vapor_mixing_ratios","g/kg");
+		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","qvpert+qc+qi+qc+qr+qg","g/kg");
+		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","Temperature_In_Celsius","degC");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
@@ -1062,10 +1109,12 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	{
 		long bufsize,bswrite,totbufsize;
 
+		printf("***********malloc bufsize X = %i bufsize Y = %i bufsize Z = %i tot=%i\n",gd.NX+2,gd.NY+2, gd.NZ+1,((gd.NX+2)*(gd.NY+2)*(gd.NZ+2)));
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
 		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;
 
+		printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
 		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
@@ -1076,42 +1125,49 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		}
 		if (rh.ppert)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.thrhopert)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our thrhopert buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.u)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our ustag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.v)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our vstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.w)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.temp)//Not really readahead, but if we calculated these we need another array
 		{
+			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;

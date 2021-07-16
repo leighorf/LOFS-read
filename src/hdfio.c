@@ -88,7 +88,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	herr_t status;
 	H5O_info_t dset_info;
 	H5G_info_t group_info;
-	int i,j,nattr,is_LOFS_var;
+	int i,j,nattr;
 	double *zptr;
 	char groupname[MAXSTR];
 	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
@@ -118,6 +118,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	// ORF FIX the order here is not the same order when we do our variables
 	// So the indexing wil be wrong
 	// We sort everything, this determines the order we do shit in
+	// FUCKBAGS1 WHY NOT SORT HERE NOW THEN INDEXING WILL REMAIN GOOD
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
@@ -143,20 +144,20 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 //		if ((d_id = H5Dopen (g_id,hm->varname_available[i],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 //
 //	for (i = 0; i < hm->nvar_available; i++)
-	is_LOFS_var = 0;
 	for (i = 0; i < cmd->nvar_cmdline; i++)
 	{
+		nc->var3d[i].is_LOFS_var=0;
 		for (j=0; j<hm->nvar_available; j++) //check against all available vars to see if we have ZFP data to retrieve
 		{
 //			printf("%s %s\n",hm->varname_available[j],nc->var3d[i].varname);
 			if (same(hm->varname_available[j],nc->var3d[i].varname)) // Is this a native LOFS variable?
 			{
-				is_LOFS_var=1;
+				nc->var3d[i].is_LOFS_var=1;
 				printf("%s is a native LOFS variable\n",nc->var3d[i].varname);
 				break;
 			}
 		}
-		if (is_LOFS_var)
+		if (nc->var3d[i].is_LOFS_var)
 		{
 			if ((d_id = H5Dopen (g_id,nc->var3d[i].varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 			if ((status = H5Oget_info(d_id,&dset_info)) < 0) ERROR_STOP("Could not H5Oget_info");
@@ -175,10 +176,9 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 					break;
 				}
 			}
+			H5Dclose(d_id);
 		}
-		is_LOFS_var = 0; //reset
 	}
-	H5Dclose(d_id);
 	H5Gclose(g_id);
 }
 

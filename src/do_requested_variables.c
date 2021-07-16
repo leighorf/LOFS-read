@@ -209,9 +209,9 @@ void calc_winterp(buffers *b, grid gd, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 #pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
 		WINTERP(i,j,k) = 0.5*(WAp(i,j,k)+WAp(i,j,k+1));
 }
 
@@ -251,6 +251,133 @@ void calc_qiqvpert(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_me
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		QIQVPERT(i,j,k) += TEM1p(i,j,k);
+}
+
+#define TEMPC BUFp
+
+void calc_tempC(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+	float pi;
+	float foo;
+	int ifoo;
+
+rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+//	How Kelton does it (pointwise) in calcvort.c
+//	for(k=0; k<nk+1; k++) {
+//	for(j=-1; j<nj+1; j++) {
+//	for(i=-1; i<ni+1; i++) {
+ //   	calc_pipert(b->ppert, snd->pres0, b->buf0, i, j, k, ni, nj);
+//	}
+//	}
+//	}
+
+	read_lofs_buffer(b->buf0,"prespert",dm,hm,rc,cmd);
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
+	{
+		TEM1p(i,j,k) = BUFp(i,j,k) + snd->pres0[k];
+	}
+
+	read_lofs_buffer(b->buf0,"thpert",dm,hm,rc,cmd);
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
+	{
+		pi = pow((TEM1p(i,j,k)/100000.0),rovcp);
+		BUFp(i,j,k) = (BUFp(i,j,k)+snd->th0[k])*pi;
+		TEMPC(i,j,k) -= 273.15;
+	}
+}
+
+#define QTOT BUFp
+//qtot=qvpert+qc+qi+qs+qr+qg
+void calc_qtot(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	printf("\nA\n");
+	read_lofs_buffer(b->buf0,"qvpert",dm,hm,rc,cmd);
+	printf("B\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) = BUFp(i,j,k);
+	printf("C\n");
+
+	read_lofs_buffer(b->buf0,"qc",dm,hm,rc,cmd);
+	printf("D\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += BUFp(i,j,k);
+	printf("E\n");
+
+	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd);
+	printf("F\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += BUFp(i,j,k);
+	printf("G\n");
+
+	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd);
+	printf("H\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += BUFp(i,j,k);
+
+	printf("I\n");
+	read_lofs_buffer(b->buf0,"qs",dm,hm,rc,cmd);
+	printf("J\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += BUFp(i,j,k);
+	printf("K\n");
+
+	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd);
+
+	printf("L\n");
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += BUFp(i,j,k);
+	printf("M\n");
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		QTOT(i,j,k) = TEM1p(i,j,k);
+	printf("N\n");
 }
 
 /*******************************************************************************/
@@ -1094,6 +1221,10 @@ void z_progress_bar(int iz, int nz)
 
 /*******************************************************************************/
 
+//ORF TODO: since we only read from snd, don't pass a pointer (in
+//keeping with my approach of only passing a pointer when we're going to
+//change information - if we are just going to read it pass values)
+
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 {
 	int ix,iy,iz,nx,ny,buf0nx,buf0ny,i,ixoff,iyoff,ivar,status;
@@ -1200,17 +1331,18 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"vortmag"))	   {CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}
 		else if(same(var,"qiqvpert"))	   {CL;calc_qiqvpert(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"qtot"))	   {CL;calc_qtot(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 //void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 //			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
-
-// At some point after we've calculated all the stuff that requires
-// buffered u v w stuff we need to repurpose some of those buffers for
-// calculating other things - like temperature, which requires pressure
-// and density since I don't save pipert
-//		else if(same(var,"tempk"))	{CL;calc_tempk(b,gd,msh,cmd);}
 		else
 		{
+//		buf0nx=gd.NX+2;ixoff=1;
+//		buf0ny=gd.NY+2;iyoff=1;
+//						b->threedbuf[P3(ix,iy,iz,gd.NX,gd.NY)] = b->buf[P3(ix+ixoff,iy+iyoff,iz,buf0nx,buf0ny)];
 			printf("reading...");FL;
+			//			!!!!ORF!!!! just commented out ... is set above
+			//			differently???
 			buf0nx=gd.NX;ixoff=0;
 			buf0ny=gd.NY;iyoff=0;
 			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);

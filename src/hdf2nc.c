@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 	init_structs(&cmd,&dm,&gd,&nc,&rh);
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd);
-
+	
 	cmd.nvar_cmdline = argc - cmd.argc_hdf2nc_min - cmd.optcount;
 		
 	if((realpath(cmd.histpath,dm.topdir))==NULL)
@@ -136,6 +136,26 @@ int main(int argc, char *argv[])
 	else
 	{
 		sprintf(nc.ncfilename,"%s.%012.6f.nc",cmd.base,cmd.time);
+	}
+
+	//ORF 2021-07-16
+	//ZFP needs chunk dimensions evenly divisible by four
+	//As well as our horizontal dimensions divisible by four
+	printf("Original: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
+	printf("Original: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
+	printf("Original: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
+	if(cmd.zfp)
+	{
+		int x1a,y1a,z1a;
+		x1a=gd.X1;
+		y1a=gd.Y1;
+		z1a=gd.Z1;
+		while((gd.X1-gd.X0+1)%4!=0) gd.X1--; 
+		while((gd.Y1-gd.Y0+1)%4!=0) gd.Y1--; 
+		while((gd.Z1-gd.Z0+1)%4!=0) gd.Z1--; 
+		if(x1a-gd.X1 !=0) printf("Adjusted for ZFP writes: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
+		if(y1a-gd.Y1 !=0) printf("Adjusted for ZFP writes: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
+		if(z1a-gd.Z1 !=0) printf("Adjusted for ZFP writes: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
 	}
 
 	gd.NX = gd.X1 - gd.X0 + 1;
