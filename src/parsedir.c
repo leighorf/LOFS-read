@@ -555,7 +555,7 @@ crave electrolytes.
 			sprintf (basedir_full, "%s/%s/%s", dm->topdir, dm->timedir[itime], dm->nodedir[j]);
 			open_directory(basedir_full);
 			nfiles = get_nfiles();
-			if(cmd.verbose)fprintf(stderr,"Number of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
+			if(cmd.verbose)fprintf(stderr,"\nNumber of cm1hdf5 files in our first (%i) node directory: %i\n",j,nfiles);
 			/* Allocate file name array */
 			cm1hdf5file = (char **)malloc(nfiles * sizeof(char *));
 			for (i=0; i < nfiles; i++) cm1hdf5file[i] = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -614,16 +614,16 @@ crave electrolytes.
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 
 			if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Receiving nkwrite from 'grid/nkwrite_val\n");
+				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from grid/nkwrite_val\n");
 				get0dint(file_id,"grid/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
 			}
-			else if (H5Lexists(file_id, "misc/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Receiving nkwrite from 'misc/nkwrite_val\n");
-				get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			else if (H5Lexists(file_id, "namelist/lofs/nkwrite_val", H5P_DEFAULT) > 0) {
+				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from namelist/lofs/nkwrite_val\n");
+				get0dint(file_id,"namelist/lofs/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
 			}
-			else if (H5Lexists(file_id, "namelist/orf_io/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Receiving nkwrite from 'namelist/orf_io/nkwrite_val\n");
-				get0dint(file_id,"namelist/orf_io/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+			else if (H5Lexists(file_id, "misc/nkwrite_val", H5P_DEFAULT) > 0) {
+				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from misc/nkwrite_val\n");
+				get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
 			}
 			else {
 				nkwrite = 2;
