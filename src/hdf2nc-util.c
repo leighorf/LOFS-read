@@ -881,12 +881,15 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		}
 		else
 		{
+			size_t chunkdims[4] = {1,100,100,100};
 //ORF DEBUG TRY CHUNKING
 //Each of the 3 spatial dimensions needs to be divisible by 4 for ZFP
 //And our horizontal grid dimensions as well!
-			size_t chunkdims[4] = {1,40,40,40};
+//NOTE! WE MUST ADJUST DOWNWARD if our chosen dimension in any dimension
+//is less than the chunk dimension!
+//Let netcdf select chunk stuff if we are not using zfp
 			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
-			status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
+			if (cmd->zfp==1) status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
 		}
 
 		if (status != NC_NOERR) 
@@ -909,8 +912,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
 		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
 		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
 		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
@@ -921,6 +924,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","density_perturbation","kg/m^3");
+		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","air density","kg/m^3");
 		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
 		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
@@ -942,19 +946,19 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","streamwise_vorticity","s^-1");
 		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(2.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(3.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
 		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
 		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
 		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
 		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,hm,v3did,"long_name","ice_number_concenctration","cm^-3");
 		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, cmd->zfp,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
 		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,hm,v3did,"long_name","snow_number_concenctration","cm^-3");
 		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, cmd->zfp,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
 		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","sum_of_cloud_ice_and_water_vapor_mixing_ratios","g/kg");
 		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","qvpert+qc+qi+qc+qr+qg","g/kg");
 		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","Temperature_In_Celsius","degC");
@@ -1291,7 +1295,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 void compress_with_nccopy(ncstruct nc,cmdline cmd)
 {
 	char strbuf[MAXSTR];
-	long int unc_fsize,comp_fsize;
+	off_t unc_fsize,comp_fsize;
 	float ratio;
 	struct stat st;
 	int retval;
@@ -1333,7 +1337,7 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 
 	ratio = (float)unc_fsize/(float)comp_fsize;
 
-	sprintf(strbuf,"\n%12i bytes %s.uncompressed\n%12i bytes %s\nFile compression ratio of %7.2f:1\n",
+	sprintf(strbuf,"\n%12li bytes %s.uncompressed\n%12li bytes %s\nFile compression ratio of %7.2f:1\n",
 			unc_fsize,nc.ncfilename,comp_fsize,nc.ncfilename,ratio);
 	printf("%s",strbuf);
 
