@@ -19,7 +19,7 @@ typedef struct dir_meta
 
 typedef struct hdf_meta
 {
-	int nx,ny,nz,nodex,nodey;
+	int nx,ny,nz,rankx,ranky;
 	int nvar_available;
 	int n2dswaths;
 	char **varname_available;

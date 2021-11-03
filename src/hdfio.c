@@ -92,9 +92,30 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	double *zptr;
 	char groupname[MAXSTR];
 	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
+	htri_t existence;
+	hid_t lapl_id;
 
-	get0dint (*f_id, "grid/nodex", &hm->nodex);
-	get0dint (*f_id, "grid/nodey", &hm->nodey);
+//ORF I (finally) changed CM1's 'nodex' and 'nodey' to 'rankx' and 'ranky'
+//because they refer to MPI ranks not 'nodes'
+//But make sure we are backward compatible!!
+//Note: Watch for leading slashes, H5Lexists is very picky, see docs.
+
+	existence = H5Lexists(*f_id, "grid", H5P_DEFAULT);
+//	printf("existence of /grid = %i\n",existence);
+	existence = H5Lexists(*f_id, "grid/rankx", H5P_DEFAULT);
+//	printf("existence of /grid/rankx = %i\n",existence);
+//  If rankx doesn't exist, neither does ranky so that's enough checking
+	if (existence > 0)
+	{
+		get0dint (*f_id, "grid/rankx", &hm->rankx);
+		get0dint (*f_id, "grid/ranky", &hm->ranky);
+	}
+	else //HDF5 will spew out error crap but won't exit
+	{
+		get0dint (*f_id, "grid/nodex", &hm->rankx);
+		get0dint (*f_id, "grid/nodey", &hm->ranky);
+	}
+
 	get0dint (*f_id, "grid/nx", &hm->nx);
 	get0dint (*f_id, "grid/ny", &hm->ny);
 	get0dint (*f_id, "grid/nz", &hm->nz);
