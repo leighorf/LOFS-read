@@ -124,7 +124,9 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+			//stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+			mkdir_p(cmd.ncdir);
+			printf("cmd.ncdir = %s\n",cmd.ncdir);
 			if(stat==-1)
 			{
 				fprintf(stderr,"%s: Cannot create directory\n",cmd.ncdir);
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
 
 	H5Z_zfp_finalize();
 
-	write_hdf2nc_command_txtfile(argc,argv,nc);
+	if(cmd.write_cmd_file)write_hdf2nc_command_txtfile(argc,argv,nc);
 
 	//ORF FREE ALL 3D ARRAYS HERE
 

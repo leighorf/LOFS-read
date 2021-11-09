@@ -72,6 +72,7 @@ typedef struct cmdline
 	int got_base;
 	int got_ncdir;
 	int twodwrite;
+	int write_cmd_file;
 	int optcount;
 	int nvar,nvar_cmdline;
 	char *histpath,*base,*ncdir;

@@ -82,5 +82,6 @@ void copy_grid_to_requested_cube (requested_cube *rc, grid gd);
 void sortchararray (char **strarray, int nel);
 void compress_with_nccopy(ncstruct nc,cmdline cmd);
 void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
+int mkdir_p(const char *path);
 
 #endif
