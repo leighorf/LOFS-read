@@ -124,9 +124,10 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			//Below fails for mkdir -p type request. Using mkdir_p
+			//routine originating from stack overflow
 			//stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
-			mkdir_p(cmd.ncdir);
-			printf("cmd.ncdir = %s\n",cmd.ncdir);
+			stat = mkdir_p(cmd.ncdir);
 			if(stat==-1)
 			{
 				fprintf(stderr,"%s: Cannot create directory\n",cmd.ncdir);
