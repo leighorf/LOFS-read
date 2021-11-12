@@ -9,7 +9,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
-		OPT_COMPRESS_ZFP,OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_TWODWRITE };
+		OPT_COMPRESS_ZFP,OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE };
 
 	static struct option long_options[] =
 	{
@@ -23,6 +23,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"y1",       optional_argument, 0, OPT_Y1},
 		{"z0",       optional_argument, 0, OPT_Z0},
 		{"z1",       optional_argument, 0, OPT_Z1},
+		{"centiseconds", optional_argument, 0, OPT_CENTISECONDS},
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"verbose",  optional_argument, 0, OPT_VERBOSE},
 		{"recache",  optional_argument, 0, OPT_REGENERATECACHE},
@@ -104,6 +105,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_Z1:
 				gd->Z1 = atoi(optarg);
 				got_Z1=1;
+				cmd->optcount++;
+				break;
+			case OPT_CENTISECONDS:
+				cmd->centiseconds = atoi(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_DEBUG:

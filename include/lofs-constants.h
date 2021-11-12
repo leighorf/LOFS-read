@@ -10,7 +10,7 @@
 */
 
 /* These constants have been lifted from
- * CM1 r19.8 and are used in carious 
+ * CM1 r19.8 and are used in various 
  * stencil and grid calculations.
  */
 
@@ -28,6 +28,5 @@ const float kdiff6 = 0.080;
 #define rovcp  (rd/cp)
 #define eps  (rd/rv)
 #define reps  (rv/rd)
-
 
 #endif

@@ -3,6 +3,8 @@
 #include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-limits.h"
 
+#define smalleps (0.5e-4)
+
 int main(int argc, char *argv[])
 {
 	int i,status;
@@ -114,32 +116,63 @@ int main(int argc, char *argv[])
  will be useful for things like ensembles where we are chewing through
  many simulations */
 
-	if (cmd.got_ncdir)
+//ORF 2021-11-10
+//Should handle this better.
+//WE don't want file names with stuff like file.1234.1999998.nc we want file.1234.02000034 or something
+//This comes from our subsecond time steps which can be 0.200000000000002134231, 0.333333333333304975, etc...
+//(you get the picture)
+
+
+//  TODO NOW: Change netcdf file name to be in centiseconds (hundredths of a second)
+
+/* We now pass --centiseconds flag to hdf2nc
+ * This should be the data save time step in centiseconds (integer value from 0 to 99)
+ * Will help us contsruct less weird file names, in
+ * cases where we have sequential subsecond saves.
+ *
+ * if --centiseconds is not passed to the command line it will be set to zero and the code will assume integer second time steps.
+ *
+ * Regardless the netcdf file times are in centiseconds now and forever amen.
+ */
+
+
 	{
-		DIR* dir; int stat;
-		dir = opendir(cmd.ncdir);
-		if(dir) // Already exists, do nothing
+		int itime;
+		itime = (int)(cmd.time+smalleps);
+
+		if (cmd.got_ncdir)
 		{
-			closedir(dir);
+			DIR* dir; int stat;
+			dir = opendir(cmd.ncdir);
+			if(dir) // Already exists, do nothing
+			{
+				closedir(dir);
+			}
+			else
+			{
+				//Below fails for mkdir -p type request. Using mkdir_p
+				//routine originating from stack overflow
+				//stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+				stat = mkdir_p(cmd.ncdir);
+				if(stat==-1)
+				{
+					fprintf(stderr,"%s: Cannot create directory\n",cmd.ncdir);
+					ERROR_STOP("mkdir failed");
+				}
+			}
+//			sprintf(nc.ncfilename,"%s/%s.%012.2f.nc",cmd.ncdir,cmd.base,cmd.time);
+			sprintf(nc.ncfilename,"%s/%s.%06i%02i.nc",cmd.ncdir,cmd.base,itime,cmd.centiseconds);
 		}
 		else
 		{
-			//Below fails for mkdir -p type request. Using mkdir_p
-			//routine originating from stack overflow
-			//stat = mkdir(cmd.ncdir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
-			stat = mkdir_p(cmd.ncdir);
-			if(stat==-1)
-			{
-				fprintf(stderr,"%s: Cannot create directory\n",cmd.ncdir);
-				ERROR_STOP("mkdir failed");
-			}
+//			sprintf(nc.ncfilename,"%s.%012.2f.nc",cmd.base,cmd.time);
+			sprintf(nc.ncfilename,"%s.%06i%02i.nc",cmd.base,itime,cmd.centiseconds);
 		}
-		sprintf(nc.ncfilename,"%s/%s.%012.6f.nc",cmd.ncdir,cmd.base,cmd.time);
+		printf("nc.ncfilename = %s\n",nc.ncfilename);//exit(0);
 	}
-	else
-	{
-		sprintf(nc.ncfilename,"%s.%012.6f.nc",cmd.base,cmd.time);
-	}
+
+// ORF 2021-11-12 smalleps above keeps our floating point file names from
+// having lots of 9s (being a tad 'too small')
 
 	//ORF 2021-07-16
 	//ZFP needs chunk dimensions evenly divisible by four
