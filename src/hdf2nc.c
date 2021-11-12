@@ -3,7 +3,9 @@
 #include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-limits.h"
 
-#define smalleps (0.5e-4)
+//ORF dealing with floating point names in our netcdf files is a pain
+//smalleps needs to be set carefully, it's only for making netcdf file names
+#define smalleps ((double)1.0e-3)
 
 int main(int argc, char *argv[])
 {
@@ -130,15 +132,20 @@ int main(int argc, char *argv[])
  * Will help us contsruct less weird file names, in
  * cases where we have sequential subsecond saves.
  *
- * if --centiseconds is not passed to the command line it will be set to zero and the code will assume integer second time steps.
+ * if --centiseconds is not passed to the command line it will be set to
+ * zero and the code will assume integer second time steps.
  *
  * Regardless the netcdf file times are in centiseconds now and forever amen.
  */
 
-
 	{
-		int itime;
+		int itime,ifrac;
+		int cs;
 		itime = (int)(cmd.time+smalleps);
+		ifrac = (int)(100.0*(cmd.time+smalleps-itime));
+		cs=cmd.centiseconds;
+		printf("cmd.time = %f,ifrac = %i cs = %i\n",cmd.time,ifrac,cs);
+//		exit(0);
 
 		if (cmd.got_ncdir)
 		{
@@ -161,12 +168,12 @@ int main(int argc, char *argv[])
 				}
 			}
 //			sprintf(nc.ncfilename,"%s/%s.%012.2f.nc",cmd.ncdir,cmd.base,cmd.time);
-			sprintf(nc.ncfilename,"%s/%s.%06i%02i.nc",cmd.ncdir,cmd.base,itime,cmd.centiseconds);
+			sprintf(nc.ncfilename,"%s/%s.%06i%02i.nc",cmd.ncdir,cmd.base,itime,ifrac);
 		}
 		else
 		{
 //			sprintf(nc.ncfilename,"%s.%012.2f.nc",cmd.base,cmd.time);
-			sprintf(nc.ncfilename,"%s.%06i%02i.nc",cmd.base,itime,cmd.centiseconds);
+			sprintf(nc.ncfilename,"%s.%06i%02i.nc",cmd.base,itime,ifrac);
 		}
 		printf("nc.ncfilename = %s\n",nc.ncfilename);//exit(0);
 	}

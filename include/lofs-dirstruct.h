@@ -78,7 +78,7 @@ typedef struct cmdline
 	int nvar,nvar_cmdline;
 	char *histpath,*base,*ncdir;
 	char **varname_cmdline;
-	float time;
+	double time; //ORF 2021-11-10
 	int argc_hdf2nc_min;
 } cmdline;
 

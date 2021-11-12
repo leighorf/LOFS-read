@@ -75,6 +75,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_TIME:
 				cmd->time = atof(optarg);
+//				printf("cmd->time = %s %12.6f\n",optarg,cmd->time);exit(0);
 				got_time=1;
 				break;
 			case OPT_X0:
