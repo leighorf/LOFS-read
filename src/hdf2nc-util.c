@@ -921,8 +921,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","y_vorticity","s^-1");
 		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","z_vorticity","s^-1");
 		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(2.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
 		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(4.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
 		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
