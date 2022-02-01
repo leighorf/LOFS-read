@@ -74,7 +74,7 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 void set_readahead(readahead *rh,ncstruct nc, cmdline cmd);
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
 void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
-void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd);
+void do_the_swaths_lrf2022(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd);
 void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
 void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd);
 void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);

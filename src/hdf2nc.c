@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 
 	H5Z_zfp_initialize();
 
-	if (cmd.do_swaths) do_the_swaths(hm,nc,dm,gd,cmd);
+	if (cmd.do_swaths) do_the_swaths_lrf2022(hm,nc,dm,gd,cmd);
 
 	do_readahead(&b,gd,rh,dm,hm,cmd);
 

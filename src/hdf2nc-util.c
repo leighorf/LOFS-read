@@ -457,70 +457,74 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
 
     dims[0]=1;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
 
-// The following h5_wank grabs the units and description strings
-// We then process the description a bit, as the netcdf long_name
-// attribute does not contain spaces or commas
+    if (!strcmp(name,"prespert_min_sfc_move") || !strcmp(name,"hwin_max_sfc_move"))
+	{
+		strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
 
-    strcpy(attname,"units");
-    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
-    attr = H5Aopen(dset,attname,H5P_DEFAULT);
-    filetype = H5Aget_type(attr);
-    sdim = H5Tget_size(filetype);sdim++;
-    space = H5Aget_space(attr);
-    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
-    units_string = (char **) malloc (dims[0] * sizeof (char *));
-    units_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
-    for (i=1; i<dims[0]; i++) units_string[i] = units_string[0] + i * sdim;
-    memtype = H5Tcopy (H5T_C_S1);
-    status = H5Tset_size (memtype,sdim);
-    status = H5Aread(attr,memtype,units_string[0]);
-    status = H5Aclose(attr);
-    status = H5Dclose(dset);
-    status = H5Sclose(space);
-    status = H5Tclose(filetype);
-    status = H5Tclose(memtype);
+	// The following h5_wank grabs the units and description strings
+	// We then process the description a bit, as the netcdf long_name
+	// attribute does not contain spaces or commas
 
-    strcpy(attname,"description");
-    dset = H5Dopen(loc_id,name,H5P_DEFAULT);
-    attr = H5Aopen(dset,attname,H5P_DEFAULT);
-    filetype = H5Aget_type(attr);
-    sdim = H5Tget_size(filetype);sdim++;
-    space = H5Aget_space(attr);
-    ndims = H5Sget_simple_extent_dims(space,dims,NULL);
-    description_string = (char **) malloc (dims[0] * sizeof (char *));
-    description_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
-    for (i=1; i<dims[0]; i++) description_string[i] = description_string[0] + i * sdim;
-    memtype = H5Tcopy (H5T_C_S1);
-    status = H5Tset_size (memtype,sdim);
-    status = H5Aread(attr,memtype,description_string[0]);
-    status = H5Aclose(attr);
-    status = H5Dclose(dset);
-    status = H5Sclose(space);
-    status = H5Tclose(filetype);
-    status = H5Tclose(memtype);
+		strcpy(attname,"units");
+		dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+		attr = H5Aopen(dset,attname,H5P_DEFAULT);
+		filetype = H5Aget_type(attr);
+		sdim = H5Tget_size(filetype);sdim++;
+		space = H5Aget_space(attr);
+		ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+		units_string = (char **) malloc (dims[0] * sizeof (char *));
+		units_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+		for (i=1; i<dims[0]; i++) units_string[i] = units_string[0] + i * sdim;
+		memtype = H5Tcopy (H5T_C_S1);
+		status = H5Tset_size (memtype,sdim);
+		status = H5Aread(attr,memtype,units_string[0]);
+		status = H5Aclose(attr);
+		status = H5Dclose(dset);
+		status = H5Sclose(space);
+		status = H5Tclose(filetype);
+		status = H5Tclose(memtype);
 
-//end h5wank. begin ncwank.
-//ORF: What is with the stringlen exit?? Buffer overflow...
+		strcpy(attname,"description");
+		dset = H5Dopen(loc_id,name,H5P_DEFAULT);
+		attr = H5Aopen(dset,attname,H5P_DEFAULT);
+		filetype = H5Aget_type(attr);
+		sdim = H5Tget_size(filetype);sdim++;
+		space = H5Aget_space(attr);
+		ndims = H5Sget_simple_extent_dims(space,dims,NULL);
+		description_string = (char **) malloc (dims[0] * sizeof (char *));
+		description_string[0] = (char *) malloc (dims[0] * sdim * sizeof(char));
+		for (i=1; i<dims[0]; i++) description_string[i] = description_string[0] + i * sdim;
+		memtype = H5Tcopy (H5T_C_S1);
+		status = H5Tset_size (memtype,sdim);
+		status = H5Aread(attr,memtype,description_string[0]);
+		status = H5Aclose(attr);
+		status = H5Dclose(dset);
+		status = H5Sclose(space);
+		status = H5Tclose(filetype);
+		status = H5Tclose(memtype);
 
-    stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
-    description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
-    for(i=0; i<stringlen; i++) description_string_filtered[i] = (description_string[0][i] == ' ' || description_string[0][i] == ',') ? '_' : description_string[0][i];
-    description_string_filtered[stringlen]='\0';
-    stringlen=strlen(units_string[0]); if(stringlen > 500) exit(0);
-    units_for_nc = (char *) malloc ((stringlen+1) * sizeof (char));
-    strcpy(units_for_nc,units_string[0]);
+	//end h5wank. begin ncwank.
+	//ORF: What is with the stringlen exit?? Buffer overflow...
 
-    nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
-    set_nc_meta_name_units(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
+		stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
+		description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
+		for(i=0; i<stringlen; i++) description_string_filtered[i] = (description_string[0][i] == ' ' || description_string[0][i] == ',') ? '_' : description_string[0][i];
+		description_string_filtered[stringlen]='\0';
+		stringlen=strlen(units_string[0]); if(stringlen > 500) exit(0);
+		units_for_nc = (char *) malloc ((stringlen+1) * sizeof (char));
+		strcpy(units_for_nc,units_string[0]);
 
-    free(units_string[0]); free(units_string);
-    free(description_string[0]); free(description_string);
-    free(description_string_filtered);
-    free(units_for_nc);
+		nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
+		set_nc_meta_name_units(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
 
-    n2d_hdf2nc++;
+		free(units_string[0]); free(units_string);
+		free(description_string[0]); free(description_string);
+		free(description_string_filtered);
+		free(units_for_nc);
+
+		n2d_hdf2nc++;
+	}
     return 0;
 }
 
@@ -599,6 +603,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		n2d_hdf2nc = 0;
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
+		n2d_hdf2nc = 2; /* OVERRIDE: Larry only wants two fields */
 
 		twodvarname_hdf2nc = (const char **)malloc(n2d_hdf2nc*sizeof(char *));
 		twodvarid =   (int *)        malloc(n2d_hdf2nc*sizeof(int));
@@ -911,19 +916,19 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 //void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 
-		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","z_vorticity","s^-1");
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(3.0e-0,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(4.0e-2,cmd->zfp,nid,hm,v3did,"long_name","x_vorticity","s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(4.0e-2,cmd->zfp,nid,hm,v3did,"long_name","y_vorticity","s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(4.0e-2,cmd->zfp,nid,hm,v3did,"long_name","z_vorticity","s^-1");
 		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(2.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(4.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-1,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(8.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(10.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
 		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
 		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
@@ -1198,7 +1203,7 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	}
 }
 
-void do_the_swaths(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
+void do_the_swaths_lrf2022(hdf_meta hm, ncstruct nc, dir_meta dm, grid gd, cmdline cmd)
 {
 	int i2d,ix,iy,status;
 	float *twodfield,*swathbuf,*writeptr;

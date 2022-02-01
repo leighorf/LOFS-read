@@ -83,8 +83,11 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 {
     H5G_stat_t statbuf;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
-    strcpy((char *)twodvarname[i2d],name);
-    i2d++;
+    if (!strcmp(name,"prespert_min_sfc_move") || !strcmp(name,"hwin_max_sfc_move"))
+	{
+		strcpy((char *)twodvarname[i2d],name);
+	    i2d++;
+	}
     return 0;
 }
 
@@ -552,7 +555,11 @@ really. See P3 macro in lofs-read.h */
 					H5Giterate(file_id, "/00000/2D/static",NULL,twod_first_pass,NULL);
 					n2dstatic = n2d; // number of "static" swaths (the stuff I added like dbz_500m)
 					H5Giterate(file_id, "/00000/2D/swath",NULL,twod_first_pass,NULL);
+/* OVERRIDE for Larry */
+					n2d=2;
+					n2dstatic=0;
 					n2dswath = n2d - n2dstatic; // number of actual swaths (George's, and the bunch I added)
+
 
 //					printf("n2dstatic = %i n2dswath = %i n2d = %i\n",n2dstatic,n2dswath,n2d);
 
