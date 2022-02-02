@@ -89,8 +89,16 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, char *argv[], hid
 	int i,status;
 	char groupname[MAXSTR];
 
-	get0dint (*f_id, "grid/nodex", &hm->nodex);
-	get0dint (*f_id, "grid/nodey", &hm->nodey);
+	if (H5Lexists(*f_id,"grid/nodex",H5P_DEFAULT)>0)
+	{
+	    get0dint (*f_id, "grid/nodex", &hm->nodex);
+	    get0dint (*f_id, "grid/nodey", &hm->nodey);
+	}
+	else
+	{
+	    get0dint (*f_id, "grid/rankx", &hm->nodex);
+	    get0dint (*f_id, "grid/ranky", &hm->nodey);
+	}
 	get0dint (*f_id, "grid/nx", &hm->nx);
 	get0dint (*f_id, "grid/ny", &hm->ny);
 	get0dint (*f_id, "grid/nz", &hm->nz);
