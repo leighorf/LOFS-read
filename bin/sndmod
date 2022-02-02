@@ -87,7 +87,8 @@ def read_sharp_txt(filename, dz=100., desat=0.0, desat_layer=[], fill_to=0.0, ad
             ## get pressure values in dz thickness increments
             for pidx in range(len(top_p)-1):
                 plower = top_p[pidx]
-                pupper = plower * np.exp( (dz*9.81)/(top_t[pidx]*287.04) )
+                tval = top_t[pidx] + 273.15
+                pupper = (plower * np.exp( (-1*dz*9.81)/(tval*287.04) ))
                 top_p[pidx+1] = pupper 
 
             ## now that we have pressure and temperature, we can set
