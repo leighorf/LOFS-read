@@ -202,6 +202,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 
 	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
+	snd->thv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->qv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->u0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->v0 = (float *)malloc(gd.NZ * sizeof(float));
@@ -212,6 +213,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 {
+#include "../include/lofs-constants.h"
 	int ix,iy,iz,k;
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
@@ -242,6 +244,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/rh0",snd->rho0,gd.Z0,gd.NZ);//NOTE: rh0 is kind of a typo, should be rho0; rh means rel. hum. in CM1
 	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
+	//Temporary - we now save this in LOFS
+	for (iz=0; iz<=gd.NZ; iz++) snd->thv0[iz] = snd->th0[iz] * (1.0+reps*snd->qv0[iz])/(1.0+snd->qv0[iz]);
 
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
@@ -987,6 +991,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	set_nc_meta_name_units(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta_name_units(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
+	status = nc_def_var (nc->ncid, "thv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->thv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta_name_units(nc->ncid,nc->thv0id,"long_name","base_state_virtual_potential_temperature","K");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
 	set_nc_meta_name_units(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
@@ -1052,6 +1058,7 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	status = nc_put_var_float (nc.ncid,nc.u0id,snd.u0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.v0id,snd.v0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.th0id,snd.th0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (nc.ncid,nc.thv0id,snd.thv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.pi0id,snd.pi0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.rho0id,snd.rho0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_int (nc.ncid,nc.x0id,&gd.X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");

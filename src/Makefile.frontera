@@ -7,9 +7,9 @@ endif
 
 CC = h5cc
 #ZFP=/work/06618/orf/frontera/build/git/zfp/build
-ZFP=/home1/06618/orf/build/2020/zfp-0.5.5
 #H5ZZFP=/work/06618/orf/frontera/build/git/H5Z-ZFP/src
-H5ZZFP=/home1/06618/orf/H5Z-ZFP-install
+   ZFP=/home1/06618/orf/build/zfp-latest/zfp
+H5ZZFP=/home1/06618/orf/build/zfp-latest/H5Z-ZFP/installed
 CFLAGS = -fopenmp -g -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64 -D_FILE_OFFSET_BITS=64
 LINKOPTS  = -L$(ZFP)/lib -L$(H5ZZFP)/lib -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
