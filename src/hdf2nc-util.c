@@ -53,6 +53,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
+	rh->budgets=0;
 	rh->vortmag=0;
 	rh->hvort=0;
 	rh->streamvort=0;
@@ -887,7 +888,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		}
 		else
 		{
-			size_t chunkdims[4] = {1,100,100,100};
+			size_t chunkdims[4] = {1,100,100,100}; //ORF should make this more configurable (command line?)
 //ORF DEBUG TRY CHUNKING
 //Each of the 3 spatial dimensions needs to be divisible by 4 for ZFP
 //And our horizontal grid dimensions as well!
@@ -915,22 +916,29 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 //void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 
-		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(10.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","now_mixing_ratio","g/kg");
+
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e2, cmd->zfp,nid,hm,v3did,"long_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","air density","kg/m^3");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","x_vorticity","s^-1");
 		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","y_vorticity","s^-1");
 		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","z_vorticity","s^-1");
 		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(2.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(4.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
 		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
 		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
 		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
 		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","v_acceleration_from_pressure_gradient","m/s^2");
@@ -938,7 +946,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","air density","kg/m^3");
 		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
 		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
@@ -954,11 +961,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_z","s^-2");
 		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
 		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","streamwise_vorticity","s^-1");
-		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,hm,v3did,"long_name","ice_number_concenctration","cm^-3");
 		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e2, cmd->zfp,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
 		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(5.0e3, cmd->zfp,nid,hm,v3did,"long_name","snow_number_concenctration","cm^-3");
 		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e1, cmd->zfp,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
@@ -1127,7 +1129,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;
 
-		printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+		printf("b->buf0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
 		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
@@ -1138,49 +1140,49 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		}
 		if (rh.ppert)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->ppert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.thrhopert)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->thrhopert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our thrhopert buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.u)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->ustag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our ustag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.v)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->vstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our vstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.w)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->wstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
 		}
 		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
 		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.temp)//Not really readahead, but if we calculated these we need another array
 		{
-			printf("Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
