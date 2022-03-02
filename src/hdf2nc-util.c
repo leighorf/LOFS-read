@@ -1134,6 +1134,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
 		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
 		{
+			printf("b->threedbuf: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
