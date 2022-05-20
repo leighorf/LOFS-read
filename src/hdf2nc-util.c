@@ -888,7 +888,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		}
 		else
 		{
-			size_t chunkdims[4] = {1,100,100,100}; //ORF should make this more configurable (command line?)
+			size_t chunkdims[4] = {1,20,50,50}; //ORF should make this more configurable (command line?)
 
 // ORF 2022-03-09 holy fuck chunk parameters make a huge difference in
 // file size. A ZFP compressed file full of constant values will
@@ -934,22 +934,24 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
 		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(2.0e-1,cmd->zfp,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
 		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(5.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(10.0,   cmd->zfp,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
 		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
 		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(5.0e-1,cmd->zfp,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(5.0e-1,cmd->zfp,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0,cmd->zfp,nid,hm,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
+//ORF low compression for Rachael... there is probably a lesson here...
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-5,cmd->zfp,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0, cmd->zfp,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-5,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0, cmd->zfp,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
 		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","snow_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(50.0, cmd->zfp,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
 		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(500.0, cmd->zfp,nid,hm,v3did,"long_name","ice_number_concenctration","cm^-3");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","snow_mixing_ratio","g/kg");
 		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(500.0, cmd->zfp,nid,hm,v3did,"long_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(10.0, cmd->zfp,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
 
 		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,hm,v3did,"long_name","air density","kg/m^3");
 		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,nid,hm,v3did,"long_name","x_vorticity","s^-1");
@@ -963,7 +965,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,nid,hm,v3did,"long_name","nondimensional_pressure_perturbation","None");
 		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","potential_temperature_perturbation","K");
 		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,nid,hm,v3did,"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,nid,hm,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
 		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
 		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
