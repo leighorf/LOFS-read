@@ -466,7 +466,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     dims[0]=1;
     H5Gget_objinfo(loc_id, name, FALSE, &statbuf);
 
-    if (!strcmp(name,"prespert_min_sfc_move") || !strcmp(name,"hwin_max_sfc_move"))
+    if (!strcmp(name,"prespert_min_sfc_move") || !strcmp(name,"hwin_max_sfc_move") || !strcmp(name,"snapshot_thrho_sfc"))
 	{
 		strcpy((char *)twodvarname_hdf2nc[n2d_hdf2nc],name);
 
