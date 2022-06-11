@@ -611,7 +611,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		n2d_hdf2nc = 0;
 		H5Giterate(*f_id, "/00000/2D/static",NULL,twod_first_pass_hdf2nc,NULL);
 		H5Giterate(*f_id, "/00000/2D/swath",NULL,twod_first_pass_hdf2nc,NULL);
-		n2d_hdf2nc = 2; /* OVERRIDE: Larry only wants two fields */
+		n2d_hdf2nc = 3; /* OVERRIDE: Larry only wants two fields... plus we need snapshot_thrho_sfc for rendering */
 
 		twodvarname_hdf2nc = (const char **)malloc(n2d_hdf2nc*sizeof(char *));
 		twodvarid =   (int *)        malloc(n2d_hdf2nc*sizeof(int));
