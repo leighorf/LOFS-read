@@ -134,8 +134,17 @@ int main(int argc, char *argv[])
  *
  * if --centiseconds is not passed to the command line it will be set to
  * zero and the code will assume integer second time steps.
+*/
+
+/*
+ * ORF 2022-08-19 actually the above is not true. cs is not used in this
+ * code, see below. However with the 0.2 second ER10 run, everything
+ * just works. If you specify the time at the command line with enough
+ * accuracy/precision it works. Will revisit this later if we get to
+ * weird subsecond time steps (like 1/3, 1/7 etc.)
  *
- * Regardless the netcdf file times are in centiseconds now and forever amen.
+ * Regardless the netcdf file times are in centiseconds now and forever
+ * amen.
  */
 
 	{
