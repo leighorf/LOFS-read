@@ -330,16 +330,22 @@ void set_nc_meta_name_units(int ncid, int varnameid, char *lnstring, char *long_
 
 /* basically lifted from HDF5-ZFP code, keep it simple */
 
+#define ZFP_ID 32013
+
+#define H5Z_ZFP_MODE_RATE      1
+#define H5Z_ZFP_MODE_PRECISION 2
+#define H5Z_ZFP_MODE_ACCURACY  3
+#define H5Z_ZFP_MODE_EXPERT    4
+#define H5Z_ZFP_MODE_REVERSIBLE 5
+
 #define set_zfp_accuracy_cdata(A, CD) \
 { double *p = (double *) &CD[2];      \
 CD[0]=CD[1]=CD[2]=CD[3]=0;            \
-CD[0]=3; *p=A;}
-//NOTE 3 == fixed accuracy mode
+CD[0]=H5Z_ZFP_MODE_ACCURACY; *p=A;}
 
 #define set_zfp_lossless(CD) \
-{ CD[0]=4; }
+{ CD[0]=H5Z_ZFP_MODE_REVERSIBLE; }
 
-#define ZFP_ID 32013
 
 
 //		We are looping over total requested variables (index ivar)
@@ -405,6 +411,7 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossl
 			ERROR_STOP("nc_def_var_filter failed");
 		}
 	}
+}
 
 //Giving up on passing through LOFS zfp data. C is not the language for this. Need
 //desperately to reference by varname, not possible, maybe a bit enum statement followed
