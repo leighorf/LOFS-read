@@ -65,6 +65,7 @@ typedef struct cmdline
 	int do_allvars;
 	int gzip;
 	int zfp;
+	int zfplossless;
 	int use_interp;
 	int use_box_offset;
 	int filetype;

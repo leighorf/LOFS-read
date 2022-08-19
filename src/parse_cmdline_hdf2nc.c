@@ -9,7 +9,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_ALLVARS, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
-		OPT_COMPRESS_ZFP,OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE };
+		OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE };
 
 	static struct option long_options[] =
 	{
@@ -32,6 +32,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"gzip",     optional_argument, 0, OPT_COMPRESS_GZIP},
 		{"zfp",      optional_argument, 0, OPT_COMPRESS_ZFP},
+		{"zfplossless",      optional_argument, 0, OPT_COMPRESS_ZFP_LOSSLESS},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
 		{"twodwrite",optional_argument, 0, OPT_TWODWRITE},
 		{"offset",   optional_argument, 0, OPT_OFFSET},
@@ -140,6 +141,11 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				cmd->zfp = 1;
 				cmd->optcount++;
 				printf("*** ZFP accuracy factors set in hdf2nc-util.c ***\n");
+				break;
+			case OPT_COMPRESS_ZFP_LOSSLESS:
+				cmd->zfplossless = 1;
+				cmd->optcount++;
+				printf("*** ZFP LOSSLESS data chosen ***\n");
 				break;
 			case OPT_INTERP:
 				cmd->use_interp=1;
