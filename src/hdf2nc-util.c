@@ -4,7 +4,7 @@
 #include "../include/lofs-read.h"
 #include "../include/lofs-macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfp_acc *zfpacc)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfpacc *zfpacc)
 {
 	int i;
 
@@ -14,6 +14,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	dm->saved_base       = (char *) malloc(MAXSTR*sizeof(char));
 	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
+	zfpacc->lofs         = (lofs *) malloc(sizeof(lofs));
+	zfpacc->netcdf       = (netcdf *) malloc(sizeof(netcdf));
 
 	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
 
@@ -102,7 +104,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->qg =             1.0e-3;
 	zfpacc->netcdf->dbz =            5.0;
 
-	zfpacc->netcdf->tke =            1.0e-2;
+	zfpacc->netcdf->tke_sg =         1.0e-2;
 	zfpacc->netcdf->kh =             1.0e-2;
 	zfpacc->netcdf->km =             1.0e-2;
 
@@ -609,7 +611,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     return 0;
 }
 
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfp_acc *zfpacc;)
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc)
 {
 	int status;
 	int nv;

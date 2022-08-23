@@ -82,7 +82,7 @@ void get1dfloat (hid_t f_id, char *varname, float *var, int p0, int np)
 }
 
 //ORF this will fill our hdf_meta struct and some other things
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id)
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id, zfpacc *zfpacc)
 {
 	hid_t g_id,d_id,attr_id,attr_memtype;
 	herr_t status;
@@ -230,7 +230,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 			else if (same(nc->var3d[i].varname,"pipert"))     zfpacc->lofs->pipert =      nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"rho"))        zfpacc->lofs->rho =         nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"rhopert"))    zfpacc->lofs->rhopert =     nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"tke"))        zfpacc->lofs->tke =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"tke_sg"))     zfpacc->lofs->tke_sg =      nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"kmh"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"kmv"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"khh"))        zfpacc->lofs->kh =          nc->var3d[i].zfpacc_LOFS;

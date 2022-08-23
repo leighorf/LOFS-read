@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	sounding snd;
 	readahead rh;
 	buffers b;
-	zfp_acc zfpacc;
+	zfpacc zfpacc;
 
 	hid_t hdf_file_id;
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	} // Keep open as we need metadata, 1d sounding data, etc.
 
 	//ORF 2021-03-26 we now also collect have ZFP accuracy attributes for all 3D LOFS vars
-	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id);
+	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id,&zfpacc);
 
 	//ORF 2022-08-23 Here is where we can compare saved LOFS zfp accuracy parameter to the
 	//ones we chose to write for the netcdf file. Because we uncompress and recompress we
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 	status = nc_create (nc.ncfilename, NC_CLOBBER|cmd.filetype, &nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
-	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id);
+	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc);
 
 	status = nc_enddef (nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");

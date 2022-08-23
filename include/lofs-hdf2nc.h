@@ -43,8 +43,6 @@ typedef struct netcdf_struct
  * sane defaults in the init code.
  * The LOFS parameters are read only - they will be read from the LOFS
  * data, as I save the metadata for those.*/
-typedef struct zfp_acc
-{
 	typedef struct lofs
 	{
 		float u,v,w,uinterp,vinterp,winterp;
@@ -53,7 +51,7 @@ typedef struct zfp_acc
 		float nci,ncg,ncr,ncs;
 		float qvpert,thpert,th,prs;
 		float pi,pipert,rho,rhopert;
-		float tke,km,kh,qv;
+		float tke_sg,km,kh,qv;
 		/* I don't save derived quantities mucn anymore,
 		 * calculate them on the fly is the way to go but
 		 * here is vorticity anyway */
@@ -84,6 +82,11 @@ typedef struct zfp_acc
 		float hvort,streamvort,qiqvpert,qtot,tempC;
 		float hdiv;
 	} netcdf;
+
+typedef struct zfp_acc
+{
+	lofs *lofs;
+	netcdf *netcdf;
 }zfpacc;
 
 typedef struct sounding
@@ -108,19 +111,19 @@ typedef struct readahead
 	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
-void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfp_acc *zfpacc);
+void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
 void get_saved_base(char *timedir, char *saved_base);
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfp_acc *zfpacc);
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfpacc *zfpacc);
 void get_num_time_dirs (dir_meta *dm,cmdline cmd);
 void get_sorted_time_dirs (dir_meta *dm,cmdline cmd);
 void get_num_node_dirs (dir_meta *dm,cmdline cmd);
 void get_sorted_node_dirs (dir_meta *dm,cmdline cmd);
 void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd);
-void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id);
+void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id, zfpacc *zfpacc);
 void set_span(grid *gd,hdf_meta hm,cmdline cmd);
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd);
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id);
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id);
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc);
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd);
 void set_readahead(readahead *rh,ncstruct nc, cmdline cmd);
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
