@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
 	sounding snd;
 	readahead rh;
 	buffers b;
+	zfp_acc zfpacc;
 
 	hid_t hdf_file_id;
 
@@ -27,9 +28,9 @@ int main(int argc, char *argv[])
 
 	cmd.argc_hdf2nc_min = 3; /* minimum arguments to this routine */
 
-	init_structs(&cmd,&dm,&gd,&nc,&rh);
+	init_structs(&cmd,&dm,&gd,&nc,&rh,&zfpacc);
 
-	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd);
+	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd,&zfpacc);
 	
 	cmd.nvar_cmdline = argc - cmd.argc_hdf2nc_min - cmd.optcount;
 		
@@ -83,6 +84,11 @@ int main(int argc, char *argv[])
 	//ORF 2021-03-26 we now also collect have ZFP accuracy attributes for all 3D LOFS vars
 	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id);
 
+	//ORF 2022-08-23 Here is where we can compare saved LOFS zfp accuracy parameter to the
+	//ones we chose to write for the netcdf file. Because we uncompress and recompress we
+	//must make sure we do not recompress with more accuracy than what was saved if we are
+	//just passing LOFS variables to the netCDF file
+
 	for (i = 0; i < cmd.nvar_cmdline; i++)
 	{
 		printf("Index %i var3dvarname=%s zfp_accuracy_LOFS = %f\n",i , nc.var3d[i].varname, nc.var3d[i].zfpacc_LOFS);
@@ -112,28 +118,15 @@ int main(int argc, char *argv[])
 
 	if (!cmd.got_base) strcpy(cmd.base,dm.saved_base);
 
- /* ORF 2021-03-02 We can now specify a directory for the netCDF files.
- By default it is the directory from which you execute hdf2nc. If the
- ncdir directory does not exist it will be created. This is optional but
- will be useful for things like ensembles where we are chewing through
- many simulations */
+//  Change netcdf file name to be in centiseconds (hundredths of a second)
 
-//ORF 2021-11-10
-//Should handle this better.
-//WE don't want file names with stuff like file.1234.1999998.nc we want file.1234.02000034 or something
-//This comes from our subsecond time steps which can be 0.200000000000002134231, 0.333333333333304975, etc...
-//(you get the picture)
-
-
-//  TODO NOW: Change netcdf file name to be in centiseconds (hundredths of a second)
-
-/* We now pass --centiseconds flag to hdf2nc
+/* We now can pass --centiseconds flag to hdf2nc
  * This should be the data save time step in centiseconds (integer value from 0 to 99)
  * Will help us contsruct less weird file names, in
  * cases where we have sequential subsecond saves.
  *
- * if --centiseconds is not passed to the command line it will be set to
- * zero and the code will assume integer second time steps.
+ * if --centiseconds is not passed to the command line and you have subsecond data it may
+ * or may not work.
 */
 
 /*
@@ -154,7 +147,6 @@ int main(int argc, char *argv[])
 		ifrac = (int)(100.0*(cmd.time+smalleps-itime));
 		cs=cmd.centiseconds;
 		printf("cmd.time = %f,ifrac = %i cs = %i\n",cmd.time,ifrac,cs);
-//		exit(0);
 
 		if (cmd.got_ncdir)
 		{
@@ -241,7 +233,9 @@ int main(int argc, char *argv[])
 
 	do_requested_variables(&b,nc,gd,msh,&snd,rh,dm,hm,cmd);
 
-	status = nc_close(nc.ncid);  if (status != NC_NOERR)
+	status = nc_close(nc.ncid);
+
+	if (status != NC_NOERR)
 	{
 		printf("******nc.ncid = %i\n",nc.ncid);
 		fprintf(stderr, "%s\n", nc_strerror(status));

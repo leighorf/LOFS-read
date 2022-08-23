@@ -136,10 +136,6 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	    H5Lget_name_by_idx(g_id,".",H5_INDEX_NAME,H5_ITER_INC,i,hm->varname_available[i],40,H5P_DEFAULT);  //ORF TODO make 40 a constant somewhere
 	}
 
-	// ORF FIX the order here is not the same order when we do our variables
-	// So the indexing wil be wrong
-	// We sort everything, this determines the order we do shit in
-	// FUCKBAGS1 WHY NOT SORT HERE NOW THEN INDEXING WILL REMAIN GOOD
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
@@ -158,7 +154,6 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
  * It will be written to the netCDF file as well as the ZFP value for the netCDF data,
  * which is allowed to be whatever you want... it's up to the user to make sure that they
    aren't choosing stupid accuracy parameters
- *
  *
  */
 
@@ -198,6 +193,57 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 				}
 			}
 			H5Dclose(d_id);
+
+/* ORF 2022-08-23*/
+/* I struggled with this crap. I wrote the above code thinking I could be clever but in
+ * reality I have to be dumb. And yes, I do this if else ladder shit too often but... C */
+
+			/* Here is where we populate the zfpacc->lofs structure with the values that
+			 * LOFS contains. We can then compare these against the netcdf chosen values
+			 * to make sure we are not compressing with more accuracy than was originally
+			 * saved, for instance! */
+
+			if      (same(nc->var3d[i].varname,"u"))          zfpacc->lofs->u =           nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"v"))          zfpacc->lofs->v =           nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"w"))          zfpacc->lofs->w =           nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"uinterp"))    zfpacc->lofs->uinterp =     nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"vinterp"))    zfpacc->lofs->vinterp =     nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"winterp"))    zfpacc->lofs->winterp =     nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"prespert"))   zfpacc->lofs->prespert =    nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"thrhopert"))  zfpacc->lofs->thrhopert =   nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"dbz"))        zfpacc->lofs->dbz =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qc"))         zfpacc->lofs->qc =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qi"))         zfpacc->lofs->qi =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qr"))         zfpacc->lofs->qr =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qg"))         zfpacc->lofs->qg =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qs"))         zfpacc->lofs->qs =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"nci"))        zfpacc->lofs->nci =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"ncg"))        zfpacc->lofs->ncg =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"ncr"))        zfpacc->lofs->ncr =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"ncs"))        zfpacc->lofs->ncs =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qv"))         zfpacc->lofs->qv =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"qvpert"))     zfpacc->lofs->qvpert =      nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"thpert"))     zfpacc->lofs->thpert =      nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"th"))         zfpacc->lofs->th =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"prs"))        zfpacc->lofs->prs =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"pi"))         zfpacc->lofs->pi =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"pipert"))     zfpacc->lofs->pipert =      nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"rho"))        zfpacc->lofs->rho =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"rhopert"))    zfpacc->lofs->rhopert =     nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"tke"))        zfpacc->lofs->tke =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"kmh"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"kmv"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"khh"))        zfpacc->lofs->kh =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"khv"))        zfpacc->lofs->kh =          nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"xvort"))      zfpacc->lofs->xvort =       nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"yvort"))      zfpacc->lofs->yvort =       nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"zvort"))      zfpacc->lofs->zvort =       nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"vortmag"))    zfpacc->lofs->zvort =       nc->var3d[i].zfpacc_LOFS;
+			else
+			{
+				fprintf(stderr,"This cannot happen. Goodbye.\n");
+				ERROR_STOP("LOFS variable is not an LOFS variable LOL");
+			}
 		}
 	}
 	H5Gclose(g_id);

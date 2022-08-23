@@ -4,7 +4,7 @@
 #include "../include/lofs-read.h"
 #include "../include/lofs-macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfp_acc *zfpacc)
 {
 	int i;
 
@@ -63,6 +63,102 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->qiqvpert=0;
 	rh->qtot=0;
 	rh->temp=0;
+
+/*
+
+ 2022-08-23 Here are our default zfp accuracy parameters for saved netcdf variables -
+ these are reasonably sane choices but watch out for post-processing issues! Either
+ twiddle these to your heart's content, or create a routine that overwrites them. Could
+ 'bulk set' them with say --zfp-set1 --zfp-set2 etc. new options, if you want to have
+ different "tiers" of zfp or different research projects, etc...
+
+*/
+
+	/* Leigh Orf's default ZFP accuracy parameters */
+
+	/* Each can be overridden on the command line */
+
+	zfpacc->netcdf->u       =        1.0e-2;
+	zfpacc->netcdf->v       =        1.0e-2;
+	zfpacc->netcdf->w       =        1.0e-2;
+	zfpacc->netcdf->uinterp =        1.0e-2;
+	zfpacc->netcdf->vinterp =        1.0e-2;
+	zfpacc->netcdf->winterp =        1.0e-2;
+	zfpacc->netcdf->windmag_sr =     1.0e-2;
+	zfpacc->netcdf->hwin_sr =        1.0e-2;
+	zfpacc->netcdf->hwin_gr =        1.0e-2;
+
+	zfpacc->netcdf->thrhopert =      1.0e-2;
+	zfpacc->netcdf->prespert =       1.0e-2;
+	zfpacc->netcdf->xvort =          1.0e-3;
+	zfpacc->netcdf->yvort =          1.0e-3;
+	zfpacc->netcdf->zvort =          1.0e-3;
+	zfpacc->netcdf->vortmag =        1.0e-3;
+
+	zfpacc->netcdf->qc =             1.0e-3;
+	zfpacc->netcdf->qi =             1.0e-3;
+	zfpacc->netcdf->qr =             1.0e-3;
+	zfpacc->netcdf->qs =             1.0e-3;
+	zfpacc->netcdf->qg =             1.0e-3;
+	zfpacc->netcdf->dbz =            5.0;
+
+	zfpacc->netcdf->tke =            1.0e-2;
+	zfpacc->netcdf->kh =             1.0e-2;
+	zfpacc->netcdf->km =             1.0e-2;
+
+	zfpacc->netcdf->wb_buoy =        1.0e-6;
+	zfpacc->netcdf->ub_pgrad =       1.0e-6;
+	zfpacc->netcdf->vb_pgrad =       1.0e-6;
+	zfpacc->netcdf->wb_pgrad =       1.0e-6;
+	zfpacc->netcdf->xvort_stretch =  1.0e-6;
+	zfpacc->netcdf->yvort_stretch =  1.0e-6;
+	zfpacc->netcdf->zvort_stretch =  1.0e-6;
+	zfpacc->netcdf->xvort_baro =     1.0e-6;
+	zfpacc->netcdf->yvort_baro =     1.0e-6;
+	zfpacc->netcdf->xvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->yvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->zvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->hvort =          1.0e-3;
+	zfpacc->netcdf->streamvort =     1.0e-3;
+	zfpacc->netcdf->qiqvpert =       1.0e-4;
+	zfpacc->netcdf->qtot =           1.0e-4;
+	zfpacc->netcdf->tempC =          1.0e-1;
+	zfpacc->netcdf->hdiv =           1.0e-3;
+
+	/* These are read only in the sense that we read them from LOFS attributes. These
+	 * are the zfp accuracy values that were written with CMI-LOFS. Initialize
+	 * negative for existence testing */
+
+	zfpacc->lofs->u = -1.0;
+	zfpacc->lofs->v = -1.0;
+	zfpacc->lofs->w = -1.0;
+	zfpacc->lofs->uinterp = -1.0;
+	zfpacc->lofs->vinterp = -1.0;
+	zfpacc->lofs->winterp = -1.0;
+	zfpacc->lofs->prespert = -1.0;
+	zfpacc->lofs->thrhopert = -1.0;
+	zfpacc->lofs->dbz = -1.0;
+	zfpacc->lofs->qc = -1.0;
+	zfpacc->lofs->qr = -1.0;
+	zfpacc->lofs->qi = -1.0;
+	zfpacc->lofs->qs = -1.0;
+	zfpacc->lofs->qg = -1.0;
+	zfpacc->lofs->nci = -1.0;
+	zfpacc->lofs->ncg = -1.0;
+	zfpacc->lofs->ncr = -1.0;
+	zfpacc->lofs->ncs = -1.0;
+	zfpacc->lofs->qvpert = -1.0;
+	zfpacc->lofs->thpert = -1.0;
+	zfpacc->lofs->th = -1.0;
+	zfpacc->lofs->prs = -1.0;
+	zfpacc->lofs->pi = -1.0;
+	zfpacc->lofs->pipert = -1.0;
+	zfpacc->lofs->rho = -1.0;
+	zfpacc->lofs->rhopert = -1.0;
+	zfpacc->lofs->tke_sg = -1.0;
+	zfpacc->lofs->km = -1.0;
+	zfpacc->lofs->kh = -1.0;
+	zfpacc->lofs->qv = -1.0;
 }
 
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
@@ -369,6 +465,11 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossl
 
 	// So adding lossless (reversible) ZFP here as an option. If it's much faster than
 	// gzip I will never choose that shitty option again!
+	//
+/* 2022-08-23 TODO ORF: Simply interpret negative accuracy parameters as requesting
+ * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. Can also accept --zfplossless to
+ * just force all 3D saves as lossless for simplicity. But being able to specify lossless
+ * on a variable by variable basis is the best way to go.*/
 
 	if (do_zfp_lossless)
 	{
@@ -412,10 +513,6 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossl
 		}
 	}
 }
-
-//Giving up on passing through LOFS zfp data. C is not the language for this. Need
-//desperately to reference by varname, not possible, maybe a bit enum statement followed
-//by a loop could do it? Dunno.
 
 int n2d_hdf2nc;
 const char **twodvarname_hdf2nc;
@@ -512,7 +609,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     return 0;
 }
 
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id)
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfp_acc *zfpacc;)
 {
 	int status;
 	int nv;
@@ -677,7 +774,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int mesh_is_u = 0, mesh_is_v = 0, mesh_is_w = 0;
 
-		strcpy(var,nc->var3d[ivar].varname);
+		strcpy(var,nc->var3d[ivar].varname); //var set here
 
 		if (same(var,"u")) mesh_is_u=1;
 		if (same(var,"v")) mesh_is_v=1;
@@ -908,61 +1005,63 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		nid = nc->ncid;
 		v3did = &(nc->var3d[ivar]);
 
-//void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
+// I really hate this section but at some fundamental level, you need to just go step by
+// step through each variable and set your metadata - and ZFP compression - accordingly
 
-		if(same(var,"u"))				    set_nc_meta_zfp_name_units(1.0,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(1.0,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(1.0,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","ground_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","z_vorticity","s^-1");
-		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(5.0,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(1.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","pressure_perturbation","hPa");
-		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(1.0,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
-		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","rain_number_concenctration","cm^-3");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","ice_number_concenctration","cm^-3");
-		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","snow_mixing_ratio","g/kg");
-		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","air density","kg/m^3");
-		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","w_acceleration_from_buoyancy","m/s^2");
-		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","u_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","v_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","w_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","nondimensional_pressure_perturbation","None");
-		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","potential_temperature_perturbation","K");
-		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(5.0e-4,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(5.0e-2,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-4,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vorticity_stretching_rate_x","s^-2");
-		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-4,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vorticity_stretching_rate_y","s^-2");
-		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(1.0e-4,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","vorticity_stretching_rate_z","s^-2");
-		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","baroclinic_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","baroclinic_vorticity_rate_y","s^-2");
-		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_y","s^-2");
-		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(1.0e-6,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","solenoidal_vorticity_rate_z","s^-2");
-		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","streamwise_vorticity","s^-1");
-		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","sum_of_cloud_ice_and_water_vapor_mixing_ratios","g/kg");
-		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","qvpert+qc+qi+qc+qr+qg","g/kg");
-		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(1.0e-1,cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name","Temperature_In_Celsius","degC");
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(zfpacc->netcdf->u,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->v,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->w,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_sr,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_gr,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->windmag_sr,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vortmag,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->qvpert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->dbz,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"dBZ");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->uinterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vinterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->winterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->prespert,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"hPa");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->tke_sg,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s^2");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qc,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qr,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncr,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qg,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncg,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qi,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->nci,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qs,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncs,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->rho,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(zfpacc->netcdf->qv,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_buoy,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(zfpacc->netcdf->pipert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"None");
+		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->thpert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->rhopert,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_baro,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_baro,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->hvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->streamvort,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->qiqvpert,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->qtot,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"degC");
+		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
