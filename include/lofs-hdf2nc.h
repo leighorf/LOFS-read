@@ -43,45 +43,47 @@ typedef struct netcdf_struct
  * sane defaults in the init code.
  * The LOFS parameters are read only - they will be read from the LOFS
  * data, as I save the metadata for those.*/
-	typedef struct lofs
-	{
-		float u,v,w,uinterp,vinterp,winterp;
-		float prespert,thrhopert,dbz;
-		float qc,qi,qr,qg,qs;
-		float nci,ncg,ncr,ncs;
-		float qvpert,thpert,th,prs;
-		float pi,pipert,rho,rhopert;
-		float tke_sg,km,kh,qv;
-		/* I don't save derived quantities mucn anymore,
-		 * calculate them on the fly is the way to go but
-		 * here is vorticity anyway */
-		float xvort,yvort,zvort,vortmag;
-	} lofs;
-	typedef struct netcdf
-	{
-		/* first, CM1 / LOFS saved variables, identical to above */
-		float u,v,w;
-		float prespert,thrhopert,dbz;
-		float qc,qi,qr,qg,qs;
-		float nci,ncg,ncr,ncs;
-		float qvpert,thpert,th,prs;
-		float pi,pipert,rho,rhopert;
-		float tke_sg,km,kh,qv;
 
-		/* Now, derived variables... add at your leisure */
-		/* For instance, budget stuff will need to be added here */
-		/* For now I only include what I'm using at the moment */
-		float uinterp,vinterp,winterp;
-		float xvort,yvort,zvort,vortmag;
-		float hwin_sr,hwin_gr,windmag_sr;
+typedef struct lofs_zfp
+{
+	float u,v,w,uinterp,vinterp,winterp;
+	float prespert,thrhopert,dbz;
+	float qc,qi,qr,qg,qs;
+	float nci,ncg,ncr,ncs;
+	float qvpert,thpert,th,prs;
+	float pi,pipert,rho,rhopert;
+	float tke_sg,km,kh,qv;
+	/* I don't save derived quantities mucn anymore,
+	 * calculate them on the fly is the way to go but
+	 * here is vorticity anyway */
+	float xvort,yvort,zvort,vortmag;
+} lofs;
 
-		float wb_buoy,ub_pgrad,vb_pgrad,wb_pgrad;
-		float xvort_stretch,yvort_stretch,zvort_stretch;
-		float xvort_baro,yvort_baro;
-		float xvort_solenoid,yvort_solenoid,zvort_solenoid;
-		float hvort,streamvort,qiqvpert,qtot,tempC;
-		float hdiv;
-	} netcdf;
+typedef struct netcdf_zfp
+{
+	/* first, CM1 / LOFS saved variables, identical to above */
+	float u,v,w;
+	float prespert,thrhopert,dbz;
+	float qc,qi,qr,qg,qs;
+	float nci,ncg,ncr,ncs;
+	float qvpert,thpert,th,prs;
+	float pi,pipert,rho,rhopert;
+	float tke_sg,km,kh,qv;
+
+	/* Now, derived variables... add at your leisure */
+	/* For instance, budget stuff will need to be added here */
+	/* For now I only include what I'm using at the moment */
+	float uinterp,vinterp,winterp;
+	float xvort,yvort,zvort,vortmag;
+	float hwin_sr,hwin_gr,windmag_sr;
+
+	float wb_buoy,ub_pgrad,vb_pgrad,wb_pgrad;
+	float xvort_stretch,yvort_stretch,zvort_stretch;
+	float xvort_baro,yvort_baro;
+	float xvort_solenoid,yvort_solenoid,zvort_solenoid;
+	float hvort,streamvort,qiqvpert,qtot,tempC;
+	float hdiv;
+} netcdf;
 
 typedef struct zfp_acc
 {
@@ -107,7 +109,7 @@ typedef struct readahead
 	int u,v,w,ppert,thrhopert;
 	int vortmag,hvort;
 	int streamvort,qiqvpert,qtot;
-	int temp;
+	int tempC;
 	int budgets;
 } readahead;
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);

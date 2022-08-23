@@ -202,6 +202,14 @@ int main(int argc, char *argv[])
 		if(z1a-gd.Z1 !=0) printf("Adjusted for ZFP writes: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
 	}
 
+	//ORF 2022-08-23-TODO: If you do not pass any x0,y0,x1,y1,z0,z1 location data
+	//at the command line, for calculated variables, there may be zeroes
+	//along the border (try calculating tempC for instance). Some check
+	//isn't being made I think. See: rc vs gd in the verbose output...
+	//It's OK to read in any data, but writing it out we still need to
+	//be in multiples of 4 in x,y,z. If you make sure --x0, --x1 etc.
+	//line up (divisible by 4) then no weird border issue.
+
 	gd.NX = gd.X1 - gd.X0 + 1;
 	gd.NY = gd.Y1 - gd.Y0 + 1;
 	gd.NZ = gd.Z1 - gd.Z0 + 1;

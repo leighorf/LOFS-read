@@ -64,7 +64,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 //Below not really readahead, used for mallocs
 	rh->qiqvpert=0;
 	rh->qtot=0;
-	rh->temp=0;
+	rh->tempC=0;
 
 /*
 
@@ -1208,6 +1208,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
 		if(same(var,"qiqvpert")) {rh->qiqvpert=1;}
+		if(same(var,"tempC")) {rh->tempC=1;}
 	}
 	//free(var);
 }
@@ -1275,7 +1276,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.temp)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.tempC)//Not really readahead, but if we calculated these we need another array
 		{
 			printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)

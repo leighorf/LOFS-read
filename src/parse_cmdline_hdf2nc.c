@@ -50,50 +50,50 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"nocmd",   optional_argument, 0, OPT_NOCMD},
 		{"interp", optional_argument, 0, OPT_INTERP},
 		/* All the ZFP stuff for netcdf output now */
-		{"u_zfpacc",optional_argument, 0,    OPT_U_ZFPACC},
-		{"v_zfpacc",optional_argument, 0,    OPT_V_ZFPACC},
-		{"w_zfpacc",optional_argument, 0,    OPT_W_ZFPACC},
-		{"uinterp_zfpacc",optional_argument, 0,        OPT_UINTERP_ZFPACC},
-		{"vinterp_zfpacc",optional_argument, 0,        OPT_VINTERP_ZFPACC},
-		{"winterp_zfpacc",optional_argument, 0,        OPT_WINTERP_ZFPACC},
+		{"u_acc",optional_argument, 0,    OPT_U_ZFPACC},
+		{"v_acc",optional_argument, 0,    OPT_V_ZFPACC},
+		{"w_acc",optional_argument, 0,    OPT_W_ZFPACC},
+		{"uinterp_acc",optional_argument, 0,        OPT_UINTERP_ZFPACC},
+		{"vinterp_acc",optional_argument, 0,        OPT_VINTERP_ZFPACC},
+		{"winterp_acc",optional_argument, 0,        OPT_WINTERP_ZFPACC},
 		{"hwin_sr_acc",optional_argument, 0,           OPT_HWIN_SR_ACC},
 		{"hwin_gr_acc",optional_argument, 0,           OPT_HWIN_GR_ACC},
 		{"windmag_sr_acc",optional_argument, 0,        OPT_WINDMAG_SR_ACC},
-		{"xvort_zfpacc",optional_argument, 0,          OPT_XVORT_ZFPACC},
-		{"yvort_zfpacc",optional_argument, 0,          OPT_YVORT_ZFPACC},
-		{"zvort_zfpacc",optional_argument, 0,          OPT_ZVORT_ZFPACC},
-		{"vortmag_zfpacc",optional_argument, 0,        OPT_VORTMAG_ZFPACC},
-		{"qc_zfpacc",optional_argument, 0,             OPT_QC_ZFPACC},
-		{"qi_zfpacc",optional_argument, 0,             OPT_QI_ZFPACC},
-		{"qs_zfpacc",optional_argument, 0,             OPT_QS_ZFPACC},
-		{"qr_zfpacc",optional_argument, 0,             OPT_QR_ZFPACC},
-		{"qg_zfpacc",optional_argument, 0,             OPT_QG_ZFPACC},
-		{"qv_zfpacc",optional_argument, 0,             OPT_QV_ZFPACC},
-		{"qvpert_zfpacc",optional_argument, 0,         OPT_QVPERT_ZFPACC},
-		{"dbz_zfpacc",optional_argument, 0,            OPT_DBZ_ZFPACC},
-		{"nci_zfpacc",optional_argument, 0,            OPT_NCI_ZFPACC},
-		{"ncg_zfpacc",optional_argument, 0,            OPT_NCG_ZFPACC},
-		{"ncr_zfpacc",optional_argument, 0,            OPT_NCR_ZFPACC},
-		{"ncs_zfpacc",optional_argument, 0,            OPT_NCS_ZFPACC},
-		{"prespert_zfpacc",optional_argument, 0,       OPT_PRESPERT_ZFPACC},
-		{"thrhopert_zfpacc",optional_argument, 0,      OPT_THRHOPERT_ZFPACC},
+		{"xvort_acc",optional_argument, 0,          OPT_XVORT_ZFPACC},
+		{"yvort_acc",optional_argument, 0,          OPT_YVORT_ZFPACC},
+		{"zvort_acc",optional_argument, 0,          OPT_ZVORT_ZFPACC},
+		{"vortmag_acc",optional_argument, 0,        OPT_VORTMAG_ZFPACC},
+		{"qc_acc",optional_argument, 0,             OPT_QC_ZFPACC},
+		{"qi_acc",optional_argument, 0,             OPT_QI_ZFPACC},
+		{"qs_acc",optional_argument, 0,             OPT_QS_ZFPACC},
+		{"qr_acc",optional_argument, 0,             OPT_QR_ZFPACC},
+		{"qg_acc",optional_argument, 0,             OPT_QG_ZFPACC},
+		{"qv_acc",optional_argument, 0,             OPT_QV_ZFPACC},
+		{"qvpert_acc",optional_argument, 0,         OPT_QVPERT_ZFPACC},
+		{"dbz_acc",optional_argument, 0,            OPT_DBZ_ZFPACC},
+		{"nci_acc",optional_argument, 0,            OPT_NCI_ZFPACC},
+		{"ncg_acc",optional_argument, 0,            OPT_NCG_ZFPACC},
+		{"ncr_acc",optional_argument, 0,            OPT_NCR_ZFPACC},
+		{"ncs_acc",optional_argument, 0,            OPT_NCS_ZFPACC},
+		{"prespert_acc",optional_argument, 0,       OPT_PRESPERT_ZFPACC},
+		{"thrhopert_acc",optional_argument, 0,      OPT_THRHOPERT_ZFPACC},
 		{"rho_acc",optional_argument, 0,               OPT_RHO_ZFPACC},
 		{"rhopert_acc",optional_argument, 0,           OPT_RHOPERT_ZFPACC},
-		{"thpert_zfpacc",optional_argument, 0,         OPT_THPERT_ZFPACC},
-		{"th_zfpacc",optional_argument, 0,             OPT_TH_ZFPACC},
-		{"pi_zfpacc",optional_argument, 0,             OPT_PI_ZFPACC},
-		{"prs_zfpacc",optional_argument, 0,            OPT_PRS_ZFPACC},
-		{"pipert_zfpacc",optional_argument, 0,         OPT_PIPERT_ZFPACC},
-		{"tke_sg_zfpacc",optional_argument, 0,         OPT_TKE_SG_ZFPACC},
-		{"kh_zfpacc",optional_argument, 0,             OPT_KH_ZFPACC},
-		{"km_zfpacc",optional_argument, 0,             OPT_KM_ZFPACC},
-		{"wb_buoy_zfpacc",optional_argument, 0,        OPT_WB_BUOY_ACC},
-		{"ub_pgrad_zfpacc",optional_argument, 0,       OPT_UB_PGRAD_ACC},
-		{"vb_pgrad_zfpacc",optional_argument, 0,       OPT_VB_PGRAD_ACC},
-		{"wb_pgrad_zfpacc",optional_argument, 0,       OPT_WB_PGRAD_ACC},
-		{"xvort_stretch_zfpacc",optional_argument, 0,  OPT_XVORT_STRETCH_ACC},
-		{"yvort_stretch_zfpacc",optional_argument, 0,  OPT_YVORT_STRETCH_ACC},
-		{"zvort_stretch_zfpacc",optional_argument, 0,  OPT_ZVORT_STRETCH_ACC},
+		{"thpert_acc",optional_argument, 0,         OPT_THPERT_ZFPACC},
+		{"th_acc",optional_argument, 0,             OPT_TH_ZFPACC},
+		{"pi_acc",optional_argument, 0,             OPT_PI_ZFPACC},
+		{"prs_acc",optional_argument, 0,            OPT_PRS_ZFPACC},
+		{"pipert_acc",optional_argument, 0,         OPT_PIPERT_ZFPACC},
+		{"tke_sg_acc",optional_argument, 0,         OPT_TKE_SG_ZFPACC},
+		{"kh_acc",optional_argument, 0,             OPT_KH_ZFPACC},
+		{"km_acc",optional_argument, 0,             OPT_KM_ZFPACC},
+		{"wb_buoy_acc",optional_argument, 0,        OPT_WB_BUOY_ACC},
+		{"ub_pgrad_acc",optional_argument, 0,       OPT_UB_PGRAD_ACC},
+		{"vb_pgrad_acc",optional_argument, 0,       OPT_VB_PGRAD_ACC},
+		{"wb_pgrad_acc",optional_argument, 0,       OPT_WB_PGRAD_ACC},
+		{"xvort_stretch_acc",optional_argument, 0,  OPT_XVORT_STRETCH_ACC},
+		{"yvort_stretch_acc",optional_argument, 0,  OPT_YVORT_STRETCH_ACC},
+		{"zvort_stretch_acc",optional_argument, 0,  OPT_ZVORT_STRETCH_ACC},
 		{"xvort_baro_acc",optional_argument, 0,        OPT_XVORT_BARO_ACC},
 		{"yvort_baro_acc",optional_argument, 0,        OPT_YVORT_BARO_ACC},
 		{"xvort_solenoid_acc",optional_argument, 0,    OPT_XVORT_SOLENOID_ACC},
@@ -389,6 +389,80 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				zfpacc->netcdf->km = atof(optarg);
 				cmd->optcount++;
 				break;
+
+			case OPT_WB_BUOY_ACC:
+				zfpacc->netcdf->wb_buoy = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_UB_PGRAD_ACC:
+				zfpacc->netcdf->ub_pgrad = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_VB_PGRAD_ACC:
+				zfpacc->netcdf->vb_pgrad = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_WB_PGRAD_ACC:
+				zfpacc->netcdf->wb_pgrad = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_XVORT_STRETCH_ACC:
+				zfpacc->netcdf->xvort_stretch = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_YVORT_STRETCH_ACC:
+				zfpacc->netcdf->yvort_stretch = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_ZVORT_STRETCH_ACC:
+				zfpacc->netcdf->zvort_stretch = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_XVORT_BARO_ACC:
+				zfpacc->netcdf->xvort_baro = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_YVORT_BARO_ACC:
+				zfpacc->netcdf->yvort_baro = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_XVORT_SOLENOID_ACC:
+				zfpacc->netcdf->xvort_solenoid = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_YVORT_SOLENOID_ACC:
+				zfpacc->netcdf->yvort_solenoid = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_ZVORT_SOLENOID_ACC:
+				zfpacc->netcdf->zvort_solenoid = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_HVORT_ACC:
+				zfpacc->netcdf->hvort = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_STREAMVORT_ACC:
+				zfpacc->netcdf->streamvort = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_QIQVPERT_ACC:
+				zfpacc->netcdf->qiqvpert = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_QTOT_ACC:
+				zfpacc->netcdf->qtot = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_TEMPC_ACC:
+				zfpacc->netcdf->tempC = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_HDIV_ACC:
+				zfpacc->netcdf->hdiv = atof(optarg);
+				cmd->optcount++;
+				break;
+
 
 			case '?':
 				fprintf(stderr,"Exiting: unknown command line option.\n");
