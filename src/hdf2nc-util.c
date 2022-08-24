@@ -15,6 +15,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
 	zfpacc->lofs         = (lofs *) malloc(sizeof(lofs));
+	nc->var3d            = (var3dstruct *) malloc(MAXVARIABLES*sizeof(var3dstruct));
 	zfpacc->netcdf       = (netcdf *) malloc(sizeof(netcdf));
 
 	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
@@ -46,7 +47,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->zfplossless=0;
 	cmd->centiseconds=0;
 	cmd->verbose=0;
-	cmd->do_allvars=0;
+//	cmd->do_allvars=0;
 	cmd->use_box_offset=0;
 	cmd->use_interp=0;
 	cmd->do_swaths=0;
@@ -616,7 +617,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	int status;
 	int nv;
 	int ivar;
-	int i;
+	int i,isLOFS;
 	char var[MAXSTR];
 	int nid;
 	var3dstruct *v3did;
@@ -710,64 +711,85 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	}
 
 
-//OK we are going for simple here. We create a single varname
-//array that contains all available variables, plus any
-//additional requested variables. We then check for duplicates
-//and remove them - this alphabetizes the order of the variables,
-//however, which could be annoying and/or useful
+/* I had the best intentions here, but we can not do this. By
+ * sorting the variable names alphabetically, but not being able to keep
+ * the other items linked, everything gets scrambled when trying to
+ * reference thigns by variable name, which is how this damned code
+ * works. I will still check for dupes, but will exit if I find them.
+ * This is where I really need a higher level language (C++, Python) so
+ * I can 'sort by keys' and still keep everything linked.
+ *
+ * This means the variables in your netCDF file will be in the order you
+ * have them at the command line!
+ *
+ * Also, I am removing the --allvars option, and checking for duplicates,
+ * because it relies on my sort/merge approach that breaks things.
+ */
 
-	if (!cmd->do_allvars)
-	{
-		cmd->nvar = cmd->nvar_cmdline;
-		nv=0; /* liar! */
-	}
-	else nv=hm->nvar_available;
+// TODO: Create code that checks for dupes and exits if it finds them.
+
+	cmd->nvar = cmd->nvar_cmdline;
+
+//	if (!cmd->do_allvars)
+//	{
+//		cmd->nvar = cmd->nvar_cmdline;
+//		nv=0; /* liar! */
+//	}
+//	else nv=hm->nvar_available;
 //With faking nvar_available to zero this loop now sorts/uniqs
 //all possible variables lists (just command line, just allvars,
 //or a combination of the two)
-	if (cmd->nvar !=0||cmd->do_allvars) 
-	{
-		char **varname_tmp;
-		int ndupes = 0;
-		int i,j;
+//	if (cmd->nvar !=0||cmd->do_allvars) 
+//	{
+//		char **varname_tmp;
+//		int ndupes = 0;
+//		int i,j;
 
-		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
-		for (i=0; i < MAXVARIABLES; i++) varname_tmp[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+//		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
+//		for (i=0; i < MAXVARIABLES; i++) varname_tmp[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
-		for (i=0; i<nv; i++)
-		{
-			strcpy(varname_tmp[i],hm->varname_available[i]);
-		}
-		for (i=0;i<cmd->nvar_cmdline; i++)
-		{
-			strcpy(varname_tmp[i+nv],cmd->varname_cmdline[i]);
-		}
+//		for (i=0; i<nv; i++)
+//		{
+//			strcpy(varname_tmp[i],hm->varname_available[i]);
+//		}
+//		for (i=0;i<cmd->nvar_cmdline; i++)
+//		{
+//			strcpy(varname_tmp[i+nv],cmd->varname_cmdline[i]);
+//		}
 
-		sortchararray (varname_tmp,nv+cmd->nvar_cmdline);
+//		cmd->nvar = cmd->nvar_cmdline;
+//		strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
 
-		strcpy(nc->var3d[0].varname,varname_tmp[0]);
-		j=1;
-		/* Get rid of accidental duplicates */
-		for (i=0; i<nv+cmd->nvar_cmdline-1; i++)
-		{
-			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
-			{
+//		sortchararray (varname_tmp,nv+cmd->nvar_cmdline); //This right here breaks parity with stuff like zfp_acc and is_LOFS_var
+
+//		strcpy(nc->var3d[0].varname,varname_tmp[0]);
+//		j=1;
+//		 Get rid of accidental duplicates 
+//		for (i=0; i<nv+cmd->nvar_cmdline-1; i++)
+//		{
+//			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
+//			{
 //				strcpy(nc->varname[j],varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
-				strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
-				j++;
-			}
-		}
-		cmd->nvar = j;
-		ndupes = nv+cmd->nvar_cmdline-cmd->nvar;
-		if(ndupes!=0)printf("We got rid of %i duplicate requested variables\n",ndupes);
-		for (i=0; i < MAXVARIABLES; i++) free(varname_tmp[i]);
-		free(varname_tmp);
-	}
+//				strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+//				j++;
+//			}
+//		}
+//		cmd->nvar = j;
+//		ndupes = nv+cmd->nvar_cmdline-cmd->nvar;
+//		if(ndupes!=0)printf("We got rid of %i duplicate requested variables\n",ndupes);
+//		for (i=0; i < MAXVARIABLES; i++) free(varname_tmp[i]);
+//		free(varname_tmp);
+//	}
 
 // Now that we have nvar, allocate the netcdf varnameid array
 
 //ORF we already allocated
 //	nc->varnameid        = (int *) malloc(cmd->nvar*sizeof(int));
+
+
+
+
+
 
 // This is our main "loop over all requested variable names" loop that
 // sets all the metadata shit.
@@ -1065,19 +1087,22 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"degC");
 		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
 
-		/* ORF 2020-04-16
-		 * After switching to writing data in Z slices, it appears the gzip compression
-		 * performance got much worse, even compared to the already bad performance of
-		 * doing 3D writes. Experimentation with the netcdf external program nccopy has
-		 * revealed much better performance (time wise) with the added benefit that it
-		 * compresses all variables including 2D. So from now on, if you pass --compress,
-		 * it will compress the whole netCDF file usging nccopy. Passing the verbose flag
-		 * will give compresion ratio information. Since netcdf is required for hdf2nc,
-		 * nccopy must have been built and it must be in your path for this to work. */
+	} // End of big ivar loop
 
-//	NO MORE CRAPPY PERFORMANCE
-//	if (cmd->gzip>0) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, cmd->gzip); //shuffle=1,deflate=1,deflate_level=cmd->gzip value
+
+	for (ivar = 0; ivar < cmd->nvar; ivar++)
+	{
+		double lofsacc,netcdfacc;
+		lofsacc = nc->var3d[ivar].zfpacc_LOFS;
+		netcdfacc = nc->var3d[ivar].zfpacc_netcdf;
+		isLOFS = nc->var3d[ivar].is_LOFS_var;
+		strcpy(var,nc->var3d[ivar].varname); //var set here
+		if(same(var,"thrhopert")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
+		if(same(var,"dbz")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
+		if(same(var,"qc")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
+		if(same(var,"qr")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
 	}
+//	exit(0);
 
 /* Write sounding data attributes, also umove and vmove */
 
