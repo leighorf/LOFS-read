@@ -27,7 +27,8 @@ typedef struct netcdf_struct
 	int xhid,yhid,zhid;
 	int xfid,yfid,zfid;
 	int ncid;
-	var3dstruct var3d[MAXVARIABLES];
+//	var3dstruct var3d[MAXVARIABLES];
+	var3dstruct *var3d;
 	char *ncfilename;
 	int dims[4],d2[3];
 	size_t start[4],edges[4];//not used anymore, se do_requested_variables

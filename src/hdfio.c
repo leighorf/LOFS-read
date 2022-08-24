@@ -139,8 +139,8 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 	for (i=0; i<cmd->nvar_cmdline; i++)
 	{
 		strcpy(cmd->varname_cmdline[i],argv[i+cmd->argc_hdf2nc_min+cmd->optcount]);//HERE IS WHERE WE POPULATE VARNAME_CMDLINE
-		strcpy(nc->var3d[i].varname,cmd->varname_cmdline[i]);
-		printf("var3d[%i].varname = %s\n",i,nc->var3d[i].varname);
+		strcpy(nc->var3d[i]->varname,cmd->varname_cmdline[i]);
+		printf("var3d[%i]->varname = %s\n",i,nc->var3d[i]->varname);
 	}
 /*
  *
@@ -162,20 +162,20 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 //	for (i = 0; i < hm->nvar_available; i++)
 	for (i = 0; i < cmd->nvar_cmdline; i++)
 	{
-		nc->var3d[i].is_LOFS_var=0;
+		nc->var3d[i]->is_LOFS_var=0;
 		for (j=0; j<hm->nvar_available; j++) //check against all available vars to see if we have ZFP data to retrieve
 		{
 //			printf("%s %s\n",hm->varname_available[j],nc->var3d[i].varname);
-			if (same(hm->varname_available[j],nc->var3d[i].varname)) // Is this a native LOFS variable?
+			if (same(hm->varname_available[j],nc->var3d[i]->varname)) // Is this a native LOFS variable?
 			{
-				nc->var3d[i].is_LOFS_var=1;
-				printf("%s is a native LOFS variable\n",nc->var3d[i].varname);
+				nc->var3d[i]->is_LOFS_var=1;
+				printf("%s is a native LOFS variable\n",nc->var3d[i]->varname);
 				break;
 			}
 		}
-		if (nc->var3d[i].is_LOFS_var)
+		if (nc->var3d[i]->is_LOFS_var)
 		{
-			if ((d_id = H5Dopen (g_id,nc->var3d[i].varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+			if ((d_id = H5Dopen (g_id,nc->var3d[i]->varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
 			if ((status = H5Oget_info(d_id,&dset_info)) < 0) ERROR_STOP("Could not H5Oget_info");
 			nattr=dset_info.num_attrs;
 			for (j=0; j<nattr; j++)
@@ -185,10 +185,10 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 //				printf ("%s %s\n",attrname[j],"zfp_accuracy_LOFS");
 				if (same(attrname[j],"zfp_accuracy"))//Just called zfp_accuracy in the LOFS HDF5 files
 				{
-					zptr=&(nc->var3d[i].zfpacc_LOFS);
+					zptr=&(nc->var3d[i]->zfpacc_LOFS);
 					if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
 					if ((status=H5Aread(attr_id,attr_memtype,zptr)) < 0) ERROR_STOP("Could not H5Aread"); //grab ZFP accuracy from LOFS 3dvar
-					if (1) printf("%10s: %s = %12.7f\n",nc->var3d[i].varname,attrname[j],*zptr);
+					if (1) printf("%10s: %s = %12.7f\n",nc->var3d[i]->varname,attrname[j],*zptr);
 					break;
 				}
 			}
@@ -203,42 +203,42 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 			 * to make sure we are not compressing with more accuracy than was originally
 			 * saved, for instance! */
 
-			if      (same(nc->var3d[i].varname,"u"))          zfpacc->lofs->u =           nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"v"))          zfpacc->lofs->v =           nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"w"))          zfpacc->lofs->w =           nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"uinterp"))    zfpacc->lofs->uinterp =     nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"vinterp"))    zfpacc->lofs->vinterp =     nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"winterp"))    zfpacc->lofs->winterp =     nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"prespert"))   zfpacc->lofs->prespert =    nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"thrhopert"))  zfpacc->lofs->thrhopert =   nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"dbz"))        zfpacc->lofs->dbz =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qc"))         zfpacc->lofs->qc =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qi"))         zfpacc->lofs->qi =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qr"))         zfpacc->lofs->qr =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qg"))         zfpacc->lofs->qg =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qs"))         zfpacc->lofs->qs =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"nci"))        zfpacc->lofs->nci =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"ncg"))        zfpacc->lofs->ncg =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"ncr"))        zfpacc->lofs->ncr =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"ncs"))        zfpacc->lofs->ncs =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qv"))         zfpacc->lofs->qv =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"qvpert"))     zfpacc->lofs->qvpert =      nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"thpert"))     zfpacc->lofs->thpert =      nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"th"))         zfpacc->lofs->th =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"prs"))        zfpacc->lofs->prs =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"pi"))         zfpacc->lofs->pi =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"pipert"))     zfpacc->lofs->pipert =      nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"rho"))        zfpacc->lofs->rho =         nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"rhopert"))    zfpacc->lofs->rhopert =     nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"tke_sg"))     zfpacc->lofs->tke_sg =      nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"kmh"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"kmv"))        zfpacc->lofs->km =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"khh"))        zfpacc->lofs->kh =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"khv"))        zfpacc->lofs->kh =          nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"xvort"))      zfpacc->lofs->xvort =       nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"yvort"))      zfpacc->lofs->yvort =       nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"zvort"))      zfpacc->lofs->zvort =       nc->var3d[i].zfpacc_LOFS;
-			else if (same(nc->var3d[i].varname,"vortmag"))    zfpacc->lofs->zvort =       nc->var3d[i].zfpacc_LOFS;
+			if      (same(nc->var3d[i]->varname,"u"))          zfpacc->lofs->u =           nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"v"))          zfpacc->lofs->v =           nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"w"))          zfpacc->lofs->w =           nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"uinterp"))    zfpacc->lofs->uinterp =     nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"vinterp"))    zfpacc->lofs->vinterp =     nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"winterp"))    zfpacc->lofs->winterp =     nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"prespert"))   zfpacc->lofs->prespert =    nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"thrhopert"))  zfpacc->lofs->thrhopert =   nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"dbz"))        zfpacc->lofs->dbz =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qc"))         zfpacc->lofs->qc =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qi"))         zfpacc->lofs->qi =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qr"))         zfpacc->lofs->qr =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qg"))         zfpacc->lofs->qg =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qs"))         zfpacc->lofs->qs =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"nci"))        zfpacc->lofs->nci =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"ncg"))        zfpacc->lofs->ncg =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"ncr"))        zfpacc->lofs->ncr =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"ncs"))        zfpacc->lofs->ncs =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qv"))         zfpacc->lofs->qv =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"qvpert"))     zfpacc->lofs->qvpert =      nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"thpert"))     zfpacc->lofs->thpert =      nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"th"))         zfpacc->lofs->th =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"prs"))        zfpacc->lofs->prs =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"pi"))         zfpacc->lofs->pi =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"pipert"))     zfpacc->lofs->pipert =      nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"rho"))        zfpacc->lofs->rho =         nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"rhopert"))    zfpacc->lofs->rhopert =     nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"tke_sg"))     zfpacc->lofs->tke_sg =      nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"kmh"))        zfpacc->lofs->km =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"kmv"))        zfpacc->lofs->km =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"khh"))        zfpacc->lofs->kh =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"khv"))        zfpacc->lofs->kh =          nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"xvort"))      zfpacc->lofs->xvort =       nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"yvort"))      zfpacc->lofs->yvort =       nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"zvort"))      zfpacc->lofs->zvort =       nc->var3d[i]->zfpacc_LOFS;
+			else if (same(nc->var3d[i]->varname,"vortmag"))    zfpacc->lofs->zvort =       nc->var3d[i]->zfpacc_LOFS;
 			else
 			{
 				fprintf(stderr,"This cannot happen. Goodbye.\n");

@@ -14,6 +14,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	dm->saved_base       = (char *) malloc(MAXSTR*sizeof(char));
 	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
+	nc->var3d            = (var3dstruct *) malloc(MAXVARIABLES*sizeof(var3dstruct));
 	zfpacc->lofs         = (lofs *) malloc(sizeof(lofs));
 	zfpacc->netcdf       = (netcdf *) malloc(sizeof(netcdf));
 
@@ -616,7 +617,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	int status;
 	int nv;
 	int ivar;
-	int i;
+	int i,isLOFS;
 	char var[MAXSTR];
 	int nid;
 	var3dstruct *v3did;
@@ -1064,6 +1065,38 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->qtot,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"degC");
 		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+
+// Now write the LOFS zfp accuracy parameters to the netcdf metadata
+
+		isLOFS=nc->var3d[i].is_lofs_var;
+
+		if(same(var,"u"))				    set_nc_meta_zfpacc_lofs(zfpacc->lofs->u,               nid,hm,v3did);
+		else if(same(var,"v"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->v,               nid,hm,v3did);
+		else if(same(var,"w"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->w,               nid,hm,v3did);
+		else if(same(var,"uinterp")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->uinterp,         nid,hm,v3did);
+		else if(same(var,"vinterp")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->vinterp,         nid,hm,v3did);
+		else if(same(var,"winterp")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->winterp,         nid,hm,v3did);
+		else if(same(var,"xvort")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->uinterp,         nid,hm,v3did);
+		else if(same(var,"yvort")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->vinterp,         nid,hm,v3did);
+		else if(same(var,"zvort")&&isLOFS)	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->winterp,         nid,hm,v3did);
+		else if(same(var,"qvpert"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qvpert,          nid,hm,v3did);
+		else if(same(var,"dbz"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->dbz,             nid,hm,v3did);
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->thrhopert,       nid,hm,v3did);
+		else if(same(var,"prespert"))	    set_nc_meta_zfpacc_lofs(zfpacc->lofs->prespert,        nid,hm,v3did);
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->tke_sg,          nid,hm,v3did);
+		else if(same(var,"qc"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qc,              nid,hm,v3did);
+		else if(same(var,"qr"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qr,              nid,hm,v3did);
+		else if(same(var,"ncr"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->ncr,             nid,hm,v3did);
+		else if(same(var,"qg"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qg,              nid,hm,v3did);
+		else if(same(var,"ncg"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->ncg,             nid,hm,v3did);
+		else if(same(var,"qi"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qi,              nid,hm,v3did);
+		else if(same(var,"nci"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->nci,             nid,hm,v3did);
+		else if(same(var,"qs"))			    set_nc_meta_zfpacc_lofs(zfpacc->lofs->qs,              nid,hm,v3did);
+		else if(same(var,"ncs"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->ncs,             nid,hm,v3did);
+		else if(same(var,"rho"))		    set_nc_meta_zfpacc_lofs(zfpacc->lofs->rho,             nid,hm,v3did);
+		else if(same(var,"qv"))		        set_nc_meta_zfpacc_lofs(zfpacc->lofs->qv,              nid,hm,v3did);
+
+
 
 		/* ORF 2020-04-16
 		 * After switching to writing data in Z slices, it appears the gzip compression
