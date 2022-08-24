@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 	//must make sure we do not recompress with more accuracy than what was saved if we are
 	//just passing LOFS variables to the netCDF file
 
+	if(cmd.verbose)
 	for (i = 0; i < cmd.nvar_cmdline; i++)
 	{
 		printf("Index %i var3dvarname=%s zfp_accuracy_LOFS = %f\n",i , nc.var3d[i].varname, nc.var3d[i].zfpacc_LOFS);
@@ -97,6 +98,10 @@ int main(int argc, char *argv[])
 	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
 	printf("\n");
+
+//STOPPED HERE
+//	list_LOFS_zfpacc(hm,nc,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
+
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
 	{
@@ -185,9 +190,12 @@ int main(int argc, char *argv[])
 	//ORF 2021-07-16
 	//ZFP needs chunk dimensions evenly divisible by four
 	//As well as our horizontal dimensions divisible by four
-	printf("Original: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
-	printf("Original: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
-	printf("Original: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
+	if(cmd.verbose)
+	{
+		printf("Original: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
+		printf("Original: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
+		printf("Original: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
+	}
 	if(cmd.zfp)
 	{
 		int x1a,y1a,z1a;
@@ -197,9 +205,9 @@ int main(int argc, char *argv[])
 		while((gd.X1-gd.X0+1)%4!=0) gd.X1--; 
 		while((gd.Y1-gd.Y0+1)%4!=0) gd.Y1--; 
 		while((gd.Z1-gd.Z0+1)%4!=0) gd.Z1--; 
-		if(x1a-gd.X1 !=0) printf("Adjusted for ZFP writes: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
-		if(y1a-gd.Y1 !=0) printf("Adjusted for ZFP writes: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
-		if(z1a-gd.Z1 !=0) printf("Adjusted for ZFP writes: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
+		if(x1a-gd.X1 !=0) printf("***Adjusted for ZFP writes (nx%%4=0): gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
+		if(y1a-gd.Y1 !=0) printf("***Adjusted for ZFP writes (ny%%4=0): gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
+		if(z1a-gd.Z1 !=0) printf("***Adjusted for ZFP writes (nz%%4=0): gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
 	}
 
 	//ORF 2022-08-23-TODO: If you do not pass any x0,y0,x1,y1,z0,z1 location data

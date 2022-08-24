@@ -450,12 +450,12 @@ CD[0]=H5Z_ZFP_MODE_ACCURACY; *p=A;}
 //		We are looping over total requested variables (index ivar)
 //		nid = nc->ncid;
 //		v3did = &(nc->var3d[ivar]);
-//		if(same(var,"u"))	  set_nc_meta_zfp_name_units(1.0e-3,cmd->zfp,nid,v3did,"long_name","eastward_wind_on_native_mesh","m/s");
-void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossless,int ncid, hdf_meta *hm, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
+//else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_meta *hm, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
 {
 	int len,status;
 	int varnameid;
-	int i;
+	int i,do_zfp_lossless=0,flag_adjust=0;
 	unsigned int cdata[4]; /* for the ZFP stuff */
 
 	len=strlen(long_name);
@@ -470,9 +470,21 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossl
 	// gzip I will never choose that shitty option again!
 	//
 /* 2022-08-23 TODO ORF: Simply interpret negative accuracy parameters as requesting
- * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. Can also accept --zfplossless to
- * just force all 3D saves as lossless for simplicity. But being able to specify lossless
- * on a variable by variable basis is the best way to go.*/
+ * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. However I first
+ * must check that actual netcdf ZFP accuracy parameters are appropriate given
+ * LOFS accuracy parameters*/
+
+
+
+	if (v3d->is_LOFS_var)
+	{
+		if (zfpacc_netcdf>0.0 && (zfpacc_netcdf < v3d->zfpacc_LOFS))
+		{
+			zfpacc_netcdf = v3d->zfpacc_LOFS;
+			flag_adjust = 1;
+		}
+	}
+
 
 	if (do_zfp_lossless)
 	{
@@ -494,7 +506,9 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int do_zfp_lossl
 	else if (do_zfp)
 	{
 		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
-		printf("Setting zfpacc_netcdf to %f for %s\n",zfpacc_netcdf,long_name);
+
+		printf("Setting zfpacc_netcdf to %f for %s ",zfpacc_netcdf,long_name);
+		if(flag_adjust) printf(" **** ADJUSTED UPWARDS TO LOFS VALUE\n"); else printf("\n");
 
 		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
 		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
@@ -714,7 +728,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 /* I had the best intentions here, but we can not do this. By
  * sorting the variable names alphabetically, but not being able to keep
  * the other items linked, everything gets scrambled when trying to
- * reference thigns by variable name, which is how this damned code
+ * reference things by variable name, which is how this damned code
  * works. I will still check for dupes, but will exit if I find them.
  * This is where I really need a higher level language (C++, Python) so
  * I can 'sort by keys' and still keep everything linked.
@@ -729,6 +743,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 // TODO: Create code that checks for dupes and exits if it finds them.
 
 	cmd->nvar = cmd->nvar_cmdline;
+
+
+/* Begin block of code that wrecked my brain */
 
 //	if (!cmd->do_allvars)
 //	{
@@ -781,14 +798,27 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 //		free(varname_tmp);
 //	}
 
-// Now that we have nvar, allocate the netcdf varnameid array
 
-//ORF we already allocated
-//	nc->varnameid        = (int *) malloc(cmd->nvar*sizeof(int));
+/* End block of code that wrecked my brain */
 
+/* Below is handled within set_nc_meta_zfp_name_units now and actually works */
 
-
-
+/*
+	for (ivar = 0; ivar < cmd->nvar; ivar++)
+	{
+		double lofsacc,netcdfacc;
+		lofsacc = nc->var3d[ivar].zfpacc_LOFS;
+		netcdfacc = nc->var3d[ivar].zfpacc_netcdf;
+		isLOFS = nc->var3d[ivar].is_LOFS_var;
+		strcpy(var,nc->var3d[ivar].varname); //var set here
+		if (isLOFS && (netcdfacc < lofsacc))
+		{
+			printf("WARNING WARNING WARNING: %s is an LOFS variable with zfp_acc = %f, but the netCDF zfp_acc is %f, which is smaller!\n",var,lofsacc,netcdfacc);
+			printf("Setting %s zfpacc_netdcf to zfpacc_LOFS (Was: %f. Is now: %f)\n",var,netcdfacc,lofsacc);
+			nc->var3d[ivar].zfpacc_netcdf = nc->var3d[ivar].zfpacc_LOFS; //does not work
+		}
+	}
+*/
 
 
 // This is our main "loop over all requested variable names" loop that
@@ -1032,76 +1062,64 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 // I really hate this section but at some fundamental level, you need to just go step by
 // step through each variable and set your metadata - and ZFP compression - accordingly
 
-		if(same(var,"u"))				    set_nc_meta_zfp_name_units(zfpacc->netcdf->u,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->v,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->w,               cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_sr,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_gr,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->windmag_sr,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vortmag,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->qvpert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->dbz,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"dBZ");
-		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->uinterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vinterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->winterp,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s");
-		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"K");
-		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->prespert,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"hPa");
-		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->tke_sg,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s^2");
-		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qc,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qr,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncr,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
-		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qg,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncg,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
-		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qi,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->nci,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
-		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qs,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncs,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"cm^-3");
-		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->rho,             cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"kg/m^3");
-		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(zfpacc->netcdf->qv,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_buoy,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
-		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
-		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
-		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m/s^2");
-		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(zfpacc->netcdf->pipert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"None");
-		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->thpert,          cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"K");
-		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->rhopert,         cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"kg/m^3");
-		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
-		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
-		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
-		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"m^2/s");
-		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_stretch,   cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_baro,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_baro,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_solenoid,  cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-2");
-		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->hvort,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->streamvort,      cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
-		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->qiqvpert,        cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->qtot,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"g/kg");
-		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"degC");
-		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,cmd->zfplossless,nid,hm,v3did,"long_name",var,"s^-1");
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(zfpacc->netcdf->u,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->v,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->w,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_sr,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_gr,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->windmag_sr,      cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vortmag,         cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->qvpert,          cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->dbz,             cmd->zfp,nid,hm,v3did,"long_name",var,"dBZ");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->uinterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vinterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->winterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->prespert,        cmd->zfp,nid,hm,v3did,"long_name",var,"hPa");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->tke_sg,          cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s^2");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qc,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qr,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncr,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qg,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncg,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qi,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->nci,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qs,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncs,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->rho,             cmd->zfp,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(zfpacc->netcdf->qv,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_buoy,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(zfpacc->netcdf->pipert,          cmd->zfp,nid,hm,v3did,"long_name",var,"None");
+		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->thpert,          cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->rhopert,         cmd->zfp,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_baro,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_baro,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->hvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->streamvort,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->qiqvpert,        cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->qtot,            cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,nid,hm,v3did,"long_name",var,"degC");
+		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
 
 	} // End of big ivar loop
 
 
-	for (ivar = 0; ivar < cmd->nvar; ivar++)
-	{
-		double lofsacc,netcdfacc;
-		lofsacc = nc->var3d[ivar].zfpacc_LOFS;
-		netcdfacc = nc->var3d[ivar].zfpacc_netcdf;
-		isLOFS = nc->var3d[ivar].is_LOFS_var;
-		strcpy(var,nc->var3d[ivar].varname); //var set here
-		if(same(var,"thrhopert")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
-		if(same(var,"dbz")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
-		if(same(var,"qc")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
-		if(same(var,"qr")) printf("XXXXX %s: isLOFS = %i and lofsacc = %f netcdfacc = %f\n",var,isLOFS,lofsacc,netcdfacc);
-	}
 //	exit(0);
 
 /* Write sounding data attributes, also umove and vmove */
@@ -1243,72 +1261,81 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	if (cmd.nvar>0)
 	{
 		long bufsize,bswrite,totbufsize;
+		int ibuf=0;
 
 		printf("***********malloc bufsize X = %i bufsize Y = %i bufsize Z = %i tot=%i\n",gd.NX+2,gd.NY+2, gd.NZ+1,((gd.NX+2)*(gd.NY+2)*(gd.NZ+2)));
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
 		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;
 
-		printf("b->buf0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+		if(cmd.verbose)printf("b->buf0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
 		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
 		{
-			printf("b->threedbuf: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->threedbuf: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
+			ibuf++;
 		}
 		if (rh.ppert)
 		{
-			printf("b->ppert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->ppert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.thrhopert)
 		{
-			printf("b->thrhopert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->thrhopert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our thrhopert buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.u)
 		{
-			printf("b->ustag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->ustag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our ustag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.v)
 		{
-			printf("b->vstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->vstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our vstag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.w)
 		{
-			printf("b->wstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->wstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
-			printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.tempC)//Not really readahead, but if we calculated these we need another array
 		{
-			printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
+			if(cmd.verbose)printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
-		printf("We allocated a total of %6.2f GB of memory for floating point buffers\n",1.0e-9*totbufsize);
+		printf("We allocated a total of %6.2f GB of memory for %i floating point buffers\n",1.0e-9*totbufsize,ibuf);
 	}
 }
 
