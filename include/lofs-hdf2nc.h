@@ -139,6 +139,6 @@ void sortchararray (char **strarray, int nel);
 void compress_with_nccopy(ncstruct nc,cmdline cmd);
 void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 int mkdir_p(const char *path);
-void list_LOFS_zfpacc (dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, char *argv[], hid_t *f_id, zfpacc *zfpacc);
+void list_LOFS_zfpacc (hdf_meta hm, hid_t *f_id);
 
 #endif
