@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	printf("\n");
 
 //STOPPED HERE
-	list_LOFS_zfpacc(hm,nc,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
+	list_LOFS_zfpacc(hm,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
 
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
