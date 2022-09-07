@@ -4,7 +4,7 @@
 #include "../include/lofs-read.h"
 #include "../include/lofs-macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfpacc *zfpacc)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, hdf_meta *hm, zfpacc *zfpacc)
 {
 	int i;
 
@@ -66,6 +66,11 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->qiqvpert=0;
 	rh->qtot=0;
 	rh->tempC=0;
+
+//Block of text that will be saved as metadata to netCDF file - contains
+//all LOFS variable zfp accuracy parameters
+	hm->zfpacc_LOFS_all        = (char **) malloc(MAXVARIABLES*sizeof(char *));
+	for (i=0; i < MAXVARIABLES; i++) hm->zfpacc_LOFS_all[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 /*
 

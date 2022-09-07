@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	int i,status;
+	int i,nzfpacc_LOFS,status;
 
 	dir_meta dm;
 	hdf_meta hm;
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
 	cmd.argc_hdf2nc_min = 3; /* minimum arguments to this routine */
 
-	init_structs(&cmd,&dm,&gd,&nc,&rh,&zfpacc);
+	init_structs(&cmd,&dm,&gd,&nc,&rh,&hm,&zfpacc);
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd,&zfpacc);
 	
@@ -103,7 +103,11 @@ int main(int argc, char *argv[])
 //Had to regress, I sprintf'ed the ZFP strings so I could write them as
 //global metadata to the netCDF files, but some bad shit started
 //happening. See saved diffs for what I was doing.
-	list_LOFS_zfpacc(hm,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
+	nzfpacc_LOFS=list_LOFS_zfpacc(&hm,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
+	for (i = 0; i < nzfpacc_LOFS; i++)
+	{
+		printf(hm.zfpacc_LOFS_all[i]);
+	}
 
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)

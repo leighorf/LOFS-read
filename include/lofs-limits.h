@@ -1,6 +1,6 @@
 #ifndef LOFSLIMITS_H
 #define LOFSLIMITS_H
-#define MAXVARIABLES (200)
+#define MAXVARIABLES (100)
 #define MAXSTR (1024)
 #define MAXATTR (20)
 //global PATH_MAX is problematic

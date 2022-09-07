@@ -115,7 +115,7 @@ typedef struct readahead
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
 void get_saved_base(char *timedir, char *saved_base);
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, zfpacc *zfpacc);
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, hdf_meta *hm, zfpacc *zfpacc);
 void get_num_time_dirs (dir_meta *dm,cmdline cmd);
 void get_sorted_time_dirs (dir_meta *dm,cmdline cmd);
 void get_num_node_dirs (dir_meta *dm,cmdline cmd);
@@ -139,6 +139,6 @@ void sortchararray (char **strarray, int nel);
 void compress_with_nccopy(ncstruct nc,cmdline cmd);
 void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 int mkdir_p(const char *path);
-void list_LOFS_zfpacc (hdf_meta hm, hid_t *f_id);
+int list_LOFS_zfpacc (hdf_meta *hm, hid_t *f_id);
 
 #endif

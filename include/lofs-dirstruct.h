@@ -23,6 +23,7 @@ typedef struct hdf_meta
 	int nvar_available;
 	int n2dswaths;
 	char **varname_available;
+	char **zfpacc_LOFS_all;
 
 } hdf_meta;
 
