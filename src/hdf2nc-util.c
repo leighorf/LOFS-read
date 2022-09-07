@@ -464,6 +464,13 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	unsigned int cdata[4]; /* for the ZFP stuff */
 	char attstr[MAXSTR];
 
+//	if(zfpacc_netcdf < 0.0) do_zfp_lossless=1;
+//	ORF 2022-09-07 On second thought I'm commenting this out for now. Since we always
+//	save ZFP compressed data int he first place, it makes no sense to
+//	have a lossless ZFP option to the written netCDF file. Only if we
+//	saved lossless to begin with (say, gzip) would this make any sense;
+//	for now just don't activate.
+
 	len=strlen(long_name);
 	status = nc_put_att_text(ncid,v3d->varnameid,lnstring,len,long_name);
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
@@ -476,7 +483,8 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	// gzip I will never choose that shitty option again!
 	//
 /* 2022-08-23 TODO ORF: Simply interpret negative accuracy parameters as requesting
- * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. However I first
+ * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. (NOTE: I AM
+ * DISABLING THIS FOR NOW). However I first
  * must check that actual netcdf ZFP accuracy parameters are appropriate given
  * LOFS accuracy parameters*/
 
@@ -492,7 +500,7 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	}
 
 
-	if (do_zfp_lossless)
+	if (do_zfp_lossless)//Currently cannot happen
 	{
 		if (!H5Zfilter_avail(ZFP_ID))
 		{

@@ -8,7 +8,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 {
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, /*OPT_ALLVARS,*/ OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
+		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
 		OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE,
         OPT_UINTERP_ZFPACC, OPT_VINTERP_ZFPACC, OPT_WINTERP_ZFPACC, OPT_U_ZFPACC, OPT_V_ZFPACC, OPT_W_ZFPACC,
 		OPT_HWIN_SR_ACC, OPT_HWIN_GR_ACC, OPT_WINDMAG_SR_ACC, OPT_XVORT_ZFPACC, OPT_YVORT_ZFPACC, OPT_ZVORT_ZFPACC, OPT_VORTMAG_ZFPACC,
@@ -38,7 +38,6 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"debug",    optional_argument, 0, OPT_DEBUG},
 		{"verbose",  optional_argument, 0, OPT_VERBOSE},
 		{"recache",  optional_argument, 0, OPT_REGENERATECACHE},
-//		{"allvars",  optional_argument, 0, OPT_ALLVARS},
 		{"swaths",   optional_argument, 0, OPT_SWATHS},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"gzip",     optional_argument, 0, OPT_COMPRESS_GZIP},
@@ -208,12 +207,12 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_COMPRESS_ZFP:
 				cmd->zfp = 1;
 				cmd->optcount++;
-				printf("*** ZFP accuracy factors set in hdf2nc-util.c ***\n");
+				printf("*** Default ZFP accuracy factors set in hdf2nc-util.c ***\n");
 				break;
 			case OPT_COMPRESS_ZFP_LOSSLESS:
 				cmd->zfplossless = 1;
 				cmd->optcount++;
-				printf("*** ZFP LOSSLESS data chosen ***\n");
+				printf("*** ZFP lossless data chosen ***\n");
 				break;
 			case OPT_INTERP:
 				cmd->use_interp=1;
@@ -240,7 +239,6 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				omp_set_num_threads(cmd->nthreads);
 				cmd->optcount++;
 				break;
-
             case OPT_U_ZFPACC:
 				zfpacc->netcdf->u = atof(optarg);
 				cmd->optcount++;
@@ -462,8 +460,6 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				zfpacc->netcdf->hdiv = atof(optarg);
 				cmd->optcount++;
 				break;
-
-
 			case '?':
 				fprintf(stderr,"Exiting: unknown command line option.\n");
 				exit(0);

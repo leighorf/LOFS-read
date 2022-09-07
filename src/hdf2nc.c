@@ -81,13 +81,10 @@ int main(int argc, char *argv[])
 		ERROR_STOP("Can't open firstfilename! Weird...");
 	} // Keep open as we need metadata, 1d sounding data, etc.
 
-	//ORF 2021-03-26 we now also collect have ZFP accuracy attributes for all 3D LOFS vars
-	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id,&zfpacc);
+	//ORF 2021-03-26 we now also collect ZFP accuracy attributes for all 3D LOFS vars.
+	//These are written as global attributes to the netCDF file below.
 
-	//ORF 2022-08-23 Here is where we can compare saved LOFS zfp accuracy parameter to the
-	//ones we chose to write for the netcdf file. Because we uncompress and recompress we
-	//must make sure we do not recompress with more accuracy than what was saved if we are
-	//just passing LOFS variables to the netCDF file
+	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id,&zfpacc);
 
 	if(cmd.verbose)
 	for (i = 0; i < cmd.nvar_cmdline; i++)
@@ -98,7 +95,6 @@ int main(int argc, char *argv[])
 	printf("3D variables available: ");
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
 	printf("\n");
-
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
 	{
@@ -119,28 +115,6 @@ int main(int argc, char *argv[])
 	/* Set base if not at command line and create netcdf file name */
 
 	if (!cmd.got_base) strcpy(cmd.base,dm.saved_base);
-
-//  Change netcdf file name to be in centiseconds (hundredths of a second)
-
-/* We now can pass --centiseconds flag to hdf2nc
- * This should be the data save time step in centiseconds (integer value from 0 to 99)
- * Will help us contsruct less weird file names, in
- * cases where we have sequential subsecond saves.
- *
- * if --centiseconds is not passed to the command line and you have subsecond data it may
- * or may not work.
-*/
-
-/*
- * ORF 2022-08-19 actually the above is not true. cs is not used in this
- * code, see below. However with the 0.2 second ER10 run, everything
- * just works. If you specify the time at the command line with enough
- * accuracy/precision it works. Will revisit this later if we get to
- * weird subsecond time steps (like 1/3, 1/7 etc.)
- *
- * Regardless the netcdf file times are in centiseconds now and forever
- * amen.
- */
 
 	{
 		int itime,ifrac;
@@ -184,9 +158,10 @@ int main(int argc, char *argv[])
 // ORF 2021-11-12 smalleps above keeps our floating point file names from
 // having lots of 9s (being a tad 'too small')
 
-	//ORF 2021-07-16
-	//ZFP needs chunk dimensions evenly divisible by four
-	//As well as our horizontal dimensions divisible by four
+//ORF 2021-07-16
+//ZFP needs chunk dimensions evenly divisible by four
+//As well as our horizontal dimensions divisible by four
+
 	if(cmd.verbose)
 	{
 		printf("Original: gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
@@ -207,7 +182,7 @@ int main(int argc, char *argv[])
 		if(z1a-gd.Z1 !=0) printf("***Adjusted for ZFP writes (nz%%4=0): gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
 	}
 
-	//ORF 2022-08-23-TODO: If you do not pass any x0,y0,x1,y1,z0,z1 location data
+	//ORF 2022-08-23-TODO: With ZFP, if you do not pass any x0,y0,x1,y1,z0,z1 location data
 	//at the command line, for calculated variables, there may be zeroes
 	//along the border (try calculating tempC for instance). Some check
 	//isn't being made I think. See: rc vs gd in the verbose output...
@@ -229,13 +204,12 @@ int main(int argc, char *argv[])
 
 	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc);
 
-	add_CM1_LOFS_zfp_metadata_to_netcdf_file(&hm,&hdf_file_id,nc);
+	add_CM1_LOFS_zfp_metadata_to_netcdf_file(&hm,&hdf_file_id,nc); // Writes global metadata to netCDF file, and also sets string arrays...
 
 	for (i = 0; i < hm.nzfplofs; i++)
 	{
-		printf(hm.zfpacc_LOFS_all[i]);
+		printf(hm.zfpacc_LOFS_all[i]);// ...that we print here for informative purposes
 	}
-
 
 	status = nc_enddef (nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");
