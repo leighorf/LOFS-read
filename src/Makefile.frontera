@@ -13,7 +13,7 @@ H5ZZFP=/home1/06618/orf/build/zfp-latest/H5Z-ZFP/installed
 CFLAGS = -fopenmp -g -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64 -D_FILE_OFFSET_BITS=64
 LINKOPTS  = -L$(ZFP)/lib -L$(H5ZZFP)/lib -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
-SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c mkdir_p.c list_lofs_zfpacc.c
+SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c mkdir_p.c
 OBJS = $(addsuffix .o, $(basename $(SRC)))
 ## hdf2nc.o is not something we need to link to in the
 ## archive, so we remove it.
