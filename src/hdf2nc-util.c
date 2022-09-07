@@ -4,19 +4,23 @@
 #include "../include/lofs-read.h"
 #include "../include/lofs-macros.h"
 
-void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh)
+void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, hdf_meta *hm, zfpacc *zfpacc)
 {
 	int i;
 
 	cmd->histpath        = (char *) malloc(MAXSTR*sizeof(char));
 	cmd->base            = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> firstfilename   = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> saved_base      = (char *) malloc(MAXSTR*sizeof(char));
-	dm-> topdir          = (char *) malloc(MAXSTR*sizeof(char));
+	dm->firstfilename    = (char *) malloc(MAXSTR*sizeof(char));
+	dm->saved_base       = (char *) malloc(MAXSTR*sizeof(char));
+	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
-	nc->varnameid        = (int  *) malloc(MAXVARIABLES*sizeof(int));
+	zfpacc->lofs         = (lofs *) malloc(sizeof(lofs));
+	nc->var3d            = (var3dstruct *) malloc(MAXVARIABLES*sizeof(var3dstruct));
+	zfpacc->netcdf       = (netcdf *) malloc(sizeof(netcdf));
 
-	dm-> regenerate_cache = 0;
+	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
+
+	dm->regenerate_cache = 0;
 
 	gd->X0=-1;
 	gd->Y0=-1;
@@ -36,22 +40,133 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->optcount=0;
 	cmd->nthreads=1;
 	cmd->twodwrite=0;
+	cmd->write_cmd_file=1;
 	cmd->debug=0;
 	cmd->gzip=0;
+	cmd->zfp=0;
+	cmd->zfplossless=0;
+	cmd->centiseconds=0;
 	cmd->verbose=0;
-	cmd->do_allvars=0;
+//	cmd->do_allvars=0;
 	cmd->use_box_offset=0;
 	cmd->use_interp=0;
 	cmd->do_swaths=0;
 	cmd->filetype=NC_NETCDF4;
 	nc->twodslice=0;
-	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
-	nc->varname = (char **)malloc(MAXVARIABLES * sizeof(char *));
-	for (i=0; i < MAXVARIABLES; i++) nc->varname[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+	for (i=0; i < MAXVARIABLES; i++)nc->var3d[i].zfpacc_LOFS=(double) -9999.0;
 
 	rh->u=0; rh->v=0; rh->w=0;
 	rh->ppert=0; rh->thrhopert=0;
-	rh->vortmag=0; rh->hvort=0; rh->streamvort=0;//Not really readahead, used for mallocs
+	rh->budgets=0;
+	rh->vortmag=0;
+	rh->hvort=0;
+	rh->streamvort=0;
+
+//Below not really readahead, used for mallocs
+	rh->qiqvpert=0;
+	rh->qtot=0;
+	rh->tempC=0;
+
+//Block of text that will be saved as metadata to netCDF file - contains
+//all LOFS variable zfp accuracy parameters
+	hm->zfpacc_LOFS_all        = (char **) malloc(MAXVARIABLES*sizeof(char *));
+	for (i=0; i < MAXVARIABLES; i++) hm->zfpacc_LOFS_all[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+/*
+
+ 2022-08-23 Here are our default zfp accuracy parameters for saved netcdf variables -
+ these are reasonably sane choices but watch out for post-processing issues! Either
+ twiddle these to your heart's content, or create a routine that overwrites them. Could
+ 'bulk set' them with say --zfp-set1 --zfp-set2 etc. new options, if you want to have
+ different "tiers" of zfp or different research projects, etc...
+
+*/
+
+	/* Leigh Orf's default ZFP accuracy parameters */
+
+	/* Each can be overridden on the command line */
+
+	zfpacc->netcdf->u       =        1.0e-2;
+	zfpacc->netcdf->v       =        1.0e-2;
+	zfpacc->netcdf->w       =        1.0e-2;
+	zfpacc->netcdf->uinterp =        1.0e-2;
+	zfpacc->netcdf->vinterp =        1.0e-2;
+	zfpacc->netcdf->winterp =        1.0e-2;
+	zfpacc->netcdf->windmag_sr =     1.0e-2;
+	zfpacc->netcdf->hwin_sr =        1.0e-2;
+	zfpacc->netcdf->hwin_gr =        1.0e-2;
+
+	zfpacc->netcdf->thrhopert =      1.0e-2;
+	zfpacc->netcdf->prespert =       1.0e-2;
+	zfpacc->netcdf->xvort =          1.0e-3;
+	zfpacc->netcdf->yvort =          1.0e-3;
+	zfpacc->netcdf->zvort =          1.0e-3;
+	zfpacc->netcdf->vortmag =        1.0e-3;
+
+	zfpacc->netcdf->qc =             1.0e-3;
+	zfpacc->netcdf->qi =             1.0e-3;
+	zfpacc->netcdf->qr =             1.0e-3;
+	zfpacc->netcdf->qs =             1.0e-3;
+	zfpacc->netcdf->qg =             1.0e-3;
+	zfpacc->netcdf->dbz =            5.0;
+
+	zfpacc->netcdf->tke_sg =         1.0e-2;
+	zfpacc->netcdf->kh =             1.0e-2;
+	zfpacc->netcdf->km =             1.0e-2;
+
+	zfpacc->netcdf->wb_buoy =        1.0e-6;
+	zfpacc->netcdf->ub_pgrad =       1.0e-6;
+	zfpacc->netcdf->vb_pgrad =       1.0e-6;
+	zfpacc->netcdf->wb_pgrad =       1.0e-6;
+	zfpacc->netcdf->xvort_stretch =  1.0e-6;
+	zfpacc->netcdf->yvort_stretch =  1.0e-6;
+	zfpacc->netcdf->zvort_stretch =  1.0e-6;
+	zfpacc->netcdf->xvort_baro =     1.0e-6;
+	zfpacc->netcdf->yvort_baro =     1.0e-6;
+	zfpacc->netcdf->xvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->yvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->zvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->hvort =          1.0e-3;
+	zfpacc->netcdf->streamvort =     1.0e-3;
+	zfpacc->netcdf->qiqvpert =       1.0e-4;
+	zfpacc->netcdf->qtot =           1.0e-4;
+	zfpacc->netcdf->tempC =          1.0e-1;
+	zfpacc->netcdf->hdiv =           1.0e-3;
+
+	/* These are read only in the sense that we read them from LOFS attributes. These
+	 * are the zfp accuracy values that were written with CMI-LOFS. Initialize
+	 * negative for existence testing */
+
+	zfpacc->lofs->u = -1.0;
+	zfpacc->lofs->v = -1.0;
+	zfpacc->lofs->w = -1.0;
+	zfpacc->lofs->uinterp = -1.0;
+	zfpacc->lofs->vinterp = -1.0;
+	zfpacc->lofs->winterp = -1.0;
+	zfpacc->lofs->prespert = -1.0;
+	zfpacc->lofs->thrhopert = -1.0;
+	zfpacc->lofs->dbz = -1.0;
+	zfpacc->lofs->qc = -1.0;
+	zfpacc->lofs->qr = -1.0;
+	zfpacc->lofs->qi = -1.0;
+	zfpacc->lofs->qs = -1.0;
+	zfpacc->lofs->qg = -1.0;
+	zfpacc->lofs->nci = -1.0;
+	zfpacc->lofs->ncg = -1.0;
+	zfpacc->lofs->ncr = -1.0;
+	zfpacc->lofs->ncs = -1.0;
+	zfpacc->lofs->qvpert = -1.0;
+	zfpacc->lofs->thpert = -1.0;
+	zfpacc->lofs->th = -1.0;
+	zfpacc->lofs->prs = -1.0;
+	zfpacc->lofs->pi = -1.0;
+	zfpacc->lofs->pipert = -1.0;
+	zfpacc->lofs->rho = -1.0;
+	zfpacc->lofs->rhopert = -1.0;
+	zfpacc->lofs->tke_sg = -1.0;
+	zfpacc->lofs->km = -1.0;
+	zfpacc->lofs->kh = -1.0;
+	zfpacc->lofs->qv = -1.0;
 }
 
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh) {
@@ -193,6 +308,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 
 	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
+	snd->thv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->qv0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->u0 = (float *)malloc(gd.NZ * sizeof(float));
 	snd->v0 = (float *)malloc(gd.NZ * sizeof(float));
@@ -203,6 +319,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 {
+#include "../include/lofs-constants.h"
 	int ix,iy,iz,k;
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
@@ -233,6 +350,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ);
 	get1dfloat (*f_id,(char *)"basestate/rh0",snd->rho0,gd.Z0,gd.NZ);//NOTE: rh0 is kind of a typo, should be rho0; rh means rel. hum. in CM1
 	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
+	//Temporary - we now save this in LOFS
+	for (iz=0; iz<=gd.NZ; iz++) snd->thv0[iz] = snd->th0[iz] * (1.0+reps*snd->qv0[iz])/(1.0+snd->qv0[iz]);
 
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
@@ -300,9 +419,9 @@ void set_nc_meta_global_integer(int ncid, char *name, int *value)
 
 
 //set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_string);
-void set_nc_meta(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
+void set_nc_meta_name_units(int ncid, int varnameid, char *lnstring, char *long_name, char *units)
 {
-	int len,status;
+	int len,status,i;
 
 	len=strlen(long_name);
 	status = nc_put_att_text(ncid, varnameid,lnstring,len,long_name);
@@ -313,7 +432,112 @@ void set_nc_meta(int ncid, int varnameid, char *lnstring, char *long_name, char 
 	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
 }
 
-// We need these global variables only for the H5Giter function 
+/* basically lifted from HDF5-ZFP code, keep it simple */
+
+#define ZFP_ID 32013
+
+#define H5Z_ZFP_MODE_RATE      1
+#define H5Z_ZFP_MODE_PRECISION 2
+#define H5Z_ZFP_MODE_ACCURACY  3
+#define H5Z_ZFP_MODE_EXPERT    4
+#define H5Z_ZFP_MODE_REVERSIBLE 5
+
+#define set_zfp_accuracy_cdata(A, CD) \
+{ double *p = (double *) &CD[2];      \
+CD[0]=CD[1]=CD[2]=CD[3]=0;            \
+CD[0]=H5Z_ZFP_MODE_ACCURACY; *p=A;}
+
+#define set_zfp_lossless(CD) \
+{ CD[0]=H5Z_ZFP_MODE_REVERSIBLE; }
+
+
+
+//		We are looping over total requested variables (index ivar)
+//		nid = nc->ncid;
+//		v3did = &(nc->var3d[ivar]);
+//else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_meta *hm, var3dstruct *v3d, char *lnstring, char *long_name, char *units)
+{
+	int len,status;
+	int varnameid;
+	int i,do_zfp_lossless=0,flag_adjust=0;
+	unsigned int cdata[4]; /* for the ZFP stuff */
+	char attstr[MAXSTR];
+
+	len=strlen(long_name);
+	status = nc_put_att_text(ncid,v3d->varnameid,lnstring,len,long_name);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+
+	len=strlen(units);
+	status = nc_put_att_text(ncid,v3d->varnameid, "units",len,units);
+	if (status != NC_NOERR) ERROR_STOP("nc_put_att_text failed");
+
+	// So adding lossless (reversible) ZFP here as an option. If it's much faster than
+	// gzip I will never choose that shitty option again!
+	//
+/* 2022-08-23 TODO ORF: Simply interpret negative accuracy parameters as requesting
+ * ZFP_REVERSIBLE (lossless) like I do with CM1-LOFS. However I first
+ * must check that actual netcdf ZFP accuracy parameters are appropriate given
+ * LOFS accuracy parameters*/
+
+
+
+	if (v3d->is_LOFS_var)
+	{
+		if (zfpacc_netcdf>0.0 && (zfpacc_netcdf < v3d->zfpacc_LOFS))
+		{
+			zfpacc_netcdf = v3d->zfpacc_LOFS;
+			flag_adjust = 1;
+		}
+	}
+
+
+	if (do_zfp_lossless)
+	{
+		if (!H5Zfilter_avail(ZFP_ID))
+		{
+			char *hdf5_plugin_path;
+			printf("ZFP filter not available!\n");
+			hdf5_plugin_path = getenv("HDF5_PLUGIN_PATH");
+			printf("Check your HDF5_PLUGIN_PATH; it is currently %s\n",hdf5_plugin_path);
+			ERROR_STOP("ZFP filter not available");
+		}
+		set_zfp_lossless(cdata);
+		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
+		if(status != NC_NOERR)
+		{
+			ERROR_STOP("nc_def_var_filter failed");
+		}
+	}
+	else if (do_zfp)
+	{
+		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
+
+		sprintf(attstr,"zfpacc_netcdf_%s",long_name);
+		printf("%30s = %14.7f",attstr,zfpacc_netcdf);
+		if(flag_adjust) printf(" **** ADJUSTED UPWARDS TO LOFS VALUE\n"); else printf("\n");
+
+		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
+		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
+
+		set_zfp_accuracy_cdata(zfpacc_netcdf,cdata);
+		if (!H5Zfilter_avail(ZFP_ID))
+		{
+			char *hdf5_plugin_path;
+			printf("ZFP filter not available!\n");
+			hdf5_plugin_path = getenv("HDF5_PLUGIN_PATH");
+			printf("Check your HDF5_PLUGIN_PATH; it is currently %s\n",hdf5_plugin_path);
+			ERROR_STOP("ZFP filter not available");
+		}
+
+		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
+		if(status != NC_NOERR)
+		{
+			ERROR_STOP("nc_def_var_filter failed");
+		}
+	}
+}
+
 int n2d_hdf2nc;
 const char **twodvarname_hdf2nc;
 int *twodvarid;
@@ -387,6 +611,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     status = H5Tclose(memtype);
 
 //end h5wank. begin ncwank.
+//ORF: What is with the stringlen exit?? Buffer overflow...
 
     stringlen=strlen(description_string[0]); if(stringlen > 500) exit(0);
     description_string_filtered = (char *) malloc ((stringlen+1) * sizeof (char));
@@ -397,7 +622,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     strcpy(units_for_nc,units_string[0]);
 
     nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
-    set_nc_meta(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
+    set_nc_meta_name_units(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
 
     free(units_string[0]); free(units_string);
     free(description_string[0]); free(description_string);
@@ -408,13 +633,15 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     return 0;
 }
 
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id)
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc)
 {
 	int status;
 	int nv;
 	int ivar;
-	int i;
+	int i,isLOFS;
 	char var[MAXSTR];
+	int nid;
+	var3dstruct *v3did;
 
 	status = nc_def_dim (nc->ncid, "xh", gd.NX, &nc->nxh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed"); 
 	status = nc_def_dim (nc->ncid, "yh", gd.NY, &nc->nyh_dimid); if (status != NC_NOERR) ERROR_STOP("nc_def_dim failed");
@@ -505,62 +732,101 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	}
 
 
-//OK we are going for simple here. We create a single varname
-//array that contains all available variables, plus any
-//additional requested variables. We then check for duplicates
-//and remove them - this alphabetizes the order of the variables,
-//however, which could be annoying and/or useful
+/* I had the best intentions here, but we can not do this. By
+ * sorting the variable names alphabetically, but not being able to keep
+ * the other items linked, everything gets scrambled when trying to
+ * reference things by variable name, which is how this damned code
+ * works. I will still check for dupes, but will exit if I find them.
+ * This is where I really need a higher level language (C++, Python) so
+ * I can 'sort by keys' and still keep everything linked.
+ *
+ * This means the variables in your netCDF file will be in the order you
+ * have them at the command line!
+ *
+ * Also, I am removing the --allvars option, and checking for duplicates,
+ * because it relies on my sort/merge approach that breaks things.
+ */
 
-	if (!cmd->do_allvars)
-	{
-		cmd->nvar = cmd->nvar_cmdline;
-		nv=0; /* liar! */
-	}
-	else nv=hm->nvar_available;
+// TODO: Create code that checks for dupes and exits if it finds them.
+
+	cmd->nvar = cmd->nvar_cmdline;
+
+
+/* Begin block of code that wrecked my brain */
+
+//	if (!cmd->do_allvars)
+//	{
+//		cmd->nvar = cmd->nvar_cmdline;
+//		nv=0; /* liar! */
+//	}
+//	else nv=hm->nvar_available;
 //With faking nvar_available to zero this loop now sorts/uniqs
 //all possible variables lists (just command line, just allvars,
 //or a combination of the two)
-	if (cmd->nvar !=0||cmd->do_allvars) 
+//	if (cmd->nvar !=0||cmd->do_allvars) 
+//	{
+//		char **varname_tmp;
+//		int ndupes = 0;
+//		int i,j;
+
+//		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
+//		for (i=0; i < MAXVARIABLES; i++) varname_tmp[i] = (char *)(malloc(MAXSTR * sizeof(char)));
+
+//		for (i=0; i<nv; i++)
+//		{
+//			strcpy(varname_tmp[i],hm->varname_available[i]);
+//		}
+//		for (i=0;i<cmd->nvar_cmdline; i++)
+//		{
+//			strcpy(varname_tmp[i+nv],cmd->varname_cmdline[i]);
+//		}
+
+//		cmd->nvar = cmd->nvar_cmdline;
+//		strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+
+//		sortchararray (varname_tmp,nv+cmd->nvar_cmdline); //This right here breaks parity with stuff like zfp_acc and is_LOFS_var
+
+//		strcpy(nc->var3d[0].varname,varname_tmp[0]);
+//		j=1;
+//		 Get rid of accidental duplicates 
+//		for (i=0; i<nv+cmd->nvar_cmdline-1; i++)
+//		{
+//			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
+//			{
+//				strcpy(nc->varname[j],varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+//				strcpy(nc->var3d[j].varname,varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
+//				j++;
+//			}
+//		}
+//		cmd->nvar = j;
+//		ndupes = nv+cmd->nvar_cmdline-cmd->nvar;
+//		if(ndupes!=0)printf("We got rid of %i duplicate requested variables\n",ndupes);
+//		for (i=0; i < MAXVARIABLES; i++) free(varname_tmp[i]);
+//		free(varname_tmp);
+//	}
+
+
+/* End block of code that wrecked my brain */
+
+/* Below is handled within set_nc_meta_zfp_name_units now and actually works */
+
+/*
+	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
-		char **varname_tmp;
-		int ndupes = 0;
-		int i,j;
-
-		varname_tmp = (char **)malloc(MAXVARIABLES * sizeof(char *));
-		for (i=0; i < MAXVARIABLES; i++) varname_tmp[i] = (char *)(malloc(MAXSTR * sizeof(char)));
-
-		for (i=0; i<nv; i++)
+		double lofsacc,netcdfacc;
+		lofsacc = nc->var3d[ivar].zfpacc_LOFS;
+		netcdfacc = nc->var3d[ivar].zfpacc_netcdf;
+		isLOFS = nc->var3d[ivar].is_LOFS_var;
+		strcpy(var,nc->var3d[ivar].varname); //var set here
+		if (isLOFS && (netcdfacc < lofsacc))
 		{
-			strcpy(varname_tmp[i],hm->varname_available[i]);
+			printf("WARNING WARNING WARNING: %s is an LOFS variable with zfp_acc = %f, but the netCDF zfp_acc is %f, which is smaller!\n",var,lofsacc,netcdfacc);
+			printf("Setting %s zfpacc_netdcf to zfpacc_LOFS (Was: %f. Is now: %f)\n",var,netcdfacc,lofsacc);
+			nc->var3d[ivar].zfpacc_netcdf = nc->var3d[ivar].zfpacc_LOFS; //does not work
 		}
-		for (i=0;i<cmd->nvar_cmdline; i++)
-		{
-			strcpy(varname_tmp[i+nv],cmd->varname_cmdline[i]);
-		}
-
-		sortchararray (varname_tmp,nv+cmd->nvar_cmdline);
-
-		strcpy(nc->varname[0],varname_tmp[0]);
-		j=1;
-		/* Get rid of accidental duplicates */
-		for (i=0; i<nv+cmd->nvar_cmdline-1; i++)
-		{
-			if(strcmp(varname_tmp[i],varname_tmp[i+1]))
-			{
-				strcpy(nc->varname[j],varname_tmp[i+1]); //THIS IS WHERE VARNAME IS SET!
-				j++;
-			}
-		}
-		cmd->nvar = j;
-		ndupes = nv+cmd->nvar_cmdline-cmd->nvar;
-		if(ndupes!=0)printf("We got rid of %i duplicate requested variables\n",ndupes);
-		for (i=0; i < MAXVARIABLES; i++) free(varname_tmp[i]);
-		free(varname_tmp);
 	}
+*/
 
-// Now that we have nvar, allocate the netcdf varnameid array
-
-	nc->varnameid        = (int *) malloc(cmd->nvar*sizeof(int));
 
 // This is our main "loop over all requested variable names" loop that
 // sets all the metadata shit.
@@ -569,7 +835,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	{
 		int mesh_is_u = 0, mesh_is_v = 0, mesh_is_w = 0;
 
-		strcpy(var,nc->varname[ivar]);
+		strcpy(var,nc->var3d[ivar].varname); //var set here
 
 		if (same(var,"u")) mesh_is_u=1;
 		if (same(var,"v")) mesh_is_v=1;
@@ -731,7 +997,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NZ;
 			nc->edges[2] = gd.NY;
-			status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &(nc->varnameid[ivar]));
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
 		else if(gd.Y0==gd.Y1)
 		{
@@ -745,7 +1011,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NZ;
 			nc->edges[2] = gd.NX;
-			status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &(nc->varnameid[ivar]));
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
 		else if(gd.Z0==gd.Z1)
 		{
@@ -759,13 +1025,35 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			nc->edges[0] = 1;
 			nc->edges[1] = gd.NY;
 			nc->edges[2] = gd.NX;
-			status =  nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 3, nc->dims, &nc->varnameid[ivar]);
+			status =  nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 3, nc->dims, &(nc->var3d[ivar].varnameid));
 		}
-		else status = nc_def_var (nc->ncid, nc->varname[ivar], NC_FLOAT, 4, nc->dims, &nc->varnameid[ivar]);
+		else
+		{
+			size_t chunkdims[4] = {1,20,50,50}; //ORF should make this more configurable (command line?)
+
+// ORF 2022-03-09 holy fuck chunk parameters make a huge difference in
+// file size. A ZFP compressed file full of constant values will
+// compress incredibly more with lossy compression on top of it, but
+// also changes dramatically with chunking parameters. 100/100/100 seems
+// to be ideal, for reasons that are not clear to me, for files that are
+// 400x400x669 anyway...
+// At some point I will talk more to Peter Lindstrom, ZFP dude, about lossless encoding of
+// easily compressible ZFP parameters or whatnot. I mentioned it to him
+// and he agreed it could be improved.
+//
+//ORF DEBUG TRY CHUNKING
+//Each of the 3 spatial dimensions needs to be divisible by 4 for ZFP
+//And our horizontal grid dimensions as well!
+//NOTE! WE MUST ADJUST DOWNWARD if our chosen dimension in any dimension
+//is less than the chunk dimension!
+//Let netcdf select chunk stuff if we are not using zfp
+			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
+			if (cmd->zfp==1) status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
+		}
 
 		if (status != NC_NOERR) 
 		{
-			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->varname[ivar],status,nc_strerror(status));
+			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->var3d[ivar].varname,status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
 		}
 
@@ -773,93 +1061,105 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
 		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
 
+// Set all the ZFP LOFS metadata, finally!
+//		for (i=0; i<hm->nzfplofs;i++)
+//		{
+//			char delimiter[]=" ";
+//			char *a,*b,*c;
+//			status = nc_put_att_string(nc->ncid,NC_GLOBAL,"LOFS_CM1_ZFP_SAVED",hm->nzfplofs,hm->zfpacc_LOFS_all);
+//		}
+
 // We are still before the nc_enddef call, in case you are lost
 
-		if(same(var,"u"))				set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_on_native_mesh","m/s");
-		else if(same(var,"v"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_on_native_mesh","m/s");
-		else if(same(var,"w"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_on_native_mesh","m/s");
-		else if(same(var,"uinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","eastward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"vinterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","northward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"winterp"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","upward_wind_interpolated_to_scalar_mesh","m/s");
-		else if(same(var,"prespert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","pressure_perturbation","hPa");
-		else if(same(var,"wb_buoy"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_buoyancy","m/s^2");
-		else if(same(var,"ub_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","u_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"vb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","v_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"wb_pgrad"))    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","w_acceleration_from_pressure_gradient","m/s^2");
-		else if(same(var,"pipert"))	    set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","nondimensional_pressure_perturbation","None");
-		else if(same(var,"thpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","potential_temperature_perturbation","K");
-		else if(same(var,"thrhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_potential_temperature_perturbation","K");
-		else if(same(var,"rhopert"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","density_perturbation","kg/m^3");
-		else if(same(var,"tke_sg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","subgrid_turbulent_kinetic_energy","m^2/s^2");
-		else if(same(var,"khh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"khv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_scalar_diffusivity","m^2/s");
-		else if(same(var,"kmh"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"kmv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vertical_subgrid_eddy_momentum_viscosity","m^2/s");
-		else if(same(var,"xvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","x_vorticity","s^-1");
-		else if(same(var,"yvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","y_vorticity","s^-1");
-		else if(same(var,"zvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","z_vorticity","s^-1");
-		else if(same(var,"xvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_x","s^-2");
-		else if(same(var,"yvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_y","s^-2");
-		else if(same(var,"zvort_stretch")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_stretching_rate_z","s^-2");
-		else if(same(var,"xvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_baro")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","baroclinic_vorticity_rate_y","s^-2");
-		else if(same(var,"xvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_x","s^-2");
-		else if(same(var,"yvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_y","s^-2");
-		else if(same(var,"zvort_solenoid")) set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","solenoidal_vorticity_rate_z","s^-2");
-		else if(same(var,"vortmag"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","vorticity_magnitude","s^-1");
-		else if(same(var,"hvort"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","horizontal_vorticity_magnitude","s^-1");
-		else if(same(var,"streamvort"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","streamwise_vorticity","s^-1");
-		else if(same(var,"dbz"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","radar_reflectivity_simulated","dBZ");
-		else if(same(var,"qv"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_mixing_ratio","g/kg");
-		else if(same(var,"qvpert"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","water_vapor_perturbation_mixing_ratio","g/kg");
-		else if(same(var,"qc"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_water_mixing_ratio","g/kg");
-		else if(same(var,"qr"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_water_mixing_ratio","g/kg");
-		else if(same(var,"qi"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","cloud_ice_mixing_ratio","g/kg");
-		else if(same(var,"qs"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","now_mixing_ratio","g/kg");
-		else if(same(var,"qg"))			set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_mixing_ratio","g/kg");
-		else if(same(var,"nci"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ice_number_concenctration","cm^-3");
-		else if(same(var,"ncr"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","rain_number_concenctration","cm^-3");
-		else if(same(var,"ncs"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","snow_number_concenctration","cm^-3");
-		else if(same(var,"ncg"))		set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","hail_number_concenctration","cm^-3");
-		else if(same(var,"hwin_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_horizontal_wind_speed","m/s");
-		else if(same(var,"windmag_sr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","storm_relative_wind_speed","m/s");
-		else if(same(var,"hwin_gr"))	set_nc_meta(nc->ncid,nc->varnameid[ivar],"long_name","ground_relative_horizontal_wind_speed","m/s");
+		nid = nc->ncid;
+		v3did = &(nc->var3d[ivar]);
 
-		/* ORF 2020-04-16
-		 * After switching to writing data in Z slices, it appears the gzip compression
-		 * performance got much worse, even compared to the already bad performance of
-		 * doing 3D writes. Experimentation with the netcdf external program nccopy has
-		 * revealed much better performance (time wise) with the added benefit that it
-		 * compresses all variables including 2D. So from now on, if you pass --compress,
-		 * it will compress the whole netCDF file usging nccopy. Passing the verbose flag
-		 * will give compresion ratio information. Since netcdf is required for hdf2nc,
-		 * nccopy must have been built and it must be in your path for this to work. */
+// I really hate this section but at some fundamental level, you need to just go step by
+// step through each variable and set your metadata - and ZFP compression - accordingly
 
-//	NO MORE CRAPPY PERFORMANCE
-//	if (cmd->gzip>0) status=nc_def_var_deflate(nc->ncid, nc->varnameid[ivar], 1, 1, cmd->gzip); //shuffle=1,deflate=1,deflate_level=cmd->gzip value
-	}
+		if(same(var,"u"))				    set_nc_meta_zfp_name_units(zfpacc->netcdf->u,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"v"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->v,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"w"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->w,               cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_sr,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"hwin_gr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->hwin_gr,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"windmag_sr"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->windmag_sr,      cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"xvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"yvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"zvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"vortmag"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vortmag,         cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qvpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->qvpert,          cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"dbz"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->dbz,             cmd->zfp,nid,hm,v3did,"long_name",var,"dBZ");
+		else if(same(var,"uinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->uinterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"vinterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->vinterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"winterp"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->winterp,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"thrhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->thrhopert,       cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"prespert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->prespert,        cmd->zfp,nid,hm,v3did,"long_name",var,"hPa");
+		else if(same(var,"tke_sg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->tke_sg,          cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s^2");
+		else if(same(var,"qc"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qc,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qr"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qr,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncr"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncr,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qg"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qg,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncg"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncg,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qi"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qi,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"nci"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->nci,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"qs"))			    set_nc_meta_zfp_name_units(zfpacc->netcdf->qs,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"ncs"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->ncs,             cmd->zfp,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"rho"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->rho,             cmd->zfp,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"qv"))		        set_nc_meta_zfp_name_units(zfpacc->netcdf->qv,              cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"wb_buoy"))        set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_buoy,         cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(zfpacc->netcdf->pipert,          cmd->zfp,nid,hm,v3did,"long_name",var,"None");
+		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->thpert,          cmd->zfp,nid,hm,v3did,"long_name",var,"K");
+		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->rhopert,         cmd->zfp,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"khh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"khv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->kh,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmh"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"kmv"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->km,              cmd->zfp,nid,hm,v3did,"long_name",var,"m^2/s");
+		else if(same(var,"xvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_stretch"))  set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_stretch,   cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_baro,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_baro"))     set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_baro,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->xvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->yvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_solenoid")) set_nc_meta_zfp_name_units(zfpacc->netcdf->zvort_solenoid,  cmd->zfp,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"hvort"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->hvort,           cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"streamvort"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->streamvort,      cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"qiqvpert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->qiqvpert,        cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qtot"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->qtot,            cmd->zfp,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"tempC"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->tempC,           cmd->zfp,nid,hm,v3did,"long_name",var,"degC");
+		else if(same(var,"hdiv"))	    	set_nc_meta_zfp_name_units(zfpacc->netcdf->hdiv,            cmd->zfp,nid,hm,v3did,"long_name",var,"s^-1");
+
+	} // End of big ivar loop
+
+
+//	exit(0);
 
 /* Write sounding data attributes, also umove and vmove */
 
 	status = nc_def_var (nc->ncid, "u0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->u0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->u0id,"long_name","base_state_u","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->u0id,"long_name","base_state_u","m/s");
 	status = nc_def_var (nc->ncid, "v0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->v0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->v0id,"long_name","base_state_v","m/s");
 	status = nc_def_var (nc->ncid, "th0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->th0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
+	set_nc_meta_name_units(nc->ncid,nc->th0id,"long_name","base_state_potential_temperature","K");
+	status = nc_def_var (nc->ncid, "thv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->thv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
+	set_nc_meta_name_units(nc->ncid,nc->thv0id,"long_name","base_state_virtual_potential_temperature","K");
 	status = nc_def_var (nc->ncid, "pres0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pres0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
+	set_nc_meta_name_units(nc->ncid,nc->pres0id,"long_name","base_state_pressure","hPa");
 	status = nc_def_var (nc->ncid, "pi0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->pi0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->pi0id,"long_name","base_state_nondimensional_pressure","#");
+	set_nc_meta_name_units(nc->ncid,nc->pi0id,"long_name","base_state_nondimensional_pressure","#");
 	status = nc_def_var (nc->ncid, "qv0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->qv0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->qv0id,"long_name","base_state_water_vapor_mixing_ratio","g/kg");
+	set_nc_meta_name_units(nc->ncid,nc->qv0id,"long_name","base_state_water_vapor_mixing_ratio","g/kg");
 	status = nc_def_var (nc->ncid, "rho0", NC_FLOAT, 1, &nc->nzh_dimid, &nc->rho0id); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->rho0id,"long_name","base_state_density","kg/m^3");
+	set_nc_meta_name_units(nc->ncid,nc->rho0id,"long_name","base_state_density","kg/m^3");
 
 	status = nc_def_var (nc->ncid, "umove", NC_FLOAT, 0, nc->dims, &nc->umoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->umoveid,"long_name","x_box_translation_component","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->umoveid,"long_name","x_box_translation_component","m/s");
 	status = nc_def_var (nc->ncid, "vmove", NC_FLOAT, 0, nc->dims, &nc->vmoveid); if (status != NC_NOERR) ERROR_STOP("nc_def_var failed");
-	set_nc_meta(nc->ncid,nc->vmoveid,"long_name","y_box_translation_component","m/s");
+	set_nc_meta_name_units(nc->ncid,nc->vmoveid,"long_name","y_box_translation_component","m/s");
 }
 
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd)
@@ -912,6 +1212,7 @@ void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd
 	status = nc_put_var_float (nc.ncid,nc.u0id,snd.u0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.v0id,snd.v0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.th0id,snd.th0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
+	status = nc_put_var_float (nc.ncid,nc.thv0id,snd.thv0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.pi0id,snd.pi0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_float (nc.ncid,nc.rho0id,snd.rho0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_float failed");
 	status = nc_put_var_int (nc.ncid,nc.x0id,&gd.X0); if (status != NC_NOERR) ERROR_STOP ("nc_put_var_int failed");
@@ -936,7 +1237,7 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 
 	for (ivar = 0; ivar < cmd.nvar; ivar++)
 	{
-		var=nc.varname[ivar];
+		var=nc.var3d[ivar].varname;
 
 		if(same(var,"pipert"))  {rh->ppert=1;}
 		if(same(var,"wb_buoy")) {rh->thrhopert=1;}
@@ -964,6 +1265,8 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"hvort")) {rh->u=1;rh->v=1;rh->w=1;rh->hvort=1;}
 		if(same(var,"vortmag")) {rh->u=1;rh->v=1;rh->w=1;rh->vortmag=1;}
 		if(same(var,"streamvort")) {rh->u=1;rh->v=1;rh->w=1;rh->streamvort=1;}
+		if(same(var,"qiqvpert")) {rh->qiqvpert=1;}
+		if(same(var,"tempC")) {rh->tempC=1;}
 	}
 	//free(var);
 }
@@ -973,62 +1276,81 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 	if (cmd.nvar>0)
 	{
 		long bufsize,bswrite,totbufsize;
+		int ibuf=0;
 
+		printf("***********malloc bufsize X = %i bufsize Y = %i bufsize Z = %i tot=%i\n",gd.NX+2,gd.NY+2, gd.NZ+1,((gd.NX+2)*(gd.NY+2)*(gd.NZ+2)));
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
 		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;
 
+		if(cmd.verbose)printf("b->buf0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
-		if(!cmd.twodwrite)//This is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
+		if(!cmd.twodwrite)//3D is default. Passing --twodwrite will only allocate an XY slice, but write performance sucks
 		{
+			if(cmd.verbose)printf("b->threedbuf: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
 				ERROR_STOP("Cannot allocate our 3D variable write array");
 			totbufsize+=bswrite;
+			ibuf++;
 		}
 		if (rh.ppert)
 		{
+			if(cmd.verbose)printf("b->ppert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->ppert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our prespert/pipert buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.thrhopert)
 		{
+			if(cmd.verbose)printf("b->thrhopert: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if((b->thrhopert = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our thrhopert buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.u)
 		{
+			if(cmd.verbose)printf("b->ustag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->ustag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our ustag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.v)
 		{
+			if(cmd.verbose)printf("b->vstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->vstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our vstag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.w)
 		{
+			if(cmd.verbose)printf("b->wstag: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->wstag = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our wstag buffer array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
 		if (rh.u||rh.v||rh.w||rh.budgets)
 		{
+			if(cmd.verbose)printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our first 3D temp calculation array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.tempC)//Not really readahead, but if we calculated these we need another array
 		{
+			if(cmd.verbose)printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
 				ERROR_STOP("Cannot allocate our second 3D temp calculation array");
 			totbufsize+=bufsize;
+			ibuf++;
 		}
-		printf("We allocated a total of %6.2f GB of memory for floating point buffers\n",1.0e-9*totbufsize);
+		printf("We allocated a total of %6.2f GB of memory for %i floating point buffers\n",1.0e-9*totbufsize,ibuf);
 	}
 }
 
@@ -1147,7 +1469,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 void compress_with_nccopy(ncstruct nc,cmdline cmd)
 {
 	char strbuf[MAXSTR];
-	long int unc_fsize,comp_fsize;
+	off_t unc_fsize,comp_fsize;
 	float ratio;
 	struct stat st;
 	int retval;
@@ -1189,7 +1511,7 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 
 	ratio = (float)unc_fsize/(float)comp_fsize;
 
-	sprintf(strbuf,"\n%12i bytes %s.uncompressed\n%12i bytes %s\nFile compression ratio of %7.2f:1\n",
+	sprintf(strbuf,"\n%12li bytes %s.uncompressed\n%12li bytes %s\nFile compression ratio of %7.2f:1\n",
 			unc_fsize,nc.ncfilename,comp_fsize,nc.ncfilename,ratio);
 	printf("%s",strbuf);
 
@@ -1200,4 +1522,56 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd)
 		fprintf(stderr,"Command: %s ...failed!\n",strbuf);
 		return;
 	}
+}
+
+
+void add_CM1_LOFS_zfp_metadata_to_netcdf_file (hdf_meta *hm, hid_t *f_id, ncstruct nc)
+{
+	hid_t g_id,d_id,attr_id,attr_memtype;
+	herr_t status;
+	H5O_info_t dset_info;
+	H5G_info_t group_info;
+	int i,j,k,nattr;
+	double zval;
+	char groupname[MAXSTR];
+	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
+	char attstr[MAXSTR];
+	htri_t existence;
+	hid_t lapl_id;
+
+	sprintf(groupname,"%05i/3D",0);//All vars in 3D group 00000 are always available
+	g_id = H5Gopen(*f_id,groupname,H5P_DEFAULT);
+	H5Gget_info(g_id,&group_info);
+	hm->nvar_available = group_info.nlinks;
+	printf("nvar avail = %i\n",hm->nvar_available);
+	printf("g_id = %i varname = %s\n",g_id,hm->varname_available[0]);
+
+	k=0;
+	for (i = 0; i < hm->nvar_available; i++)
+	{
+		if ((d_id = H5Dopen (g_id,hm->varname_available[i],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
+		if ((status = H5Oget_info(d_id,&dset_info)) < 0) ERROR_STOP("Could not H5Oget_info");
+		nattr=dset_info.num_attrs;
+//		printf("nattr = %i\n",nattr);
+		for (j=0; j<nattr; j++)
+		{
+			if ((status=H5Aget_name_by_idx(d_id,".",H5_INDEX_NAME,H5_ITER_INC,j,attrname[j],40,H5P_DEFAULT))<0) ERROR_STOP("Could not H5Aget_name_by_idex");
+			if ((attr_id=H5Aopen(d_id,attrname[j],H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Aopen");
+//			printf("attrname[%i] = %s\n",j,attrname[j]);
+			if (same(attrname[j],"zfp_accuracy"))
+			{
+				if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
+				if ((status=H5Aread(attr_id,attr_memtype,&zval)) < 0) ERROR_STOP("Could not H5Aread"); //grab ZFP accuracy from LOFS 3dvar
+//				printf("LOFS variable %10s: zfpacc_LOFS = %14.7f\n",hm->varname_available[i],zval);
+				sprintf(attstr,"zfpacc_LOFS_%s",hm->varname_available[i]);
+				sprintf(hm->zfpacc_LOFS_all[k],"%30s = %14.7f\n",attstr,zval);
+				status = nc_put_att_double(nc.ncid,NC_GLOBAL,attstr,NC_DOUBLE,1,&zval);
+				if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
+				k++;
+				break;
+			}
+		}
+		H5Dclose(d_id);
+	}
+	hm->nzfplofs=k;
 }

@@ -19,10 +19,12 @@ typedef struct dir_meta
 
 typedef struct hdf_meta
 {
-	int nx,ny,nz,nodex,nodey;
+	int nx,ny,nz,rankx,ranky;
 	int nvar_available;
 	int n2dswaths;
 	char **varname_available;
+	char **zfpacc_LOFS_all;
+	int nzfplofs;
 
 } hdf_meta;
 
@@ -64,6 +66,8 @@ typedef struct cmdline
 	int do_swaths;
 	int do_allvars;
 	int gzip;
+	int zfp;
+	int zfplossless;
 	int use_interp;
 	int use_box_offset;
 	int filetype;
@@ -71,11 +75,13 @@ typedef struct cmdline
 	int got_base;
 	int got_ncdir;
 	int twodwrite;
+	int write_cmd_file;
 	int optcount;
+	int centiseconds;
 	int nvar,nvar_cmdline;
 	char *histpath,*base,*ncdir;
 	char **varname_cmdline;
-	float time;
+	double time; //ORF 2021-11-10
 	int argc_hdf2nc_min;
 } cmdline;
 

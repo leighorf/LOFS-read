@@ -191,7 +191,13 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 	gny = rc.Y1 - rc.Y0 + 1;
 	gnz = rc.Z1 - rc.Z0 + 1;
 
-	numhdf = hm.nodex * hm.nodey;
+	numhdf = hm.rankx * hm.ranky;
+
+	/* ORF 2021-10-18 Note: numhdf will be larger than the actual number
+	 * of saved hdf files if the user did not save the full domain. That
+	 * is OK because we only allocate short character arrays 
+	 * here for creating the file names, so allocating more than we need
+	 * is no big whoop */
 
 	if ((hdf = (HDFstruct **) malloc (numhdf * sizeof (HDFstruct *))) == NULL) ERROR_STOP("Insufficient memory for HDFstruct");
 	for (i = 0; i < numhdf; i++)
@@ -257,12 +263,12 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 
 	/* We build our decomposition from metadata stored in each hdf file */
 
-	numi = hm.nx / hm.nodex;
-	numj = hm.ny / hm.nodey;
+	numi = hm.nx / hm.rankx;
+	numj = hm.ny / hm.ranky;
 	for (ihdf = 0; ihdf < numhdf; ihdf++) /* just i not ihdf */
 	{
-		hdf[ihdf]->myj = ihdf / hm.nodex;
-		hdf[ihdf]->myi = ihdf % hm.nodex;
+		hdf[ihdf]->myj = ihdf / hm.rankx;
+		hdf[ihdf]->myi = ihdf % hm.rankx;
 		hdf[ihdf]->x0 = hdf[ihdf]->myi * numi;
 		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
 		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
@@ -306,7 +312,7 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 	dxright = rc.X1 % snx;
 	dybot = rc.Y0 % sny;
 	dytop = rc.Y1 % sny;
-	nxnode = hm.nodex;
+	nxnode = hm.rankx;
 
 	/*
 
