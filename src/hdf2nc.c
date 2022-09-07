@@ -99,16 +99,6 @@ int main(int argc, char *argv[])
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
 	printf("\n");
 
-//STOPPED HERE 2022-08-24
-//Had to regress, I sprintf'ed the ZFP strings so I could write them as
-//global metadata to the netCDF files, but some bad shit started
-//happening. See saved diffs for what I was doing.
-	nzfpacc_LOFS=list_LOFS_zfpacc(&hm,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
-	for (i = 0; i < nzfpacc_LOFS; i++)
-	{
-		printf(hm.zfpacc_LOFS_all[i]);
-	}
-
 
 	if(cmd.verbose&&cmd.nvar_cmdline > 0)
 	{
@@ -238,6 +228,14 @@ int main(int argc, char *argv[])
 	if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
 
 	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc);
+
+	add_CM1_LOFS_zfp_metadata_to_netcdf_file(&hm,&hdf_file_id,nc);
+
+	for (i = 0; i < hm.nzfplofs; i++)
+	{
+		printf(hm.zfpacc_LOFS_all[i]);
+	}
+
 
 	status = nc_enddef (nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP("nc_enddef failed");

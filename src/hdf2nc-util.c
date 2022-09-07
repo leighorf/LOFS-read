@@ -1059,6 +1059,14 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
 		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
 
+// Set all the ZFP LOFS metadata, finally!
+//		for (i=0; i<hm->nzfplofs;i++)
+//		{
+//			char delimiter[]=" ";
+//			char *a,*b,*c;
+//			status = nc_put_att_string(nc->ncid,NC_GLOBAL,"LOFS_CM1_ZFP_SAVED",hm->nzfplofs,hm->zfpacc_LOFS_all);
+//		}
+
 // We are still before the nc_enddef call, in case you are lost
 
 		nid = nc->ncid;

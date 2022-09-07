@@ -5,7 +5,7 @@
 // See hdfio.c get_hdf_metadata to finish this, just cycle through and
 // list all LOFS zfpacc
 
-int list_LOFS_zfpacc (hdf_meta *hm, hid_t *f_id)
+void list_LOFS_zfpacc (hdf_meta *hm, hid_t *f_id, ncstruct nc)
 {
 	hid_t g_id,d_id,attr_id,attr_memtype;
 	herr_t status;
@@ -15,6 +15,7 @@ int list_LOFS_zfpacc (hdf_meta *hm, hid_t *f_id)
 	double zval;
 	char groupname[MAXSTR];
 	char attrname[MAXATTR][MAXSTR]; //ORF FIX TODO
+	char attstr[MAXSTR];
 	htri_t existence;
 	hid_t lapl_id;
 
@@ -42,12 +43,15 @@ int list_LOFS_zfpacc (hdf_meta *hm, hid_t *f_id)
 				if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
 				if ((status=H5Aread(attr_id,attr_memtype,&zval)) < 0) ERROR_STOP("Could not H5Aread"); //grab ZFP accuracy from LOFS 3dvar
 //				printf("LOFS variable %10s: zfpacc_LOFS = %14.7f\n",hm->varname_available[i],zval);
-				sprintf(hm->zfpacc_LOFS_all[k],"LOFS variable %10s: zfpacc_LOFS = %14.7f\n",hm->varname_available[i],zval);
+				sprintf(hm->zfpacc_LOFS_all[k],"zfpacc_LOFS_%s = %14.7f\n",hm->varname_available[i],zval);
+				sprintf(attstr,"zfpacc_LOFS_%s",hm->varname_available[i]);
+				status = nc_put_att_double(nc.ncid,NC_GLOBAL,attstr,NC_DOUBLE,1,&zval);
+				if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
 				k++;
 				break;
 			}
 		}
 		H5Dclose(d_id);
 	}
-	return(k);
+	hm->nzfplofs=k;
 }
