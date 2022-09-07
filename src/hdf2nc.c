@@ -99,7 +99,10 @@ int main(int argc, char *argv[])
 	for (i = 0; i < hm.nvar_available; i++) printf("%s ",hm.varname_available[i]);
 	printf("\n");
 
-//STOPPED HERE
+//STOPPED HERE 2022-08-24
+//Had to regress, I sprintf'ed the ZFP strings so I could write them as
+//global metadata to the netCDF files, but some bad shit started
+//happening. See saved diffs for what I was doing.
 	list_LOFS_zfpacc(hm,&hdf_file_id); //List all of the ZFP accuracy values for each available LOFS var
 
 
