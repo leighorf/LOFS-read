@@ -80,6 +80,7 @@ typedef struct cmdline
 	int optcount;
 	int centiseconds;
 	int nvar,nvar_cmdline;
+	int header;
 	char *histpath,*base,*ncdir;
 	char **varname_cmdline;
 	double time; //ORF 2021-11-10

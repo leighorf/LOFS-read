@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
 	readahead rh;
 	buffers b;
 	zfpacc zfpacc;
-	point p[2][2][2];//for grabpoint
 
 	hid_t hdf_file_id;
 
@@ -107,7 +106,6 @@ int main(int argc, char *argv[])
 	if (cmd.debug)
 		printf("nx = %i ny = %i nz = %i rankx = %i rankx = %i\n",hm.nx,hm.ny,hm.nz,hm.rankx,hm.ranky);
 
-	strcpy(p[0][0][0].varname,cmd.varname_cmdline[0]); //grabpoint only returns 1 variable value so just take the 1st if there are more
 
 	/* Allocate memory for 1d mesh and sounding arrays */
 
@@ -123,11 +121,38 @@ int main(int argc, char *argv[])
 
 //	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id); //These include populating the mesh 1D data that we need to interpolate
 
-	grabpoint(&gd,hm,dm,cmd,msh,p); //Get the weights for the interpolation, then do the interpolation
 
-//	do_requested_variables(&b,nc,gd,msh,&snd,rh,dm,hm,cmd);
-
-
+//All righty. This ugly code makes beautiful output. Only the 1st
+//call to grabpoint should have the --header argument so the
+//resultant file is pure 'csv' that can be read by pandas. All of the
+//requested LOFS variables will be interpolated and put in columns.
+	{
+		float *interpval;
+		char header[MAXSTR];
+		char values[MAXSTR];
+		char tmpstr[MAXSTR];
+		interpval = (float *)malloc(cmd.nvar_cmdline*sizeof(float));
+		for (i=0; i<cmd.nvar_cmdline; i++)
+		{
+			interpval[i] = grabpoint(&gd,hm,dm,cmd,msh,cmd.varname_cmdline[i]);
+		}
+		if(cmd.header)
+		{
+			sprintf(header,"%20s%20s%20s%20s","time","xpos","ypos","zpos");
+			for (i=0; i<cmd.nvar_cmdline; i++)
+			{
+				sprintf(tmpstr,"%20s",cmd.varname_cmdline[i]);
+				strcat(header,tmpstr);
+			}
+			printf("%s\n",header);
+		}
+		sprintf(values,"%20.7f%20.7f%20.7f%20.7f",cmd.time,gd.XC,gd.YC,gd.ZC);
+		for (i=0; i<cmd.nvar_cmdline; i++)
+		{
+			sprintf(tmpstr,"%20.7f",interpval[i]);
+			strcat(values,tmpstr);
+		}
+		printf("%s\n",values);
+	}
 	exit(0);
-
 }

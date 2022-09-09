@@ -25,16 +25,16 @@ all: hdf2nc stash lib grabpoint
 
 hdf2nc: $(HDF2NC_OBJ)
 	$(CC) $(CFLAGS) -o hdf2nc  $(HDF2NC_OBJ) $(LINKOPTS)
+grabpoint: $(GRABPOINT_OBJ)
+	$(CC) $(CFLAGS) -o grabpoint  $(GRABPOINT_OBJ) $(LINKOPTS)
+grabpoint.o:	
+	$(CC) $(CFLAGS) -c grabpoint.c
 .c.o:	
 	$(CC) $(CFLAGS) -c $*.c
 stash: stash.o
 	$(CC) -o stash stash.o $(LINKOPTS)
 stash.o:	
 	$(CC) -c stash.c
-grabpoint.o:	
-	$(CC) $(CFLAGS) -c grabpoint.c
-grabpoint: $(GRABPOINT_OBJ)
-	$(CC) $(CFLAGS) -o grabpoint  $(GRABPOINT_OBJ) $(LINKOPTS)
 lib: $(OBJS_LIB)
 	ar cr liblofs.a $(OBJS_LIB) 
 clean:
@@ -58,3 +58,5 @@ install: hdf2nc stash grabpoint
 	install -m 0755 ../bin/grabpoint $(PREFIX)/bin
 	install -m 0755 ../lib/liblofs.a $(PREFIX)/lib
 	install -m 0755 ../include/*.h $(PREFIX)/include
+
+grabpoint.o: grabpoint.c

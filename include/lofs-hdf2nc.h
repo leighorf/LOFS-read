@@ -115,7 +115,6 @@ typedef struct readahead
 
 typedef struct point
 {
-	char varname[MAXSTR];
 	float XC,YC,ZC;//The Cartesian locations that lie on the appropriate mesh (not interpolated)
 	float val;
 } point;
@@ -149,6 +148,6 @@ void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 int mkdir_p(const char *path);
 void add_CM1_LOFS_zfp_metadata_to_netcdf_file (hdf_meta *hm, hid_t *f_id, ncstruct nc);
 void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
-void grabpoint(grid *gd,hdf_meta hm,dir_meta dm, cmdline cmd,mesh msh,point p[2][2][2]);
+float grabpoint(grid *gd,hdf_meta hm,dir_meta dm, cmdline cmd,mesh msh, char *varname);
 
 #endif

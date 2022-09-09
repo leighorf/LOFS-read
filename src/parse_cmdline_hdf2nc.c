@@ -485,7 +485,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc)
 {
 	int got_histpath,got_time,got_XC,got_YC,got_ZC;
-	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_XC, OPT_YC, OPT_ZC };
+	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_XC, OPT_YC, OPT_ZC, OPT_HEADER };
 
 	static struct option long_options[] =
 	{
@@ -494,6 +494,7 @@ void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 		{"xc",       required_argument, 0, OPT_XC},
 		{"yc",       required_argument, 0, OPT_YC},
 		{"zc",       required_argument, 0, OPT_ZC},
+		{"header",   optional_argument, 0, OPT_HEADER},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -538,6 +539,10 @@ void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 			case OPT_ZC:
 				gd->ZC = atof(optarg);
 				got_ZC=1;
+				cmd->optcount++;
+				break;
+			case OPT_HEADER:
+				cmd->header=1;
 				cmd->optcount++;
 				break;
 			case '?':

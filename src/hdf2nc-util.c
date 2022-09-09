@@ -47,6 +47,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->zfplossless=0;
 	cmd->centiseconds=0;
 	cmd->verbose=0;
+	cmd->header=0;
 //	cmd->do_allvars=0;
 	cmd->use_box_offset=0;
 	cmd->use_interp=0;
@@ -282,13 +283,12 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 	}
 }
 
-void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2][2][2])
+float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *varname)
 {
 	int ix,iy,iz,i,j,k;
 	gd->saved_X0+=1; gd->saved_X1-=1;
 	gd->saved_Y0+=1; gd->saved_Y1-=1;
 	gd->saved_Z1-=2;
-	char varname[MAXSTR];
 	float xc,yc,zc; //these are requested and do not need to lie on the grid
 	int ix0,iy0,iz0;
 	int nx,ny,nz;
@@ -296,9 +296,10 @@ void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2]
 	float *buf,*b0;
 	float interpval;
 	requested_cube rc;
-	float w0,w1,w2,p0,p1,p2,p3,p4,p5,p6,p7;
+	float w0,w1,w2,p0,p1,p2,p3,p4,p5,p6;
 	float dx,dy,dz;
 	float avg=0;
+	point p[2][2][2];
 
 	//Here we figure out the grid indices we need
 	//Need to determine if we are u,v,w, or scalar to choose correct
@@ -306,8 +307,6 @@ void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2]
 
 	buf = (float *)malloc(8*sizeof(float));
 	
-	strcpy(varname,p[0][0][0].varname);
-
 	xc=gd->XC;
 	yc=gd->YC;
 	zc=gd->ZC;
@@ -596,12 +595,15 @@ void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2]
 	p4 = p[1][1][0].val*w0+p[1][1][1].val*(1.0-w0);
 	p5 = p3*w1+p4*(1.0-w1);
 	p6 = p2*w2+p5*(1.0-w2);
+	interpval = p6;
 //	printf("dx = %f dy = %f dz = %f w0 = %f w1 = %f w2 = %f \n",dx,dy,dz,w0,w1,w2);
 //	printf("%s[%4.7f][%4.7f][%4.7f] p0=%f p1=%f p2=%f p3=%f p4=%f p5=%f p6=%f avg=%f\n",varname,xc,yc,zc,p0,p1,p2,p3,p4,p5,p6,avg);
 //	printf("%s %i %i %i %14.8f %14.8f %14.8f %14.8f %14.8f\n",varname,rc.X0,rc.Y0,rc.Z0,cmd.time,xc,yc,zc,p6);
 //	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f %f %f %f\n",varname,cmd.time,xc,yc,zc,p6,w0,w1,w2);
-	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
+//	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
 
+	free(b0);
+	return interpval;
 }
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
