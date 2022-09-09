@@ -13,22 +13,28 @@ H5ZZFP=/home1/06618/orf/build/zfp-latest/H5Z-ZFP/installed
 CFLAGS = -fopenmp -g -O2 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64 -D_FILE_OFFSET_BITS=64
 LINKOPTS  = -L$(ZFP)/lib -L$(H5ZZFP)/lib -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
-SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c mkdir_p.c
+SRC=hdf2nc.c hdf2nc-util.c parse_cmdline_hdf2nc.c parsedir.c hdfio.c readlofs.c do_requested_variables.c mkdir_p.c grabpoint.c
 OBJS = $(addsuffix .o, $(basename $(SRC)))
 ## hdf2nc.o is not something we need to link to in the
 ## archive, so we remove it.
 OBJS_LIB = $(filter-out hdf2nc.o, $(OBJS))
+HDF2NC_OBJ = $(filter-out grabpoint.o, $(OBJS))
+GRABPOINT_OBJ = $(filter-out hdf2nc.o, $(OBJS))
 
-all: hdf2nc stash lib
+all: hdf2nc stash lib grabpoint
 
-hdf2nc: $(OBJS)
-	$(CC) $(CFLAGS) -o hdf2nc  $(OBJS) $(LINKOPTS)
+hdf2nc: $(HDF2NC_OBJ)
+	$(CC) $(CFLAGS) -o hdf2nc  $(HDF2NC_OBJ) $(LINKOPTS)
 .c.o:	
 	$(CC) $(CFLAGS) -c $*.c
 stash: stash.o
 	$(CC) -o stash stash.o $(LINKOPTS)
-stash.c:	
+stash.o:	
 	$(CC) -c stash.c
+grabpoint.o:	
+	$(CC) $(CFLAGS) -c grabpoint.c
+grabpoint: $(GRABPOINT_OBJ)
+	$(CC) $(CFLAGS) -o grabpoint  $(GRABPOINT_OBJ) $(LINKOPTS)
 lib: $(OBJS_LIB)
 	ar cr liblofs.a $(OBJS_LIB) 
 clean:
@@ -36,8 +42,9 @@ clean:
 	rm -rf ../bin/hdf2nc
 	rm -rf ../bin/stash
 	rm -rf ../lib/liblofs.a
-install: hdf2nc stash
+install: hdf2nc stash grabpoint
 	mv hdf2nc ../bin
+	mv grabpoint ../bin
 	mv stash ../bin
 	mv liblofs.a ../lib/
 	install -d $(PREFIX)
@@ -48,5 +55,6 @@ install: hdf2nc stash
 	install -m 0755 ../bin/cm12snd $(PREFIX)/bin
 	install -m 0755 ../bin/hdf2nc $(PREFIX)/bin
 	install -m 0755 ../bin/stash $(PREFIX)/bin
+	install -m 0755 ../bin/grabpoint $(PREFIX)/bin
 	install -m 0755 ../lib/liblofs.a $(PREFIX)/lib
 	install -m 0755 ../include/*.h $(PREFIX)/include

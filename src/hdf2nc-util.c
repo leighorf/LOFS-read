@@ -282,6 +282,326 @@ void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 	}
 }
 
+void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2][2][2])
+{
+	int ix,iy,iz,i,j,k;
+	gd->saved_X0+=1; gd->saved_X1-=1;
+	gd->saved_Y0+=1; gd->saved_Y1-=1;
+	gd->saved_Z1-=2;
+	char varname[MAXSTR];
+	float xc,yc,zc; //these are requested and do not need to lie on the grid
+	int ix0,iy0,iz0;
+	int nx,ny,nz;
+	float *xh,*yh,*zh,*xf,*yf,*zf;
+	float *buf,*b0;
+	float interpval;
+	requested_cube rc;
+	float w0,w1,w2,p0,p1,p2,p3,p4,p5,p6,p7;
+	float dx,dy,dz;
+	float avg=0;
+
+	//Here we figure out the grid indices we need
+	//Need to determine if we are u,v,w, or scalar to choose correct
+	//mesh
+
+	buf = (float *)malloc(8*sizeof(float));
+	
+	strcpy(varname,p[0][0][0].varname);
+
+	xc=gd->XC;
+	yc=gd->YC;
+	zc=gd->ZC;
+	
+	nx = hm.nx;
+	ny = hm.ny;
+	nz = hm.nz;
+
+	xh = msh.xhfull;
+	yh = msh.yhfull;
+	zh = msh.zh;
+
+	xf = msh.xffull;
+	yf = msh.yffull;
+	zf = msh.zf;
+
+	//More annoying code, this to fill our 2x2x2 cube of structures so
+	//we can then do the final interpolation. Lots of checks for what
+	//mesh we are on, which depends on whether you are asking for
+	//u,v,w,or a scalar
+
+	if(same(varname,"u"))
+	{
+		for(ix=0;ix<nx;ix++)
+		{
+			if(xf[ix] <= xc && xf[ix+1] > xc)
+			{
+				ix0=ix;
+				for (k=0;k<2;k++)
+				{
+					for(j=0;j<2;j++)
+					{
+						p[k][j][0].XC = xf[ix0];
+						p[k][j][1].XC = xf[ix0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iy=0;iy<ny;iy++)
+		{
+			if(yh[iy] <= yc && yh[iy+1] > yc)
+			{
+				iy0=iy;
+				for (k=0;k<2;k++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[k][0][i].YC = yh[iy0];
+						p[k][1][i].YC = yh[iy0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iz=0;iz<nz;iz++)
+		{
+			if(zh[iz] <= zc && zh[iz+1] > zc)
+			{
+				iz0=iz;
+				for (j=0;j<2;j++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[0][j][i].ZC = zh[iz0];
+						p[1][j][i].ZC = zh[iz0+1];
+					}
+				}
+				break;
+			}
+		}
+	}
+	else if(same(varname,"v"))
+	{
+		for(ix=0;ix<nx;ix++)
+		{
+			if(xh[ix] <= xc && xh[ix+1] > xc)
+			{
+				ix0=ix;
+				for (k=0;k<2;k++)
+				{
+					for(j=0;j<2;j++)
+					{
+						p[k][j][0].XC = xh[ix0];
+						p[k][j][1].XC = xh[ix0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iy=0;iy<ny;iy++)
+		{
+			if(yf[iy] <= yc && yf[iy+1] > yc)
+			{
+				iy0=iy;
+				for (k=0;k<2;k++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[k][0][i].YC = yf[iy0];
+						p[k][1][i].YC = yf[iy0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iz=0;iz<nz;iz++)
+		{
+			if(zh[iz] <= zc && zh[iz+1] > zc)
+			{
+				iz0=iz;
+				for (j=0;j<2;j++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[0][j][i].ZC = zh[iz0];
+						p[1][j][i].ZC = zh[iz0+1];
+					}
+				}
+				break;
+			}
+		}
+	}
+	else if(same(varname,"w"))
+	{
+		for(ix=0;ix<nx;ix++)
+		{
+			if(xh[ix] <= xc && xh[ix+1] > xc)
+			{
+				ix0=ix;
+				for (k=0;k<2;k++)
+				{
+					for(j=0;j<2;j++)
+					{
+						p[k][j][0].XC = xh[ix0];
+						p[k][j][1].XC = xh[ix0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iy=0;iy<ny;iy++)
+		{
+			if(yh[iy] <= yc && yh[iy+1] > yc)
+			{
+				iy0=iy;
+				for (k=0;k<2;k++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[k][0][i].YC = yh[iy0];
+						p[k][1][i].YC = yh[iy0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iz=0;iz<nz;iz++)
+		{
+			if(zf[iz] <= zc && zf[iz+1] > zc)
+			{
+				iz0=iz;
+				for (j=0;j<2;j++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[0][j][i].ZC = zf[iz0];
+						p[1][j][i].ZC = zf[iz0+1];
+					}
+				}
+				break;
+			}
+		}
+	}
+	else
+	{
+		for(ix=0;ix<nx;ix++)
+		{
+			if(xh[ix] <= xc && xh[ix+1] > xc)
+			{
+				ix0=ix;
+				for (k=0;k<2;k++)
+				{
+					for(j=0;j<2;j++)
+					{
+						p[k][j][0].XC = xh[ix0];
+						p[k][j][1].XC = xh[ix0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iy=0;iy<ny;iy++)
+		{
+			if(yh[iy] <= yc && yh[iy+1] > yc)
+			{
+				iy0=iy;
+				for (k=0;k<2;k++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[k][0][i].YC = yh[iy0];
+						p[k][1][i].YC = yh[iy0+1];
+					}
+				}
+				break;
+			}
+		}
+		for(iz=0;iz<nz;iz++)
+		{
+			if(zh[iz] <= zc && zh[iz+1] > zc)
+			{
+				iz0=iz;
+				for (j=0;j<2;j++)
+				{
+					for(i=0;i<2;i++)
+					{
+						p[0][j][i].ZC = zh[iz0];
+						p[1][j][i].ZC = zh[iz0+1];
+					}
+				}
+				break;
+			}
+		}
+	}
+
+	rc.X0=gd->X0=ix0; rc.X1=gd->X1=ix0+1;
+	rc.Y0=gd->Y0=iy0; rc.Y1=gd->Y1=iy0+1;
+	rc.Z0=gd->Z0=iz0; rc.Z1=gd->Z1=iz0+1;
+	rc.NX=2;
+	rc.NY=2;
+	rc.NZ=2;
+
+	if (gd->X0>gd->X1||gd->Y0>gd->Y1||gd->X1<gd->saved_X0||gd->Y1<gd->saved_Y0||gd->X0>gd->saved_X1||gd->Y0>gd->saved_Y1)
+	{
+		printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
+				gd->X0,gd->saved_X0,gd->Y0,gd->saved_Y0,gd->X1,gd->saved_X1,gd->Y1,gd->saved_Y1);
+		ERROR_STOP("Your requested indices are wack, or you have missing cm1hdf5 files, goodbye!\n");
+	}
+	if(gd->X0<gd->saved_X0)
+	{
+		printf("Oops: requested out of box: Adjusting X0 (%i) to saved_X0 (%i)\n",gd->X0,gd->saved_X0);
+		gd->X0=gd->saved_X0;
+	}
+	if(gd->Y0<gd->saved_Y0)
+	{
+		printf("Oops: requested out of box: Adjusting Y0 (%i) to saved_Y0 (%i)\n",gd->Y0,gd->saved_Y0);
+		gd->Y0=gd->saved_Y0;
+	}
+	if(gd->X1>gd->saved_X1)
+	{
+		printf("Oops: requested out of box: Adjusting X1 (%i) to saved_X1 (%i)\n",gd->X1,gd->saved_X1);
+		gd->X1=gd->saved_X1;
+	}
+	if(gd->Y1>gd->saved_Y1)
+	{
+		printf("Oops: requested out of box: Adjusting Y1 (%i) to saved_Y1 (%i)\n",gd->Y1,gd->saved_Y1);
+		gd->Y1=gd->saved_Y1;
+	}
+
+	b0=buf;
+	read_lofs_buffer(b0,varname,dm,hm,rc,cmd);
+
+	for(k=0;k<2;k++)
+	for(j=0;j<2;j++)
+	for(i=0;i<2;i++)
+	{
+		p[k][j][i].val=*buf++;
+		avg+=p[k][j][i].val;
+//		printf("%s %04i %04i %04i %14.8f %14.8f %14.8f %14.8f\n",varname,rc.X0+i,rc.Y0+j,rc.Z0+k,p[k][j][i].XC,p[k][j][i].YC,p[k][j][i].ZC,p[k][j][i].val);
+	}
+	avg/=8.0;
+
+	dx = p[0][0][1].XC-p[0][0][0].XC;
+	dy = p[0][1][0].YC-p[0][0][0].YC;
+	dz = p[1][0][0].ZC-p[0][0][0].ZC;
+
+	w0 = (p[0][0][1].XC-xc)/dx;
+	w1 = (p[0][1][0].YC-yc)/dy;
+	w2 = (p[1][0][0].ZC-zc)/dz;
+
+	p0 = p[0][0][0].val*w0+p[0][0][1].val*(1.0-w0);
+	p1 = p[0][1][0].val*w0+p[0][1][1].val*(1.0-w0);
+	p2 = p0*w1+p1*(1.0-w1);
+	p3 = p[1][0][0].val*w0+p[1][0][1].val*(1.0-w0);
+	p4 = p[1][1][0].val*w0+p[1][1][1].val*(1.0-w0);
+	p5 = p3*w1+p4*(1.0-w1);
+	p6 = p2*w2+p5*(1.0-w2);
+//	printf("dx = %f dy = %f dz = %f w0 = %f w1 = %f w2 = %f \n",dx,dy,dz,w0,w1,w2);
+//	printf("%s[%4.7f][%4.7f][%4.7f] p0=%f p1=%f p2=%f p3=%f p4=%f p5=%f p6=%f avg=%f\n",varname,xc,yc,zc,p0,p1,p2,p3,p4,p5,p6,avg);
+//	printf("%s %i %i %i %14.8f %14.8f %14.8f %14.8f %14.8f\n",varname,rc.X0,rc.Y0,rc.Z0,cmd.time,xc,yc,zc,p6);
+	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
+
+}
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 
 	msh->xhfull = (float *)malloc(hm.nx * sizeof(float));
@@ -321,6 +641,8 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 {
 #include "../include/lofs-constants.h"
 	int ix,iy,iz,k;
+
+	printf("gd.X0 = %i gd.X1 = %i gd.Y0 = %i gd.Y1 = %i gd.Z0 = %i gd.Z1 = %i\n",gd.X0,gd.X1,gd.Y0,gd.Y1,gd.Z0,gd.Z1);
 
 	get0dfloat (*f_id,(char *)"mesh/dx",&msh->dx); msh->rdx=1.0/msh->dx;
 	get0dfloat (*f_id,(char *)"mesh/dy",&msh->dy); msh->rdy=1.0/msh->dy;

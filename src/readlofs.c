@@ -187,6 +187,10 @@ void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, reque
 		printf("\nReading %s...\n",varname);
 	}
 
+//ORF TEMP
+//	cmd.verbose=1;
+//  cmd.debug=1;
+
 	gnx = rc.X1 - rc.X0 + 1;
 	gny = rc.Y1 - rc.Y0 + 1;
 	gnz = rc.Z1 - rc.Z0 + 1;

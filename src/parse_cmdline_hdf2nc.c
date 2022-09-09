@@ -481,3 +481,78 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 
 	if (bail)   { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
+
+void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc)
+{
+	int got_histpath,got_time,got_XC,got_YC,got_ZC;
+	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_XC, OPT_YC, OPT_ZC };
+
+	static struct option long_options[] =
+	{
+		{"histpath", required_argument, 0, OPT_HISTPATH},
+		{"time",     required_argument, 0, OPT_TIME},
+		{"xc",       required_argument, 0, OPT_XC},
+		{"yc",       required_argument, 0, OPT_YC},
+		{"zc",       required_argument, 0, OPT_ZC},
+		{0, 0, 0, 0}//sentinel, needed!
+	};
+
+	got_histpath=got_time=got_XC=got_YC=got_ZC=0;
+
+	int bail = 0;
+	if (argc == 1)
+	{
+		fprintf(stderr,
+		"Usage: %s --histpath=[histpath] --xc=[XC] --yc=[YC] --zc=[ZC] --time=[time] varname\n",argv[0]);
+		exit(0);
+	}
+
+	while (1)
+	{
+		int r;
+		int option_index = 0;
+		r = getopt_long_only (argc, argv,"",long_options,&option_index);
+		if (r == -1) break;
+
+		switch(r)
+		{
+			case OPT_HISTPATH:
+				strcpy(cmd->histpath,optarg);
+				got_histpath=1;
+				break;
+			case OPT_TIME:
+				cmd->time = atof(optarg);
+//				printf("cmd->time = %s %12.6f\n",optarg,cmd->time);exit(0);
+				got_time=1;
+				break;
+			case OPT_XC:
+				gd->XC = atof(optarg);
+				got_XC=1;
+				cmd->optcount++;
+				break;
+			case OPT_YC:
+				gd->YC = atof(optarg);
+				got_YC=1;
+				cmd->optcount++;
+				break;
+			case OPT_ZC:
+				gd->ZC = atof(optarg);
+				got_ZC=1;
+				cmd->optcount++;
+				break;
+			case '?':
+				fprintf(stderr,"Exiting: unknown command line option.\n");
+				exit(0);
+				break;
+		}
+	}
+	if (cmd->debug==1)cmd->verbose=1; //show everything
+
+	if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
+	if (!got_time)     { fprintf(stderr,"--time not specified\n");     bail = 1; }
+	if (!got_XC)     { fprintf(stderr,"--xc not specified\n");     bail = 1; }
+	if (!got_YC)     { fprintf(stderr,"--yc not specified\n");     bail = 1; }
+	if (!got_ZC)     { fprintf(stderr,"--zc not specified\n");     bail = 1; }
+
+	if (bail)   { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
+}

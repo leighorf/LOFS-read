@@ -30,7 +30,7 @@ typedef struct netcdf_struct
 	var3dstruct *var3d;
 	char *ncfilename;
 	int dims[4],d2[3];
-	size_t start[4],edges[4];//not used anymore, se do_requested_variables
+	size_t start[4],edges[4];//not used anymore, see do_requested_variables
 	int u0id,v0id,pres0id,pi0id,th0id,thv0id,qv0id,rho0id;
 	int twodslice;
 } ncstruct;
@@ -112,6 +112,14 @@ typedef struct readahead
 	int tempC;
 	int budgets;
 } readahead;
+
+typedef struct point
+{
+	char varname[MAXSTR];
+	float XC,YC,ZC;//The Cartesian locations that lie on the appropriate mesh (not interpolated)
+	float val;
+} point;
+
 void dealloc_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh);
 void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
 void get_saved_base(char *timedir, char *saved_base);
@@ -140,5 +148,7 @@ void compress_with_nccopy(ncstruct nc,cmdline cmd);
 void write_hdf2nc_command_txtfile(int argc, char *argv[],ncstruct nc);
 int mkdir_p(const char *path);
 void add_CM1_LOFS_zfp_metadata_to_netcdf_file (hdf_meta *hm, hid_t *f_id, ncstruct nc);
+void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
+void grabpoint(grid *gd,hdf_meta hm,dir_meta dm, cmdline cmd,mesh msh,point p[2][2][2]);
 
 #endif

@@ -33,6 +33,7 @@ typedef struct hdf_meta
 typedef struct gridstuct
 {
 	int X0,Y0,X1,Y1,Z0,Z1;
+	float XC,YC,ZC;//for grabpoint, Cartesian location input
 	int NX,NY,NZ;
 	int saved_X0,saved_Y0;
 	int saved_X1,saved_Y1;

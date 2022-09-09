@@ -187,7 +187,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 					zptr=&(nc->var3d[i].zfpacc_LOFS);
 					if ((attr_memtype=H5Aget_type(attr_id)) < 0) ERROR_STOP("Could not H5Aget_type");
 					if ((status=H5Aread(attr_id,attr_memtype,zptr)) < 0) ERROR_STOP("Could not H5Aread"); //grab ZFP accuracy from LOFS 3dvar
-					printf("%s is a native LOFS variable with zfpacc_LOFS = %f\n",nc->var3d[i].varname,nc->var3d[i].zfpacc_LOFS);
+					if(cmd->verbose)printf("%s is a native LOFS variable with zfpacc_LOFS = %f\n",nc->var3d[i].varname,nc->var3d[i].zfpacc_LOFS);
 					break;
 				}
 			}
