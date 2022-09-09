@@ -599,6 +599,7 @@ void grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh,point p[2]
 //	printf("dx = %f dy = %f dz = %f w0 = %f w1 = %f w2 = %f \n",dx,dy,dz,w0,w1,w2);
 //	printf("%s[%4.7f][%4.7f][%4.7f] p0=%f p1=%f p2=%f p3=%f p4=%f p5=%f p6=%f avg=%f\n",varname,xc,yc,zc,p0,p1,p2,p3,p4,p5,p6,avg);
 //	printf("%s %i %i %i %14.8f %14.8f %14.8f %14.8f %14.8f\n",varname,rc.X0,rc.Y0,rc.Z0,cmd.time,xc,yc,zc,p6);
+//	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f %f %f %f\n",varname,cmd.time,xc,yc,zc,p6,w0,w1,w2);
 	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
 
 }
