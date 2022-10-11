@@ -789,7 +789,9 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	unsigned int cdata[4]; /* for the ZFP stuff */
 	char attstr[MAXSTR];
 
-//	if(zfpacc_netcdf < 0.0) do_zfp_lossless=1;
+// ORF 2022-10-10	Activating this now for Rachael
+	if(zfpacc_netcdf < 0.0) do_zfp_lossless=1;
+
 //	ORF 2022-09-07 On second thought I'm commenting this out for now. Since we always
 //	save ZFP compressed data int he first place, it makes no sense to
 //	have a lossless ZFP option to the written netCDF file. Only if we
@@ -825,7 +827,7 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 	}
 
 
-	if (do_zfp_lossless)//Currently cannot happen
+	if (do_zfp_lossless)
 	{
 		if (!H5Zfilter_avail(ZFP_ID))
 		{
@@ -835,6 +837,13 @@ void set_nc_meta_zfp_name_units(double zfpacc_netcdf,int do_zfp,int ncid, hdf_me
 			printf("Check your HDF5_PLUGIN_PATH; it is currently %s\n",hdf5_plugin_path);
 			ERROR_STOP("ZFP filter not available");
 		}
+		sprintf(attstr,"zfpacc_netcdf_%s",long_name);
+		printf("%30s = %14.7f",attstr,zfpacc_netcdf);
+		if(flag_adjust) printf(" **** ADJUSTED UPWARDS TO LOFS VALUE\n"); else printf("\n");
+
+		status = nc_put_att_double(ncid,v3d->varnameid, "zfp_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
+		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
+
 		set_zfp_lossless(cdata);
 		status = nc_def_var_filter(ncid,v3d->varnameid,ZFP_ID,4,cdata);
 		if(status != NC_NOERR)

@@ -54,6 +54,7 @@ install: hdf2nc stash grabpoint
 	install -m 0755 ../bin/sndmod $(PREFIX)/bin
 	install -m 0755 ../bin/cm12snd $(PREFIX)/bin
 	install -m 0755 ../bin/hdf2nc $(PREFIX)/bin
+	install -m 0755 ../bin/hdf2nc /scratch3/06618/orf/bin
 	install -m 0755 ../bin/stash $(PREFIX)/bin
 	install -m 0755 ../bin/grabpoint $(PREFIX)/bin
 	install -m 0755 ../lib/liblofs.a $(PREFIX)/lib
