@@ -10,6 +10,7 @@
 int main(int argc, char *argv[])
 {
 	int i,nzfpacc_LOFS,status;
+	char syscmd[MAXSTR];
 
 	dir_meta dm;
 	hdf_meta hm;
@@ -154,6 +155,19 @@ int main(int argc, char *argv[])
 		}
 		printf("nc.ncfilename = %s\n",nc.ncfilename);//exit(0);
 	}
+
+	//ORF check for .cmd file and exit if it's there, if --chk_cmd is chosen
+	//This is for unfinished writes where we need to finish off random files.
+	if(cmd.checkcmd)
+	{
+		char cmdfile[MAXSTR];
+		sprintf(cmdfile,"%s.cmd",nc.ncfilename);
+		if(access(cmdfile,F_OK)==0)
+		{
+			ERROR_STOP("Netcdf file already fully written (cmd file exists), exiting");
+		}
+	}
+	
 
 // ORF 2021-11-12 smalleps above keeps our floating point file names from
 // having lots of 9s (being a tad 'too small')

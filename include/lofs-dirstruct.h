@@ -9,6 +9,8 @@ typedef struct dir_meta
 	char *saved_base;      //Contains the base name of the run
 	char *topdir;          //Full path to '3D' directory or equivalent
 	int firsttimedirindex; //Not currently utilized, but set
+	char *devshmdir;
+	char *cachedir;//Can now live in /dev/shm or in the usual history-directory-relative spot
 	double *dirtimes,*alltimes;
 	int ntimedirs;
 	int ntottimes;
@@ -79,6 +81,8 @@ typedef struct cmdline
 	int write_cmd_file;
 	int optcount;
 	int centiseconds;
+	int devshmcache;
+	int checkcmd;
 	int nvar,nvar_cmdline;
 	int header;
 	char *histpath,*base,*ncdir;

@@ -7,18 +7,23 @@
 void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, hdf_meta *hm, zfpacc *zfpacc)
 {
 	int i;
+//	char syscmd[MAXSTR];
 
 	cmd->histpath        = (char *) malloc(MAXSTR*sizeof(char));
 	cmd->base            = (char *) malloc(MAXSTR*sizeof(char));
 	dm->firstfilename    = (char *) malloc(MAXSTR*sizeof(char));
 	dm->saved_base       = (char *) malloc(MAXSTR*sizeof(char));
 	dm->topdir           = (char *) malloc(MAXSTR*sizeof(char));
+	dm->devshmdir        = (char *) malloc(MAXSTR*sizeof(char));
+	dm->cachedir         = (char *) malloc(MAXSTR*sizeof(char));
 	nc->ncfilename       = (char *) malloc(MAXSTR*sizeof(char));
 	zfpacc->lofs         = (lofs *) malloc(sizeof(lofs));
 	nc->var3d            = (var3dstruct *) malloc(MAXVARIABLES*sizeof(var3dstruct));
 	zfpacc->netcdf       = (netcdf *) malloc(sizeof(netcdf));
 
 	cmd->ncdir = (char *)(malloc(MAXSTR * sizeof(char)));
+
+	strcpy(dm->devshmdir,"/dev/shm/orf");
 
 	dm->regenerate_cache = 0;
 
@@ -45,6 +50,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->gzip=0;
 	cmd->zfp=0;
 	cmd->zfplossless=0;
+	cmd->devshmcache=0;
+	cmd->checkcmd=0;
 	cmd->centiseconds=0;
 	cmd->verbose=0;
 	cmd->header=0;

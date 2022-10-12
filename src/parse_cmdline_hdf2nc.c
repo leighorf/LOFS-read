@@ -10,6 +10,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
 		OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE,
+		OPT_DEV_SHM_CACHE, OPT_CHECK_CMD_FILE,
         OPT_UINTERP_ZFPACC, OPT_VINTERP_ZFPACC, OPT_WINTERP_ZFPACC, OPT_U_ZFPACC, OPT_V_ZFPACC, OPT_W_ZFPACC,
 		OPT_HWIN_SR_ACC, OPT_HWIN_GR_ACC, OPT_WINDMAG_SR_ACC, OPT_XVORT_ZFPACC, OPT_YVORT_ZFPACC, OPT_ZVORT_ZFPACC, OPT_VORTMAG_ZFPACC,
         OPT_QC_ZFPACC, OPT_QI_ZFPACC, OPT_QS_ZFPACC, OPT_QR_ZFPACC, OPT_QG_ZFPACC, OPT_QV_ZFPACC, OPT_QVPERT_ZFPACC,
@@ -48,6 +49,8 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"offset",   optional_argument, 0, OPT_OFFSET},
 		{"nocmd",   optional_argument, 0, OPT_NOCMD},
 		{"interp", optional_argument, 0, OPT_INTERP},
+		{"devshmcache", optional_argument, 0, OPT_DEV_SHM_CACHE},
+		{"checkcmd", optional_argument, 0, OPT_CHECK_CMD_FILE},
 		/* All the ZFP stuff for netcdf output now */
 		{"u_acc",optional_argument, 0,    OPT_U_ZFPACC},
 		{"v_acc",optional_argument, 0,    OPT_V_ZFPACC},
@@ -237,6 +240,14 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_NTHREADS:
 				cmd->nthreads=atoi(optarg);
 				omp_set_num_threads(cmd->nthreads);
+				cmd->optcount++;
+				break;
+			case OPT_DEV_SHM_CACHE:
+				cmd->devshmcache=1;
+				cmd->optcount++;
+				break;
+			case OPT_CHECK_CMD_FILE:
+				cmd->checkcmd=1;
 				cmd->optcount++;
 				break;
             case OPT_U_ZFPACC:

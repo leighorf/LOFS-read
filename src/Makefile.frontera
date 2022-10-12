@@ -61,3 +61,4 @@ install: hdf2nc stash grabpoint
 	install -m 0755 ../include/*.h $(PREFIX)/include
 
 grabpoint.o: grabpoint.c
+parsedir.o: mkdir_p.o

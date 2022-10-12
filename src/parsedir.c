@@ -4,6 +4,7 @@
 #include <limits.h>
 #include "../include/lofs-dirstruct.h"
 #include "../include/lofs-limits.h"
+#include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-read.h"
 
 //extern int regenerate_cache;
@@ -105,7 +106,7 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 
 	FILE *fp;
 
-	sprintf(cachefile_sorted_node_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_sorted_node_dirs");
+	sprintf(cachefile_sorted_node_dirs,"%s/%s",dm->cachedir,"lofs_sorted_node_dirs");
 
 	if (dm->regenerate_cache||(fp = fopen(cachefile_sorted_node_dirs,"r")) == NULL)
 	{
@@ -128,16 +129,18 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 		dm->dn = (j != 1) ? (atoi (dm->nodedir[1]) - atoi (dm->nodedir[0])) : -1;
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
-
-		if ((fp = fopen(cachefile_sorted_node_dirs,"w")) != NULL)
+		if(access(cachefile_sorted_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
 		{
-			fprintf(fp,"%i\n",dm->dn);
-			fprintf(fp,"%i\n",dm->nnodedirs);
-			for (i=0; i<dm->nnodedirs; i++)
+			if ((fp = fopen(cachefile_sorted_node_dirs,"w")) != NULL)
 			{
-				fprintf(fp,"%s\n",dm->nodedir[i]);
+				fprintf(fp,"%i\n",dm->dn);
+				fprintf(fp,"%i\n",dm->nnodedirs);
+				for (i=0; i<dm->nnodedirs; i++)
+				{
+					fprintf(fp,"%s\n",dm->nodedir[i]);
+				}
+				fclose(fp);
 			}
-			fclose(fp);
 		}
 	}
 	else
@@ -166,10 +169,11 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 	char rhsstr[8];
 	char lhsstr[6];
 	char cachefile_sorted_time_dirs[MAXSTR];
+	char cachedir[MAXSTR];
 
 	FILE *fp;
 
-	sprintf(cachefile_sorted_time_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_sorted_time_dirs");
+	sprintf(cachefile_sorted_time_dirs,"%s/%s",dm->cachedir,"lofs_sorted_time_dirs");
 	if (dm->regenerate_cache||(fp = fopen(cachefile_sorted_time_dirs,"r")) == NULL) // First time, haven't created metadata files yet
 	{
 		if(cmd.verbose)printf("Grabbing and caching metadata (only done once):");
@@ -249,11 +253,14 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 		close_directory();
 		sortchararray (dm->timedir, dm->ntimedirs);
 		sortdoublearray (dm->dirtimes, dm->ntimedirs);
-		if ((fp = fopen(cachefile_sorted_time_dirs,"w")) != NULL)
+		if(access(cachefile_sorted_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
 		{
-			fprintf(fp,"%i\n",dm->ntimedirs);
-			for (i = 0; i < dm->ntimedirs; i++) fprintf(fp,"%s %lf\n",dm->timedir[i],dm->dirtimes[i]);
-			fclose(fp);
+			if ((fp = fopen(cachefile_sorted_time_dirs,"w")) != NULL)
+			{
+				fprintf(fp,"%i\n",dm->ntimedirs);
+				for (i = 0; i < dm->ntimedirs; i++) fprintf(fp,"%s %lf\n",dm->timedir[i],dm->dirtimes[i]);
+				fclose(fp);
+			}
 		}
 	}
 	else
@@ -277,7 +284,6 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 	char rhsstr[8]; // 7 digits to right hand side of . in time which is SSSSS.FFFFFFF (plus null termination char)
 	char lhsstr[6]; // 5 digits to left hand side of . in time (plus null termination char)
 	char sd;
-	char cachedir[MAXSTR];
 	char cachefile_num_time_dirs[MAXSTR];
 	
 	FILE *fp;
@@ -291,18 +297,44 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 	 * we check for the special name ".lofs_cache" 
 	 * and we ignore it along with '.' and '..'*/
 
-	sprintf(cachedir,"%s/%s",dm->topdir,".lofs_cache");
-	if ((dip = opendir (cachedir)) == NULL)
+
+	/* 2022-10-12
+	 * Going to try option of writing cache files to /dev/shm
+	 * for better performance (reading tiny files from Lustre repeatedly - bad performance.
+	 * The question is whether having to always generate the cache up front will cause any problems initially
+	 */
+
+	if(cmd.devshmcache)
+	{
+		char devshmcachedir[MAXSTR];
+		char buf[PATH_MAX_CHARS];
+		char *result;
+		sprintf(dm->cachedir,"%s/%s",dm->topdir,".lofs_cache");
+		result = realpath(dm->cachedir,buf);
+		sprintf(devshmcachedir,"%s/%s",dm->devshmdir,dm->cachedir);
+		strcpy(dm->cachedir,devshmcachedir);
+	}
+	else
+	{
+		sprintf(dm->cachedir,"%s/%s",dm->topdir,".lofs_cache");
+	}
+	if ((dip = opendir (dm->cachedir)) == NULL)
 	{
 		int stat;
-		stat = mkdir(cachedir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+//		stat = mkdir(cachedir,S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
+		stat = mkdir_p(dm->cachedir);
+		if(stat!=0)
+		{
+			fprintf(stderr,"Could not open dm->cachedir %s\n",dm->cachedir);
+			ERROR_STOP("Could not make cachedir");
+		}
 	}
 	else
 	{
 		closedir(dip);
 	}
 
-	sprintf(cachefile_num_time_dirs,"%s/%s",cachedir,"lofs_num_time_dirs");
+	sprintf(cachefile_num_time_dirs,"%s/%s",dm->cachedir,"lofs_num_time_dirs");
 
 	if (dm->regenerate_cache||(fp = fopen(cachefile_num_time_dirs,"r")) == NULL) // First time, haven't created metadata files yet
 	{
@@ -364,14 +396,17 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
-		if ((fp = fopen(cachefile_num_time_dirs,"w")) != NULL)
+		if(access(cachefile_num_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
 		{
-			fprintf(fp,"%i\n",j);
-			fclose(fp);
-		}
-		else
-		{
-			printf("CANNOT WRITE %s\n",cachefile_num_time_dirs);
+			if ((fp = fopen(cachefile_num_time_dirs,"w")) != NULL)
+			{
+				fprintf(fp,"%i\n",j);
+				fclose(fp);
+			}
+			else
+			{
+				printf("CANNOT WRITE %s\n",cachefile_num_time_dirs);
+			}
 		}
 	}
 	else
@@ -397,7 +432,7 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 
 	FILE *fp;
 
-	sprintf(cachefile_num_node_dirs,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_num_node_dirs");
+	sprintf(cachefile_num_node_dirs,"%s/%s",dm->cachedir,"lofs_num_node_dirs");
 
 	if (dm->regenerate_cache||(fp = fopen(cachefile_num_node_dirs,"r")) == NULL)
 	{
@@ -412,10 +447,13 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 				j++;
 		}
 		close_directory();
-		if ((fp = fopen(cachefile_num_node_dirs,"w")) != NULL)
+		if(access(cachefile_num_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
 		{
-			fprintf(fp,"%i\n",j);
-			fclose(fp);
+			if ((fp = fopen(cachefile_num_node_dirs,"w")) != NULL)
+			{
+				fprintf(fp,"%i\n",j);
+				fclose(fp);
+			}
 		}
 	}
 	else
@@ -497,7 +535,7 @@ void get_all_available_times (dir_meta *dm, grid *gd, cmdline cmd)
 
 	FILE *fp;
 
-	sprintf(cachefile_all_available_times,"%s/%s/%s",dm->topdir,".lofs_cache","lofs_all_available_times");
+	sprintf(cachefile_all_available_times,"%s/%s",dm->cachedir,"lofs_all_available_times");
 
 	hdf5filename = (char *)malloc(MAXSTR*sizeof(char));
 	alltimes = (double *)malloc(sizeof(double)); //to keep compiler from complaining
@@ -738,16 +776,24 @@ crave electrolytes.
 
 		}
 		printf("\n");
-		if ((fp = fopen(cachefile_all_available_times,"w")) != NULL)
+		// ORF trying to avoid a race condition here. Check if the file exists first.
+		// If it exists, someone else is writing to it, so do nothing. Remember, we tested
+		// for the existence of cachefile_all_available_times way above in the fopen "r"
+		// fopen "w" will create an empty file if it doesn't exist!
+		// Same approach done for each of the cache files.
+		if(access(cachefile_all_available_times,F_OK)!=0)//Check for existence to avoid race condition with other instances
 		{
-			fprintf(fp,"%s\n",dm->firstfilename);
-			fprintf(fp,"%i %i %i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
-			fprintf(fp,"%i\n",dm->ntottimes);
-			for (i=0; i<dm->ntottimes; i++)
+			if ((fp = fopen(cachefile_all_available_times,"w")) != NULL)
 			{
-				fprintf(fp,"%lf\n",dm->alltimes[i]);
+				fprintf(fp,"%s\n",dm->firstfilename);
+				fprintf(fp,"%i %i %i %i %i %i\n",gd->saved_X0,gd->saved_Y0,gd->saved_X1,gd->saved_Y1,gd->saved_Z0,gd->saved_Z1);
+				fprintf(fp,"%i\n",dm->ntottimes);
+				for (i=0; i<dm->ntottimes; i++)
+				{
+					fprintf(fp,"%lf\n",dm->alltimes[i]);
+				}
+				fclose(fp);
 			}
-			fclose(fp);
 		}
 	}
 	else
