@@ -116,6 +116,10 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->qr =             1.0e-3;
 	zfpacc->netcdf->qs =             1.0e-3;
 	zfpacc->netcdf->qg =             1.0e-3;
+	zfpacc->netcdf->ncr =            1.0e-3;
+	zfpacc->netcdf->nci =            1.0e-3;
+	zfpacc->netcdf->ncs =            1.0e-3;
+	zfpacc->netcdf->ncg =            1.0e-3;
 	zfpacc->netcdf->dbz =            5.0;
 
 	zfpacc->netcdf->tke_sg =         1.0e-2;
