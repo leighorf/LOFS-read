@@ -50,6 +50,8 @@ typedef struct lofs_zfp
 	float prespert,thrhopert,dbz;
 	float qc,qi,qr,qg,qs;
 	float nci,ncg,ncr,ncs;
+	/* next line NSSL microphysics only */
+	float qhl,ccn,ccw,crw,cci,csw,chw,chl,vhw,vhl;
 	float qvpert,thpert,th,prs;
 	float pi,pipert,rho,rhopert;
 	float tke_sg,km,kh,qv;
@@ -66,6 +68,8 @@ typedef struct netcdf_zfp
 	float prespert,thrhopert,dbz;
 	float qc,qi,qr,qg,qs;
 	float nci,ncg,ncr,ncs;
+	/* next line NSSL microphysics only */
+	float qhl,ccn,ccw,crw,cci,csw,chw,chl,vhw,vhl;
 	float qvpert,thpert,th,prs;
 	float pi,pipert,rho,rhopert;
 	float tke_sg,km,kh,qv;

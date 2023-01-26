@@ -121,6 +121,17 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ncs =            1.0e-3;
 	zfpacc->netcdf->ncg =            1.0e-3;
 	zfpacc->netcdf->dbz =            5.0;
+/* NSSL microphysics only */
+	zfpacc->netcdf->qhl =            1.0e-3;
+	zfpacc->netcdf->ccn =            1.0e-3;
+	zfpacc->netcdf->ccw =            1.0e-3;
+	zfpacc->netcdf->crw =            1.0e-3;
+	zfpacc->netcdf->cci =            1.0e-3;
+	zfpacc->netcdf->csw =            1.0e-3;
+	zfpacc->netcdf->chw =            1.0e-3;
+	zfpacc->netcdf->chl =            1.0e-3;
+	zfpacc->netcdf->vhw =            1.0e-3;
+	zfpacc->netcdf->vhl =            1.0e-3;
 
 	zfpacc->netcdf->tke_sg =         1.0e-2;
 	zfpacc->netcdf->kh =             1.0e-2;
