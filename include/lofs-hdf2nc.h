@@ -82,6 +82,7 @@ typedef struct netcdf_zfp
 	float hwin_sr,hwin_gr,windmag_sr;
 
 	float wb_buoy,ub_pgrad,vb_pgrad,wb_pgrad;
+	float ub_pgrad_interp,vb_pgrad_interp,wb_pgrad_interp;
 	float xvort_stretch,yvort_stretch,zvort_stretch;
 	float xvort_baro,yvort_baro;
 	float xvort_solenoid,yvort_solenoid,zvort_solenoid;

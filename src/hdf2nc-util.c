@@ -141,6 +141,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ub_pgrad =       1.0e-6;
 	zfpacc->netcdf->vb_pgrad =       1.0e-6;
 	zfpacc->netcdf->wb_pgrad =       1.0e-6;
+	zfpacc->netcdf->ub_pgrad_interp =1.0e-6;
+	zfpacc->netcdf->vb_pgrad_interp =1.0e-6;
+	zfpacc->netcdf->wb_pgrad_interp =1.0e-6;
 	zfpacc->netcdf->xvort_stretch =  1.0e-6;
 	zfpacc->netcdf->yvort_stretch =  1.0e-6;
 	zfpacc->netcdf->zvort_stretch =  1.0e-6;
@@ -1474,6 +1477,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"ub_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
 		else if(same(var,"vb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
 		else if(same(var,"wb_pgrad"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"ub_pgrad_interp"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->ub_pgrad_interp,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"vb_pgrad_interp"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->vb_pgrad_interp,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
+		else if(same(var,"wb_pgrad_interp"))       set_nc_meta_zfp_name_units(zfpacc->netcdf->wb_pgrad_interp,        cmd->zfp,nid,hm,v3did,"long_name",var,"m/s^2");
 		else if(same(var,"pipert"))	        set_nc_meta_zfp_name_units(zfpacc->netcdf->pipert,          cmd->zfp,nid,hm,v3did,"long_name",var,"None");
 		else if(same(var,"thpert"))		    set_nc_meta_zfp_name_units(zfpacc->netcdf->thpert,          cmd->zfp,nid,hm,v3did,"long_name",var,"K");
 		else if(same(var,"rhopert"))	    set_nc_meta_zfp_name_units(zfpacc->netcdf->rhopert,         cmd->zfp,nid,hm,v3did,"long_name",var,"kg/m^3");
@@ -1608,6 +1614,9 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"ub_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"vb_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"wb_pgrad")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"ub_pgrad_interp")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"vb_pgrad_interp")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
+		if(same(var,"wb_pgrad_interp")) {rh->ppert=1; rh->thrhopert=1; rh->budgets=1;}
 		if(same(var,"uinterp")) {rh->u=1;}
 		if(same(var,"vinterp")) {rh->v=1;}
 		if(same(var,"winterp")) {rh->w=1;}
@@ -1793,7 +1802,10 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		printf("thrhopert: reading...");
-		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
+//		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
+//ORF TEMPORARY FOR MICROBURST
+        printf("MICROBURST: SUBSTITUTE THPERT FOR THRHOPERT\n");
+		read_lofs_buffer(b->thrhopert,"thpert",dm,hm,rc,cmd);
 		BL;
 	}
 	if (rh.u)
