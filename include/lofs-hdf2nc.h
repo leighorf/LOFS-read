@@ -5,7 +5,6 @@
 #include <hdf5.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include "lofs-limits.h"
 
 //Above is for size_t, not picked up from lofs-read.h
 
