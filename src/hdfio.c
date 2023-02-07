@@ -249,6 +249,8 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 			else if (same(nc->var3d[i].varname,"zvort"))      zfpacc->lofs->zvort =       nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"vortmag"))    zfpacc->lofs->vortmag =       nc->var3d[i].zfpacc_LOFS;
 /*
+ * But, these should be calculated with LOFT (Kelton's calc code)
+ * outside of CM1 like the other stuff... some of it already is...
 			else if (same(nc->var3d[i].varname,"ub_cor"))    zfpacc->lofs->ub_cor =       nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"ub_hadv"))    zfpacc->lofs->ub_hadv =       nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"ub_hediff"))    zfpacc->lofs->ub_hediff =       nc->var3d[i].zfpacc_LOFS;

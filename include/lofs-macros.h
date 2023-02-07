@@ -41,6 +41,8 @@
 // ORF: OK being a bit clever here ... fun with macros. This will make the code a lot
 // easier to compare to native CM1 Fortran90 code that we are copying anyway. I adopt TEM
 // for his tem array, UA for ua etc.
+//
+// These 4D ones are currently not used
 #define BUF4D(x,y,z,t) buf0[P4(x+1, y+1, z  ,t, nx+2, ny+2, nz+1)]
 #define TEM4D(x,y,z,t) dum0[P4(x  , y  , z  ,t, nx+2, ny+2, nz+1)]
 #define  UA4D(x,y,z,t) ustag[P4(x+1, y+1, z, t, nx+2, ny+2, nz+1)]

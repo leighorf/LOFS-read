@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 		printf("nc.ncfilename = %s\n",nc.ncfilename);//exit(0);
 	}
 
-	//ORF check for .cmd file and exit if it's there, if --chk_cmd is chosen
+	//ORF check for .cmd file and exit if it's there, if --checkcmd is chosen
 	//This is for unfinished writes where we need to finish off random files.
 	if(cmd.checkcmd)
 	{
@@ -184,16 +184,19 @@ int main(int argc, char *argv[])
 	}
 	if(cmd.zfp)
 	{
-		int x1a,y1a,z1a;
+		int x1a,y1a,z1a,nxa,nya,nza;
 		x1a=gd.X1;
 		y1a=gd.Y1;
 		z1a=gd.Z1;
+		nxa=gd.X1-gd.X0+1;
+		nya=gd.Y1-gd.Y0+1;
+		nza=gd.Z1-gd.Z0+1;
 		while((gd.X1-gd.X0+1)%4!=0) gd.X1--; 
 		while((gd.Y1-gd.Y0+1)%4!=0) gd.Y1--; 
 		while((gd.Z1-gd.Z0+1)%4!=0) gd.Z1--; 
-		if(x1a-gd.X1 !=0) printf("***Adjusted for ZFP writes (nx%%4=0): gd.X0=%5i gd.X1=%5i gd.NX=%5i\n",gd.X0,gd.X1,gd.X1-gd.X0+1);
-		if(y1a-gd.Y1 !=0) printf("***Adjusted for ZFP writes (ny%%4=0): gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
-		if(z1a-gd.Z1 !=0) printf("***Adjusted for ZFP writes (nz%%4=0): gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
+		if(x1a-gd.X1 !=0) printf("***Adjusted for ZFP writes (nx%%4=0): gd.X0=%5i gd.X1 was %5i now %5i gd.NX was %5i now %5i\n",gd.X0,x1a,gd.X1,nxa,gd.X1-gd.X0+1);
+		if(y1a-gd.Y1 !=0) printf("***Adjusted for ZFP writes (ny%%4=0): gd.Y0=%5i gd.Y1 was %5i now %5i gd.NY was %5i now %5i\n",gd.Y0,y1a,gd.Y1,nya,gd.Y1-gd.Y0+1);
+		if(z1a-gd.Z1 !=0) printf("***Adjusted for ZFP writes (nz%%4=0): gd.Z0=%5i gd.Z1 was %5i now %5i gd.NZ was %5i now %5i\n",gd.Z0,z1a,gd.Z1,nza,gd.Z1-gd.Z0+1);
 	}
 
 	//ORF 2022-08-23-TODO: With ZFP, if you do not pass any x0,y0,x1,y1,z0,z1 location data

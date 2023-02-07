@@ -61,6 +61,87 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 }
 
+/*
+#define WBUOY BUFp
+#define WBUOY_INTERP BUFp
+void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		WBUOY(i, j, 0) = 0.0;
+	}
+	}
+	//
+//Interpolate to scalar mesh
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+		WBUOY_INTERP(i, j, k) = 0.5*(WBUOY(i, j, k) + WBUOY(i, j, k+1));
+	}
+	}
+	}
+
+}
+*/
+
+/*******************************************************************************/
+
+#define WBUOY BUFp
+#define WBUOY_INTERP BUFp
+void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+    float dz,val;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	// need to calculate pipert first
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
+	}
+	}
+	}
+
+	// lower boundary condition
+	#pragma omp parallel for private(i, j)
+	for (j=-1; j<nj+1; j++) {
+	for (i=-1; i<ni+1; i++) {
+		WBUOY(i, j, 0) = 0.0;
+	}
+	}
+//Interpolate to scalar mesh
+	#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+		WBUOY_INTERP(i, j, k) = 0.5*(WBUOY(i, j, k) + WBUOY(i, j, k+1));
+	}
+	}
+	}
+
+}
+
 /*******************************************************************************/
 
 #define WPGRAD BUFp
@@ -306,52 +387,203 @@ void do_vpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 
 }
 
+/*
+#define RHO BUFp
+
+void calc_rho(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+	float pi;
+	float foo;
+	int ifoo;
+
+rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+//	How Kelton does it (pointwise) in calcvort.c
+//	for(k=0; k<nk+1; k++) {
+//	for(j=-1; j<nj+1; j++) {
+//	for(i=-1; i<ni+1; i++) {
+ //   	calc_pipert(b->ppert, snd->pres0, b->buf0, i, j, k, ni, nj);
+//	}
+//	}
+//	}
+
+	read_lofs_buffer(b->buf0,"rhopert",dm,hm,rc,cmd);
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
+	{
+		RHO(i,j,k) = BUFp(i,j,k) + snd->rho0[k];
+	}
+
+}
+*/
 /*******************************************************************************/
 
+/* We no longer readahead u,v,w for caculations of uinterp vinterp
+ * winterp. We only read the raw u,v,w, for vorticity etc. calculations.
+ * We always allocate 2 arrays, and we can overwrite the staggered array
+ * with the interpolated array since we just average the next point with
+ * the current one... this saves memory which is always good */
+
 #define UINTERP BUFp
-void calc_uinterp(buffers *b, grid gd, cmdline cmd)
+#define U BUFp
+void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"u",dm,hm,rc,cmd);
+
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		UINTERP(i,j,k) = 0.5*(UAp(i,j,k)+UAp(i+1,j,k));
+		UINTERP(i,j,k) = 0.5*(U(i,j,k)+U(i+1,j,k));
 }
 
 /*******************************************************************************/
 
 #define VINTERP BUFp
-void calc_vinterp(buffers *b, grid gd, cmdline cmd)
+#define V BUFp
+void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"v",dm,hm,rc,cmd);
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		VINTERP(i,j,k) = 0.5*(VAp(i,j,k)+VAp(i,j+1,k));
+		VINTERP(i,j,k) = 0.5*(V(i,j,k)+V(i,j+1,k));
 }
 
 /*******************************************************************************/
 
 #define WINTERP BUFp
-void calc_winterp(buffers *b, grid gd, cmdline cmd)
+#define W BUFp
+void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"w",dm,hm,rc,cmd);
+
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk+1; k++)
 	for(j=-1; j<nj+1; j++)
 	for(i=-1; i<ni+1; i++)
-		WINTERP(i,j,k) = 0.5*(WAp(i,j,k)+WAp(i,j,k+1));
+		WINTERP(i,j,k) = 0.5*(W(i,j,k)+W(i,j,k+1));
+}
+
+/*******************************************************************************/
+#define KHH_INTERP BUFp
+#define KHH BUFp
+void calc_khh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"khh",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		KHH_INTERP(i,j,k) = 0.5*(KHH(i,j,k)+KHH(i,j,k+1));
+}
+
+/*******************************************************************************/
+#define KMH_INTERP BUFp
+#define KMH BUFp
+void calc_kmh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"kmh",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		KMH_INTERP(i,j,k) = 0.5*(KMH(i,j,k)+KMH(i,j,k+1));
+}
+
+/*******************************************************************************/
+#define KHV_INTERP BUFp
+#define KHV BUFp
+void calc_khv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"khv",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		KHV_INTERP(i,j,k) = 0.5*(KHV(i,j,k)+KHV(i,j,k+1));
+}
+
+/*******************************************************************************/
+#define KMV_INTERP BUFp
+#define KMV BUFp
+void calc_kmv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"kmv",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		KMV_INTERP(i,j,k) = 0.5*(KMV(i,j,k)+KMV(i,j,k+1));
 }
 
 /*******************************************************************************/
@@ -1507,15 +1739,16 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		}
 		else if(same(var,"pipert"))        {CL;do_pipert(b,gd,snd,cmd);}
 		else if(same(var,"wb_buoy"))       {CL;do_wbuoy(b,gd,snd,cmd);}
+		else if(same(var,"wb_buoy_interp"))  {CL;do_wbuoy_interp(b,gd,snd,cmd);}
 		else if(same(var,"ub_pgrad"))      {CL;do_upgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"vb_pgrad"))      {CL;do_vpgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"wb_pgrad"))      {CL;do_wpgrad(b,gd,snd,msh,cmd);}
 		else if(same(var,"ub_pgrad_interp"))      {CL;do_upgrad_interp(b,gd,snd,msh,cmd);}
 		else if(same(var,"vb_pgrad_interp"))      {CL;do_vpgrad_interp(b,gd,snd,msh,cmd);}
 		else if(same(var,"wb_pgrad_interp"))      {CL;do_wpgrad_interp(b,gd,snd,msh,cmd);}
-		else if(same(var,"uinterp"))	   {CL;calc_uinterp(b,gd,cmd);}
-		else if(same(var,"vinterp")) 	   {CL;calc_vinterp(b,gd,cmd);}
-		else if(same(var,"winterp"))	   {CL;calc_winterp(b,gd,cmd);}
+		else if(same(var,"uinterp"))	   {CL;calc_uinterp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"vinterp"))	   {CL;calc_vinterp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"winterp"))	   {CL;calc_winterp(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"hwin_sr"))	   {CL;calc_hwin_sr(b,gd,cmd);}
 		else if(same(var,"hwin_gr"))	   {CL;calc_hwin_gr(b,gd,msh,cmd);}
 		else if(same(var,"windmag_sr"))	   {CL;calc_windmag_sr(b,gd,cmd);}
@@ -1539,6 +1772,10 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"qv"))	   {CL;calc_qv(b,gd,msh,cmd,dm,hm,snd,rc);}
+		else if(same(var,"kmh_interp"))	   {CL;calc_kmh_interp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"kmv_interp"))	   {CL;calc_kmv_interp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"khh_interp"))	   {CL;calc_khh_interp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"khv_interp"))	   {CL;calc_khv_interp(b,gd,msh,cmd,dm,hm,rc);}
 //void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 //			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
 		else

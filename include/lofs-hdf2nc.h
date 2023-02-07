@@ -67,13 +67,14 @@ typedef struct netcdf_zfp
 	/* first, CM1 / LOFS saved variables, identical to above */
 	float u,v,w;
 	float prespert,thrhopert,dbz;
-	float qc,qi,qr,qg,qs;
+	float qv,qc,qi,qr,qg,qs;
 	float nci,ncg,ncr,ncs;
 	/* next line NSSL microphysics only */
 	float qhl,ccn,ccw,crw,cci,csw,chw,chl,vhw,vhl;
 	float qvpert,thpert,th,prs;
 	float pi,pipert,rho,rhopert;
-	float tke_sg,km,kh,qv;
+	float tke_sg;
+	float kmh,kmv,khh,khv;
 
 	/* Now, derived variables... add at your leisure */
 	/* For instance, budget stuff will need to be added here */
@@ -81,9 +82,10 @@ typedef struct netcdf_zfp
 	float uinterp,vinterp,winterp;
 	float xvort,yvort,zvort,vortmag;
 	float hwin_sr,hwin_gr,windmag_sr;
+	float kmh_interp,kmv_interp,khh_interp,khv_interp;
 
 	float wb_buoy,ub_pgrad,vb_pgrad,wb_pgrad;
-	float ub_pgrad_interp,vb_pgrad_interp,wb_pgrad_interp;
+	float wb_buoy_interp,ub_pgrad_interp,vb_pgrad_interp,wb_pgrad_interp;
 	float xvort_stretch,yvort_stretch,zvort_stretch;
 	float xvort_baro,yvort_baro;
 	float xvort_solenoid,yvort_solenoid,zvort_solenoid;
@@ -117,6 +119,7 @@ typedef struct readahead
 	int streamvort,qiqvpert,qtot;
 	int tempC;
 	int budgets;
+	int interp; /* For when we just need to interp to the C mesh */
 } readahead;
 
 typedef struct point

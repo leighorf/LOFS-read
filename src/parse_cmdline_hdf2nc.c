@@ -17,11 +17,13 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
         OPT_DBZ_ZFPACC, OPT_NCI_ZFPACC, OPT_NCG_ZFPACC, OPT_NCR_ZFPACC, OPT_NCS_ZFPACC, OPT_PRESPERT_ZFPACC,
 		OPT_QHL_ZFPACC,OPT_CCN_ZFPACC,OPT_CCW_ZFPACC,OPT_CRW_ZFPACC,OPT_CCI_ZFPACC,OPT_CSW_ZFPACC,OPT_CHW_ZFPACC,OPT_CHL_ZFPACC,OPT_VHW_ZFPACC,OPT_VHL_ZFPACC,
         OPT_THRHOPERT_ZFPACC, OPT_RHO_ZFPACC, OPT_RHOPERT_ZFPACC, OPT_THPERT_ZFPACC, OPT_TH_ZFPACC,
-        OPT_PI_ZFPACC, OPT_PRS_ZFPACC, OPT_PIPERT_ZFPACC, OPT_TKE_SG_ZFPACC, OPT_KH_ZFPACC, OPT_KM_ZFPACC,
+        OPT_PI_ZFPACC, OPT_PRS_ZFPACC, OPT_PIPERT_ZFPACC, OPT_TKE_SG_ZFPACC, OPT_KHH_ZFPACC, OPT_KHV_ZFPACC, OPT_KMH_ZFPACC, OPT_KMV_ZFPACC,
+        OPT_KHH_INTERP_ZFPACC, OPT_KHV_INTERP_ZFPACC, OPT_KMH_INTERP_ZFPACC, OPT_KMV_INTERP_ZFPACC,
 		OPT_WB_BUOY_ZFPACC, OPT_UB_PGRAD_ZFPACC, OPT_VB_PGRAD_ZFPACC, OPT_WB_PGRAD_ZFPACC, OPT_XVORT_STRETCH_ZFPACC,
 		OPT_YVORT_STRETCH_ZFPACC, OPT_ZVORT_STRETCH_ZFPACC, OPT_XVORT_BARO_ZFPACC, OPT_YVORT_BARO_ZFPACC, OPT_XVORT_SOLENOID_ZFPACC,
 		OPT_YVORT_SOLENOID_ZFPACC, OPT_ZVORT_SOLENOID_ZFPACC, OPT_HVORT_ZFPACC, OPT_STREAMVORT_ZFPACC, OPT_QIQVPERT_ZFPACC,
-		OPT_QTOT_ZFPACC, OPT_TEMPC_ZFPACC, OPT_HDIV_ZFPACC
+		OPT_QTOT_ZFPACC, OPT_TEMPC_ZFPACC, OPT_HDIV_ZFPACC, OPT_WB_BUOY_INTERP_ZFPACC, OPT_UB_PGRAD_INTERP_ZFPACC, 
+		OPT_VB_PGRAD_INTERP_ZFPACC, OPT_WB_PGRAD_INTERP_ZFPACC
 	};
 
 	static struct option long_options[] =
@@ -97,11 +99,21 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"prs_acc",optional_argument, 0,            OPT_PRS_ZFPACC},
 		{"pipert_acc",optional_argument, 0,         OPT_PIPERT_ZFPACC},
 		{"tke_sg_acc",optional_argument, 0,         OPT_TKE_SG_ZFPACC},
-		{"kh_acc",optional_argument, 0,             OPT_KH_ZFPACC},
-		{"km_acc",optional_argument, 0,             OPT_KM_ZFPACC},
+		{"kmh_acc",optional_argument, 0,             OPT_KMH_ZFPACC},
+		{"kmv_acc",optional_argument, 0,             OPT_KMV_ZFPACC},
+		{"khh_acc",optional_argument, 0,             OPT_KHH_ZFPACC},
+		{"khv_acc",optional_argument, 0,             OPT_KHV_ZFPACC},
+		{"kmh_interp_acc",optional_argument, 0,             OPT_KMH_INTERP_ZFPACC},
+		{"kmv_interp_acc",optional_argument, 0,             OPT_KMV_INTERP_ZFPACC},
+		{"khh_interp_acc",optional_argument, 0,             OPT_KHH_INTERP_ZFPACC},
+		{"khv_interp_acc",optional_argument, 0,             OPT_KHV_INTERP_ZFPACC},
 		{"wb_buoy_acc",optional_argument, 0,        OPT_WB_BUOY_ZFPACC},
+		{"wb_buoy_interp_acc",optional_argument, 0,        OPT_WB_BUOY_INTERP_ZFPACC},
+		{"ub_pgrad_interp_acc",optional_argument, 0,       OPT_UB_PGRAD_INTERP_ZFPACC},
 		{"ub_pgrad_acc",optional_argument, 0,       OPT_UB_PGRAD_ZFPACC},
+		{"vb_pgrad_interp_acc",optional_argument, 0,       OPT_VB_PGRAD_INTERP_ZFPACC},
 		{"vb_pgrad_acc",optional_argument, 0,       OPT_VB_PGRAD_ZFPACC},
+		{"wb_pgrad_interp_acc",optional_argument, 0,       OPT_WB_PGRAD_INTERP_ZFPACC},
 		{"wb_pgrad_acc",optional_argument, 0,       OPT_WB_PGRAD_ZFPACC},
 		{"xvort_stretch_acc",optional_argument, 0,  OPT_XVORT_STRETCH_ZFPACC},
 		{"yvort_stretch_acc",optional_argument, 0,  OPT_YVORT_STRETCH_ZFPACC},
@@ -400,28 +412,68 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				zfpacc->netcdf->tke_sg = atof(optarg);
 				cmd->optcount++;
 				break;
-            case OPT_KH_ZFPACC:
-				zfpacc->netcdf->kh = atof(optarg);
+            case OPT_KMH_ZFPACC:
+				zfpacc->netcdf->kmh = atof(optarg);
 				cmd->optcount++;
 				break;
-            case OPT_KM_ZFPACC:
-				zfpacc->netcdf->km = atof(optarg);
+            case OPT_KMV_ZFPACC:
+				zfpacc->netcdf->kmv = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KHH_ZFPACC:
+				zfpacc->netcdf->khh = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KHV_ZFPACC:
+				zfpacc->netcdf->khv = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KMH_INTERP_ZFPACC:
+				zfpacc->netcdf->kmh_interp = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KMV_INTERP_ZFPACC:
+				zfpacc->netcdf->kmv_interp = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KHH_INTERP_ZFPACC:
+				zfpacc->netcdf->khh_interp = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_KHV_INTERP_ZFPACC:
+				zfpacc->netcdf->khv_interp = atof(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_WB_BUOY_ZFPACC:
 				zfpacc->netcdf->wb_buoy = atof(optarg);
 				cmd->optcount++;
 				break;
+			case OPT_WB_BUOY_INTERP_ZFPACC:
+				zfpacc->netcdf->wb_buoy_interp = atof(optarg);
+				cmd->optcount++;
+				break;
 			case OPT_UB_PGRAD_ZFPACC:
 				zfpacc->netcdf->ub_pgrad = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_UB_PGRAD_INTERP_ZFPACC:
+				zfpacc->netcdf->ub_pgrad_interp = atof(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_VB_PGRAD_ZFPACC:
 				zfpacc->netcdf->vb_pgrad = atof(optarg);
 				cmd->optcount++;
 				break;
+			case OPT_VB_PGRAD_INTERP_ZFPACC:
+				zfpacc->netcdf->vb_pgrad_interp = atof(optarg);
+				cmd->optcount++;
+				break;
 			case OPT_WB_PGRAD_ZFPACC:
 				zfpacc->netcdf->wb_pgrad = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_WB_PGRAD_INTERP_ZFPACC:
+				zfpacc->netcdf->wb_pgrad_interp = atof(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_XVORT_STRETCH_ZFPACC:
