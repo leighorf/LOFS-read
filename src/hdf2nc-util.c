@@ -1661,11 +1661,11 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"xvort")) {rh->v=1;rh->w=1;}
 		if(same(var,"yvort")) {rh->u=1;rh->w=1;}
 		if(same(var,"zvort")) {rh->u=1;rh->v=1;}
-		if(same(var,"xvort_stretch")) {rh->v=1;rh->w=1;}
-		if(same(var,"yvort_stretch")) {rh->u=1;rh->w=1;}
-		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;}
-		if(same(var,"xvort_baro")) {rh->thrhopert=1;}
-		if(same(var,"yvort_baro")) {rh->thrhopert=1;}
+		if(same(var,"xvort_stretch")) {rh->v=1;rh->w=1;rh->budgets=1;}
+		if(same(var,"yvort_stretch")) {rh->u=1;rh->w=1;rh->budgets=1;}
+		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;rh->budgets=1;}
+		if(same(var,"xvort_baro")) {rh->thrhopert=1;rh->budgets=1;}
+		if(same(var,"yvort_baro")) {rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"xvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"yvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"zvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
@@ -1701,6 +1701,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if(cmd.verbose)printf("b->buf0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->buf0 = b->buf = (float *) malloc ((size_t)bufsize)) == NULL)
 			ERROR_STOP("Cannot allocate our 3D variable buffer array");
+		ibuf++;
 
 		if(cmd.verbose)printf("b->threedbuf: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 		if ((b->threedbuf = (float *) malloc ((size_t)bswrite)) == NULL)
@@ -1747,8 +1748,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			totbufsize+=bufsize;
 			ibuf++;
 		}
-//		if (rh.u||rh.v||rh.w||rh.budgets)
-		if (rh.budgets)
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.tempC)//Not really readahead, but if we calculated these we need another array
 		{
 			if(cmd.verbose)printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -1779,7 +1779,7 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.u||rh.v||rh.w||rh.budgets) free (b->dum0);
+		if (rh.budgets) free (b->dum0);
 		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)free(b->dum1);
 	}
 }
