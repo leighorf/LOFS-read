@@ -744,39 +744,31 @@ void calc_qtot(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta h
 	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
-	printf("\nA\n");
 	read_lofs_buffer(b->buf0,"qvpert",dm,hm,rc,cmd);
-	printf("B\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) = BUFp(i,j,k);
-	printf("C\n");
 
 	read_lofs_buffer(b->buf0,"qc",dm,hm,rc,cmd);
-	printf("D\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += BUFp(i,j,k);
-	printf("E\n");
 
 	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd);
-	printf("F\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += BUFp(i,j,k);
-	printf("G\n");
 
 	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd);
-	printf("H\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
@@ -784,33 +776,27 @@ void calc_qtot(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta h
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += BUFp(i,j,k);
 
-	printf("I\n");
 	read_lofs_buffer(b->buf0,"qs",dm,hm,rc,cmd);
-	printf("J\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += BUFp(i,j,k);
-	printf("K\n");
 
 	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd);
 
-	printf("L\n");
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += BUFp(i,j,k);
-	printf("M\n");
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		QTOT(i,j,k) = TEM1p(i,j,k);
-	printf("N\n");
 }
 
 /*******************************************************************************/

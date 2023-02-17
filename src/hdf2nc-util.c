@@ -1779,8 +1779,10 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.budgets) free (b->dum0);
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets)free(b->dum1);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.tempC) {free(b->dum0);free(b->dum1);}
+		//TODO more checks required here.  We want to be absolutely
+		//sure to free all memory before doing external compression,
+		//should we choose the --gzip option
 	}
 }
 
