@@ -486,15 +486,15 @@ void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	nx=ni; ny=nj; nz=nk;
 
 	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 	read_lofs_buffer(b->buf0,"w",dm,hm,rc,cmd);
 
 #pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk+1; k++)
-	for(j=-1; j<nj+1; j++)
-	for(i=-1; i<ni+1; i++)
+	for(k=0;k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
 		WINTERP(i,j,k) = 0.5*(W(i,j,k)+W(i,j,k+1));
 }
 
