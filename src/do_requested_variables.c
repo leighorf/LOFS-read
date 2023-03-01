@@ -423,17 +423,59 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 }
 */
+
 /*******************************************************************************/
 
-/* We no longer readahead u,v,w for caculations of uinterp vinterp
- * winterp. We only read the raw u,v,w, for vorticity etc. calculations.
- * We always allocate 2 arrays, and we can overwrite the staggered array
- * with the interpolated array since we just average the next point with
- * the current one... this saves memory which is always good */
+void buf_u(buffers *b,grid gd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		BUFp(i,j,k)=UAp(i,j,k);
+}
+
+void buf_v(buffers *b,grid gd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		BUFp(i,j,k)=VAp(i,j,k);
+}
+
+void buf_w(buffers *b,grid gd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		BUFp(i,j,k)=WAp(i,j,k);
+}
+
+/*******************************************************************************/
+
+/* More Memory Management Madness!!!!!
+ * Check if we've already buffered u,v,w before doing interps */
 
 #define UINTERP BUFp
 #define U BUFp
-void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc,readahead rh)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
@@ -443,7 +485,15 @@ void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
-	read_lofs_buffer(b->buf0,"u",dm,hm,rc,cmd);
+	if(rh.u)
+	{
+		buf_u(b,gd); 
+	}
+	else
+	{
+		printf("reading...");FL;
+		read_lofs_buffer(b->buf0,"u",dm,hm,rc,cmd);
+	}
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
@@ -456,7 +506,7 @@ void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 
 #define VINTERP BUFp
 #define V BUFp
-void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc,readahead rh)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
@@ -466,7 +516,15 @@ void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
-	read_lofs_buffer(b->buf0,"v",dm,hm,rc,cmd);
+	if(rh.v)
+	{
+		buf_v(b,gd); 
+	}
+	else
+	{
+		printf("reading...");FL;
+		read_lofs_buffer(b->buf0,"v",dm,hm,rc,cmd);
+	}
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
@@ -479,7 +537,7 @@ void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 
 #define WINTERP BUFp
 #define W BUFp
-void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc,readahead rh)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
@@ -489,7 +547,15 @@ void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
-	read_lofs_buffer(b->buf0,"w",dm,hm,rc,cmd);
+	if(rh.w)
+	{
+		buf_w(b,gd); 
+	}
+	else
+	{
+		printf("reading...");FL;
+		read_lofs_buffer(b->buf0,"w",dm,hm,rc,cmd);
+	}
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0;k<nk; k++)
@@ -1586,50 +1652,6 @@ void calc_streamvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 
 /*******************************************************************************/
 
-void buf_u(buffers *b,grid gd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		BUFp(i,j,k)=UAp(i,j,k);
-}
-
-void buf_v(buffers *b,grid gd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		BUFp(i,j,k)=VAp(i,j,k);
-}
-
-void buf_w(buffers *b,grid gd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		BUFp(i,j,k)=WAp(i,j,k);
-}
-
-/*******************************************************************************/
-
 void z_progress_bar(int iz, int nz)
 {
 	int index;
@@ -1732,9 +1754,9 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"ub_pgrad_interp"))      {CL;do_upgrad_interp(b,gd,snd,msh,cmd);}
 		else if(same(var,"vb_pgrad_interp"))      {CL;do_vpgrad_interp(b,gd,snd,msh,cmd);}
 		else if(same(var,"wb_pgrad_interp"))      {CL;do_wpgrad_interp(b,gd,snd,msh,cmd);}
-		else if(same(var,"uinterp"))	   {CL;calc_uinterp(b,gd,msh,cmd,dm,hm,rc);}
-		else if(same(var,"vinterp"))	   {CL;calc_vinterp(b,gd,msh,cmd,dm,hm,rc);}
-		else if(same(var,"winterp"))	   {CL;calc_winterp(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"uinterp"))	   {CL;calc_uinterp(b,gd,msh,cmd,dm,hm,rc,rh);}
+		else if(same(var,"vinterp"))	   {CL;calc_vinterp(b,gd,msh,cmd,dm,hm,rc,rh);}
+		else if(same(var,"winterp"))	   {CL;calc_winterp(b,gd,msh,cmd,dm,hm,rc,rh);}
 		else if(same(var,"hwin_sr"))	   {CL;calc_hwin_sr(b,gd,cmd);}
 		else if(same(var,"hwin_gr"))	   {CL;calc_hwin_gr(b,gd,msh,cmd);}
 		else if(same(var,"windmag_sr"))	   {CL;calc_windmag_sr(b,gd,cmd);}

@@ -247,22 +247,22 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 			case OPT_COMPRESS_BITGROOM_1:
 				cmd->bitgroom1 = 1;
 				cmd->optcount++;
-				printf("*** BitGroom quantization + gzip chosen ***\n");
+				printf("*** BitGroom quantization [digits] + gzip chosen ***\n");
 				break;
 			case OPT_COMPRESS_BITGROOM_2:
 				cmd->bitgroom2 = 1;
 				cmd->optcount++;
-				printf("*** Granular Bit Round quantization + gzip chosen ***\n");
+				printf("*** Granular Bit Round quantization [digits] + gzip chosen ***\n");
 				break;
 			case OPT_COMPRESS_BITGROOM_3:
 				cmd->bitgroom3 = 1;
 				cmd->optcount++;
-				printf("*** Bit Round quantization + gzip chosen ***\n");
+				printf("*** Bit Round quantization [bits] + gzip chosen ***\n");
 				break;
 			case OPT_COMPRESS_BITGROOM_NSD:
 				cmd->bitgroom_nsd = atoi(optarg);
 				cmd->optcount++;
-				printf("*** %i significant digits chosen for BitGroom quantization ***\n",cmd->bitgroom_nsd);
+				printf("*** %i significant digits/bits chosen for BitGroom quantization ***\n",cmd->bitgroom_nsd);
 				break;
 			case OPT_INTERP:
 				cmd->use_interp=1;

@@ -53,7 +53,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->bitgroom1=0;
 	cmd->bitgroom2=0;
 	cmd->bitgroom3=0;
-	cmd->bitgroom_nsd=8; // Eight significant digits
+	cmd->bitgroom_nsd=8; // Eight significant digits/bits
 	cmd->devshmcache=0;
 	cmd->checkcmd=0;
 	cmd->centiseconds=0;
@@ -1090,8 +1090,9 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     stringlen=strlen(units_string[0]); if(stringlen > 500) exit(0);
     units_for_nc = (char *) malloc ((stringlen+1) * sizeof (char));
     strcpy(units_for_nc,units_string[0]);
-
+//ORF NEW gzip compress swaths
     nc_def_var (ncid_g, twodvarname_hdf2nc[n2d_hdf2nc], NC_FLOAT, 3, d2, &(twodvarid[n2d_hdf2nc]));
+	nc_def_var_deflate(ncid_g,twodvarid[n2d_hdf2nc], 1, 1, 1);
     set_nc_meta_name_units(ncid_g, twodvarid[n2d_hdf2nc],"long_name",description_string_filtered,units_for_nc);
 
     free(units_string[0]); free(units_string);
