@@ -175,7 +175,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 		if (nc->var3d[i].is_LOFS_var)
 		{
 			if ((d_id = H5Dopen (g_id,nc->var3d[i].varname,H5P_DEFAULT)) < 0) ERROR_STOP("Could not H5Dopen");
-			if ((status = H5Oget_info(d_id,&dset_info)) < 0) ERROR_STOP("Could not H5Oget_info");
+			if ((status = H5Oget_info(d_id,&dset_info,H5O_INFO_NUM_ATTRS)) < 0) ERROR_STOP("Could not H5Oget_info");
 			nattr=dset_info.num_attrs;
 			for (j=0; j<nattr; j++)
 			{

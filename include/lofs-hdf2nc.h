@@ -81,7 +81,7 @@ typedef struct netcdf_zfp
 	/* For now I only include what I'm using at the moment */
 	float uinterp,vinterp,winterp;
 	float xvort,yvort,zvort,vortmag;
-	float hwin_sr,hwin_gr,windmag_sr;
+	float hwin_sr,hwin_gr,windmag_sr,u_gr,v_gr;
 	float kmh_interp,kmv_interp,khh_interp,khv_interp;
 
 	float wb_buoy,ub_pgrad,vb_pgrad,wb_pgrad;

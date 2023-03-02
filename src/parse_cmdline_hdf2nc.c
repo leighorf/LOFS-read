@@ -9,7 +9,8 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
 	enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 		OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
-		OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE,
+		OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_COMPRESS_BITGROOM_1, OPT_COMPRESS_BITGROOM_2,
+		OPT_COMPRESS_BITGROOM_3, OPT_COMPRESS_BITGROOM_NSD, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_INTERP, OPT_CENTISECONDS, OPT_TWODWRITE,
 		OPT_DEV_SHM_CACHE, OPT_CHECK_CMD_FILE,
         OPT_UINTERP_ZFPACC, OPT_VINTERP_ZFPACC, OPT_WINTERP_ZFPACC, OPT_U_ZFPACC, OPT_V_ZFPACC, OPT_W_ZFPACC,
 		OPT_HWIN_SR_ZFPACC, OPT_HWIN_GR_ZFPACC, OPT_WINDMAG_SR_ZFPACC, OPT_XVORT_ZFPACC, OPT_YVORT_ZFPACC, OPT_ZVORT_ZFPACC, OPT_VORTMAG_ZFPACC,
@@ -47,6 +48,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"gzip",     optional_argument, 0, OPT_COMPRESS_GZIP},
 		{"zfp",      optional_argument, 0, OPT_COMPRESS_ZFP},
 		{"zfplossless",      optional_argument, 0, OPT_COMPRESS_ZFP_LOSSLESS},
+		{"bitgroom1",      optional_argument, 0, OPT_COMPRESS_BITGROOM_1},
+		{"bitgroom2",      optional_argument, 0, OPT_COMPRESS_BITGROOM_2},
+		{"bitgroom3",      optional_argument, 0, OPT_COMPRESS_BITGROOM_3},
+		{"bitgroom_nsd",      optional_argument, 0, OPT_COMPRESS_BITGROOM_NSD},
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
 		{"twodwrite",optional_argument, 0, OPT_TWODWRITE},
 		{"offset",   optional_argument, 0, OPT_OFFSET},
@@ -238,6 +243,26 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				cmd->zfplossless = 1;
 				cmd->optcount++;
 				printf("*** ZFP lossless data chosen ***\n");
+				break;
+			case OPT_COMPRESS_BITGROOM_1:
+				cmd->bitgroom1 = 1;
+				cmd->optcount++;
+				printf("*** BitGroom quantization [digits] + gzip chosen ***\n");
+				break;
+			case OPT_COMPRESS_BITGROOM_2:
+				cmd->bitgroom2 = 1;
+				cmd->optcount++;
+				printf("*** Granular Bit Round quantization [digits] + gzip chosen ***\n");
+				break;
+			case OPT_COMPRESS_BITGROOM_3:
+				cmd->bitgroom3 = 1;
+				cmd->optcount++;
+				printf("*** Bit Round quantization [bits] + gzip chosen ***\n");
+				break;
+			case OPT_COMPRESS_BITGROOM_NSD:
+				cmd->bitgroom_nsd = atoi(optarg);
+				cmd->optcount++;
+				printf("*** %i significant digits/bits chosen for BitGroom quantization ***\n",cmd->bitgroom_nsd);
 				break;
 			case OPT_INTERP:
 				cmd->use_interp=1;
