@@ -909,6 +909,45 @@ void calc_hwin_gr(buffers *b, grid gd, mesh msh, cmdline cmd)
 
 /*******************************************************************************/
 
+#define U_GR BUFp
+void calc_u_gr(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float ugr,vgr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k,ugr)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+	{
+		ugr = 0.5*(UAp(i,j,k)+UAp(i+1,j,k)) + msh.umove;
+		U_GR(i,j,k) = ugr;
+	}
+}
+/*******************************************************************************/
+
+#define V_GR BUFp
+void calc_v_gr(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float ugr,vgr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k,ugr)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+	{
+		vgr = 0.5*(VAp(i,j,k)+VAp(i+1,j,k)) + msh.vmove;
+		V_GR(i,j,k) = vgr;
+	}
+}
+
+/*******************************************************************************/
+
 #define WINDMAG_SR BUFp
 void calc_windmag_sr(buffers *b, grid gd, cmdline cmd)
 {
@@ -1760,6 +1799,8 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"hwin_sr"))	   {CL;calc_hwin_sr(b,gd,cmd);}
 		else if(same(var,"hwin_gr"))	   {CL;calc_hwin_gr(b,gd,msh,cmd);}
 		else if(same(var,"windmag_sr"))	   {CL;calc_windmag_sr(b,gd,cmd);}
+		else if(same(var,"u_gr"))		   {CL;calc_u_gr(b,gd,msh,cmd);}
+		else if(same(var,"v_gr"))		   {CL;calc_v_gr(b,gd,msh,cmd);}
 		else if(same(var,"hdiv")) 		   {CL;calc_hdiv(b,gd,msh,cmd);}
 		else if(same(var,"xvort"))		   {CL;do_xvort(b,gd,msh,cmd);}
 		else if(same(var,"yvort"))		   {CL;do_yvort(b,gd,msh,cmd);}

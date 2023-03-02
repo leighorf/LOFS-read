@@ -108,7 +108,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->windmag_sr =     1.0e-2;
 	zfpacc->netcdf->hwin_sr =        1.0e-2;
 	zfpacc->netcdf->hwin_gr =        1.0e-2;
-
+	zfpacc->netcdf->u_gr =           1.0e-2;
+	zfpacc->netcdf->v_gr =           1.0e-2;
 	zfpacc->netcdf->thrhopert =      1.0e-2;
 	zfpacc->netcdf->prespert =       1.0e-2;
 	zfpacc->netcdf->rhopert =        1.0e-5;
@@ -1554,6 +1555,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"w"))			    set_nc_meta_name_units_compression(zfpacc->netcdf->w,               *cmd,nid,hm,v3did,"long_name",var,"m/s");
 		else if(same(var,"hwin_sr"))	    set_nc_meta_name_units_compression(zfpacc->netcdf->hwin_sr,         *cmd,nid,hm,v3did,"long_name",var,"m/s");
 		else if(same(var,"hwin_gr"))	    set_nc_meta_name_units_compression(zfpacc->netcdf->hwin_gr,         *cmd,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"u_gr"))	        set_nc_meta_name_units_compression(zfpacc->netcdf->u_gr,            *cmd,nid,hm,v3did,"long_name",var,"m/s");
+		else if(same(var,"v_gr"))	        set_nc_meta_name_units_compression(zfpacc->netcdf->v_gr,            *cmd,nid,hm,v3did,"long_name",var,"m/s");
 		else if(same(var,"windmag_sr"))	    set_nc_meta_name_units_compression(zfpacc->netcdf->windmag_sr,      *cmd,nid,hm,v3did,"long_name",var,"m/s");
 		else if(same(var,"xvort"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->xvort,           *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"yvort"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->yvort,           *cmd,nid,hm,v3did,"long_name",var,"s^-1");
@@ -1766,6 +1769,8 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 //		if(same(var,"winterp")) {rh->interp=1;}
 		if(same(var,"hwin_sr")) {rh->u=1;rh->v=1;}
 		if(same(var,"hwin_gr")) {rh->u=1;rh->v=1;}
+		if(same(var,"u_gr")) {rh->u=1;}
+		if(same(var,"v_gr")) {rh->v=1;}
 		if(same(var,"windmag_sr")) {rh->u=1;rh->v=1;rh->w=1;}
 		if(same(var,"hdiv")) {rh->u=1;rh->v=1;}
 		if(same(var,"xvort")) {rh->v=1;rh->w=1;}
