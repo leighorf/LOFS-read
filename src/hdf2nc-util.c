@@ -586,9 +586,12 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 
 	if (gd->X0>gd->X1||gd->Y0>gd->Y1||gd->X1<gd->saved_X0||gd->Y1<gd->saved_Y0||gd->X0>gd->saved_X1||gd->Y0>gd->saved_Y1)
 	{
-		printf(" *** X0=%i saved_X0=%i Y0=%i saved_Y0=%i X1=%i saved_X1=%i Y1=%i saved_Y1=%i\n",
-				gd->X0,gd->saved_X0,gd->Y0,gd->saved_Y0,gd->X1,gd->saved_X1,gd->Y1,gd->saved_Y1);
-		ERROR_STOP("Your requested indices are wack, or you have missing cm1hdf5 files, goodbye!\n");
+		printf("X: %i %i %i %i\n",gd->saved_X0,gd->X0,gd->X1,gd->saved_X1);
+		printf("Y: %i %i %i %i\n",gd->saved_X0,gd->Y0,gd->Y1,gd->saved_Y1);
+		printf("xc: %f\n",xc);
+		printf("yc: %f\n",yc);
+		printf("zc: %f\n",zc);
+		ERROR_STOP("Above numbers should be monotonically increasing. Your requested data does not it within the saved data!\n");
 	}
 	if(gd->X0<gd->saved_X0)
 	{
