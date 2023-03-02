@@ -118,9 +118,8 @@ int main(int argc, char *argv[])
 	get1dfloat (hdf_file_id,(char *)"mesh/yffull",msh.yffull,0,hm.ny+1);
 	get1dfloat (hdf_file_id,(char *)"mesh/zh",msh.zh,0,hm.nz);
 	get1dfloat (hdf_file_id,(char *)"mesh/zf",msh.zf,0,hm.nz);
-
-//	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id); //These include populating the mesh 1D data that we need to interpolate
-
+	get0dfloat (hdf_file_id,(char *)"mesh/umove",&msh.umove);
+	get0dfloat (hdf_file_id,(char *)"mesh/vmove",&msh.vmove);
 
 //All righty. This ugly code makes beautiful output. Only the 1st
 //call to grabpoint should have the --header argument so the

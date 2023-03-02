@@ -373,7 +373,7 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 	//mesh we are on, which depends on whether you are asking for
 	//u,v,w,or a scalar
 
-	if(same(varname,"u"))
+	if(same(varname,"u")||same(varname,"u_gr"))
 	{
 		for(ix=0;ix<nx;ix++)
 		{
@@ -424,7 +424,7 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 			}
 		}
 	}
-	else if(same(varname,"v"))
+	else if(same(varname,"v")||same(varname,"v_gr"))
 	{
 		for(ix=0;ix<nx;ix++)
 		{
@@ -616,7 +616,23 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 	}
 
 	b0=buf;
-	read_lofs_buffer(b0,varname,dm,hm,rc,cmd);
+	/* 2023-03-02 ORF TODO: If we want to track derived stuff we're gonna have to
+	 * do all that extra checking shit.. for now we assume all
+	 * interpolated things are in the LOFS files... except for u_gr and
+	 * v_gr which are handled below */
+
+	if(same(varname,"u_gr"))
+	{
+		read_lofs_buffer(b0,"u",dm,hm,rc,cmd);
+	}
+	else if(same(varname,"v_gr"))
+	{
+		read_lofs_buffer(b0,"v",dm,hm,rc,cmd);
+	}
+	else
+	{
+		read_lofs_buffer(b0,varname,dm,hm,rc,cmd);
+	}
 
 	for(k=0;k<2;k++)
 	for(j=0;j<2;j++)
@@ -651,6 +667,10 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 //	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
 
 	free(b0);
+	//We need to pass umove and vmove to the command line of grabpoint,
+	//we had to turn off stuff that would have populated msh.umove/vmove
+	if(same(varname,"u_gr")) interpval += msh.umove;
+	if(same(varname,"v_gr")) interpval += msh.vmove;
 	return interpval;
 }
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
