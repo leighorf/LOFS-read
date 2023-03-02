@@ -130,11 +130,30 @@ int main(int argc, char *argv[])
 		char header[MAXSTR];
 		char values[MAXSTR];
 		char tmpstr[MAXSTR];
-		interpval = (float *)malloc(cmd.nvar_cmdline*sizeof(float));
+		float hwin_gr,hwin_sr;
+		float utmp,vtmp;
+		int ii;
+
+		//slippery slope, I know... do a derived calculation here
+		utmp = grabpoint(&gd,hm,dm,cmd,msh,"u");
+		vtmp = grabpoint(&gd,hm,dm,cmd,msh,"v"); 
+		hwin_sr = sqrt(utmp*utmp+vtmp*vtmp);
+		utmp+=msh.umove;
+		vtmp+=msh.vmove;
+		hwin_gr = sqrt(utmp*utmp+vtmp*vtmp);
+
+		//two extra spots for hwin
+		interpval = (float *)malloc((cmd.nvar_cmdline+2)*sizeof(float));
+
 		for (i=0; i<cmd.nvar_cmdline; i++)
 		{
 			interpval[i] = grabpoint(&gd,hm,dm,cmd,msh,cmd.varname_cmdline[i]);
 		}
+
+		ii=cmd.nvar_cmdline;
+		interpval[ii]=hwin_gr;
+		interpval[ii+1]=hwin_sr;
+
 		if(cmd.header)
 		{
 			sprintf(header,"%20s%20s%20s%20s","time","xpos","ypos","zpos");
@@ -143,6 +162,9 @@ int main(int argc, char *argv[])
 				sprintf(tmpstr,"%20s",cmd.varname_cmdline[i]);
 				strcat(header,tmpstr);
 			}
+			sprintf(tmpstr,"%20s","hwin_gr"); strcat(header,tmpstr);
+			sprintf(tmpstr,"%20s","hwin_sr"); strcat(header,tmpstr);
+
 			printf("%s\n",header);
 		}
 		sprintf(values,"%20.7f%20.7f%20.7f%20.7f",cmd.time,gd.XC,gd.YC,gd.ZC);
@@ -151,6 +173,8 @@ int main(int argc, char *argv[])
 			sprintf(tmpstr,"%20.7f",interpval[i]);
 			strcat(values,tmpstr);
 		}
+		sprintf(tmpstr,"%20.7f",hwin_gr); strcat(values,tmpstr);
+		sprintf(tmpstr,"%20.7f",hwin_sr); strcat(values,tmpstr);
 		printf("%s\n",values);
 	}
 	exit(0);

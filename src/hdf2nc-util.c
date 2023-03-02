@@ -660,17 +660,12 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 	p5 = p3*w1+p4*(1.0-w1);
 	p6 = p2*w2+p5*(1.0-w2);
 	interpval = p6;
-//	printf("dx = %f dy = %f dz = %f w0 = %f w1 = %f w2 = %f \n",dx,dy,dz,w0,w1,w2);
-//	printf("%s[%4.7f][%4.7f][%4.7f] p0=%f p1=%f p2=%f p3=%f p4=%f p5=%f p6=%f avg=%f\n",varname,xc,yc,zc,p0,p1,p2,p3,p4,p5,p6,avg);
-//	printf("%s %i %i %i %14.8f %14.8f %14.8f %14.8f %14.8f\n",varname,rc.X0,rc.Y0,rc.Z0,cmd.time,xc,yc,zc,p6);
-//	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f %f %f %f\n",varname,cmd.time,xc,yc,zc,p6,w0,w1,w2);
-//	printf("%12s %14.7f %14.7f %14.7f %14.7f %14.7f\n",varname,cmd.time,xc,yc,zc,p6);
 
 	free(b0);
-	//We need to pass umove and vmove to the command line of grabpoint,
-	//we had to turn off stuff that would have populated msh.umove/vmove
+
 	if(same(varname,"u_gr")) interpval += msh.umove;
 	if(same(varname,"v_gr")) interpval += msh.vmove;
+
 	return interpval;
 }
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
