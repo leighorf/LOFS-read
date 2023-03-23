@@ -16,7 +16,8 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		OPT_HWIN_SR_ZFPACC, OPT_HWIN_GR_ZFPACC, OPT_WINDMAG_SR_ZFPACC, OPT_XVORT_ZFPACC, OPT_YVORT_ZFPACC, OPT_ZVORT_ZFPACC, OPT_VORTMAG_ZFPACC,
         OPT_QC_ZFPACC, OPT_QI_ZFPACC, OPT_QS_ZFPACC, OPT_QR_ZFPACC, OPT_QG_ZFPACC, OPT_QV_ZFPACC, OPT_QVPERT_ZFPACC,
         OPT_DBZ_ZFPACC, OPT_NCI_ZFPACC, OPT_NCG_ZFPACC, OPT_NCR_ZFPACC, OPT_NCS_ZFPACC, OPT_PRESPERT_ZFPACC,
-		OPT_QHL_ZFPACC,OPT_CCN_ZFPACC,OPT_CCW_ZFPACC,OPT_CRW_ZFPACC,OPT_CCI_ZFPACC,OPT_CSW_ZFPACC,OPT_CHW_ZFPACC,OPT_CHL_ZFPACC,OPT_VHW_ZFPACC,OPT_VHL_ZFPACC,
+		OPT_QHL_ZFPACC,OPT_CCN_ZFPACC,OPT_CCI_ZFPACC,OPT_CCW_ZFPACC,OPT_CRW_ZFPACC,OOPT_CSW_ZFPACC,PT_CCI_ZFPACC,
+		OPT_CSW_ZFPACC,OPT_CHW_ZFPACC,OPT_CHL_ZFPACC,OPT_VHW_ZFPACC,OPT_VHL_ZFPACC,
         OPT_THRHOPERT_ZFPACC, OPT_RHO_ZFPACC, OPT_RHOPERT_ZFPACC, OPT_THPERT_ZFPACC, OPT_TH_ZFPACC,
         OPT_PI_ZFPACC, OPT_PRS_ZFPACC, OPT_PIPERT_ZFPACC, OPT_TKE_SG_ZFPACC, OPT_KHH_ZFPACC, OPT_KHV_ZFPACC, OPT_KMH_ZFPACC, OPT_KMV_ZFPACC,
         OPT_KHH_INTERP_ZFPACC, OPT_KHV_INTERP_ZFPACC, OPT_KMH_INTERP_ZFPACC, OPT_KMV_INTERP_ZFPACC,
@@ -89,6 +90,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"ccn_acc",optional_argument, 0,            OPT_CCN_ZFPACC},
 		{"ccw_acc",optional_argument, 0,            OPT_CCW_ZFPACC},
 		{"crw_acc",optional_argument, 0,            OPT_CRW_ZFPACC},
+		{"csw_acc",optional_argument, 0,            OPT_CSW_ZFPACC},
 		{"cci_acc",optional_argument, 0,            OPT_CCI_ZFPACC},
 		{"chw_acc",optional_argument, 0,            OPT_CHW_ZFPACC},
 		{"chl_acc",optional_argument, 0,            OPT_CHL_ZFPACC},
@@ -367,6 +369,38 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
             case OPT_QG_ZFPACC:
 				zfpacc->netcdf->qg = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_QHL_ZFPACC:
+				zfpacc->netcdf->qhl = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CCI_ZFPACC:
+				zfpacc->netcdf->cci = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CCN_ZFPACC:
+				zfpacc->netcdf->ccn = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CCW_ZFPACC:
+				zfpacc->netcdf->ccw = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CHL_ZFPACC:
+				zfpacc->netcdf->chl = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CHW_ZFPACC:
+				zfpacc->netcdf->chw = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CRW_ZFPACC:
+				zfpacc->netcdf->crw = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_CSW_ZFPACC:
+				zfpacc->netcdf->csw = atof(optarg);
 				cmd->optcount++;
 				break;
             case OPT_QV_ZFPACC:
