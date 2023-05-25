@@ -120,7 +120,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 /* Keep in mind all mixing ratios are g/kg here*/
 /* Accuracy parameters less than 0.0 result in LOSSLESS ZFP */
 	zfpacc->netcdf->qc =             1.0e-3;
-	zfpacc->netcdf->qi =             1.0e-3;
+	zfpacc->netcdf->qi =             5.0e-4;
+	zfpacc->netcdf->qvpert =         5.0e-4;
 	zfpacc->netcdf->ncr =            -1.0;
 	zfpacc->netcdf->nci =            -1.0;
 	zfpacc->netcdf->ncs =            -1.0;

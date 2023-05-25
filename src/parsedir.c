@@ -129,8 +129,8 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 		dm->dn = (j != 1) ? (atoi (dm->nodedir[1]) - atoi (dm->nodedir[0])) : -1;
 		/* What if only one node directory?? In that case, send back -1
 		 * and this will tell us to set node directory to 000000 */
-		if(access(cachefile_sorted_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
-		{
+//		if(access(cachefile_sorted_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
+//		{
 			if ((fp = fopen(cachefile_sorted_node_dirs,"w")) != NULL)
 			{
 				fprintf(fp,"%i\n",dm->dn);
@@ -141,7 +141,7 @@ void get_sorted_node_dirs (dir_meta *dm, cmdline cmd)
 				}
 				fclose(fp);
 			}
-		}
+//		}
 	}
 	else
 	{
@@ -253,15 +253,15 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 		close_directory();
 		sortchararray (dm->timedir, dm->ntimedirs);
 		sortdoublearray (dm->dirtimes, dm->ntimedirs);
-		if(access(cachefile_sorted_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
-		{
+//		if(access(cachefile_sorted_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
+//		{
 			if ((fp = fopen(cachefile_sorted_time_dirs,"w")) != NULL)
 			{
 				fprintf(fp,"%i\n",dm->ntimedirs);
 				for (i = 0; i < dm->ntimedirs; i++) fprintf(fp,"%s %lf\n",dm->timedir[i],dm->dirtimes[i]);
 				fclose(fp);
 			}
-		}
+//		}
 	}
 	else
 	{
@@ -396,8 +396,8 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 			else ERROR_STOP("Something wrong with file names in timedir");
 		}
 		close_directory();
-		if(access(cachefile_num_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
-		{
+//		if(access(cachefile_num_time_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
+//		{
 			if ((fp = fopen(cachefile_num_time_dirs,"w")) != NULL)
 			{
 				fprintf(fp,"%i\n",j);
@@ -407,7 +407,7 @@ void get_num_time_dirs (dir_meta *dm,cmdline cmd)
 			{
 				printf("CANNOT WRITE %s\n",cachefile_num_time_dirs);
 			}
-		}
+//		}
 	}
 	else
 	{
@@ -447,14 +447,14 @@ void get_num_node_dirs (dir_meta *dm,cmdline cmd)
 				j++;
 		}
 		close_directory();
-		if(access(cachefile_num_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
-		{
+//		if(access(cachefile_num_node_dirs,F_OK)!=0)//Check for existence to avoid race condition with other instances
+//		{
 			if ((fp = fopen(cachefile_num_node_dirs,"w")) != NULL)
 			{
 				fprintf(fp,"%i\n",j);
 				fclose(fp);
 			}
-		}
+//		}
 	}
 	else
 	{
@@ -781,8 +781,8 @@ crave electrolytes.
 		// for the existence of cachefile_all_available_times way above in the fopen "r"
 		// fopen "w" will create an empty file if it doesn't exist!
 		// Same approach done for each of the cache files.
-		if(access(cachefile_all_available_times,F_OK)!=0)//Check for existence to avoid race condition with other instances
-		{
+//		if(access(cachefile_all_available_times,F_OK)!=0)//Check for existence to avoid race condition with other instances
+//		{
 			if ((fp = fopen(cachefile_all_available_times,"w")) != NULL)
 			{
 				fprintf(fp,"%s\n",dm->firstfilename);
@@ -794,7 +794,7 @@ crave electrolytes.
 				}
 				fclose(fp);
 			}
-		}
+//		}
 	}
 	else
 	{
