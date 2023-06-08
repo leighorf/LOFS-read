@@ -1168,7 +1168,7 @@ void do_yvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 		// This routine uses a centerd difference - so dy 
 		// needs to be set appropriately for the increased distance
 		//
-		dx = 1./(msh.rdy * UF(i));
+		dx = 1./(msh.rdx * UF(i));
 		dz = 1./(msh.rdz * MF(k));
 		calc_yvort_stretch(b->ustag, b->wstag, b->dum0, b->buf0, dx, dz, i, j, k, nx, ny);
 	}
@@ -1205,8 +1205,8 @@ void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 		// This routine uses a centerd difference - so dy 
 		// needs to be set appropriately for the increased distance
 		//
-		dx = 1./(msh.rdy * UF(i));
-		dy = 1./(msh.rdz * VF(j));
+		dx = 1./(msh.rdx * UF(i));
+		dy = 1./(msh.rdy * VF(j));
 		calc_zvort_stretch(b->ustag, b->vstag, b->dum0, b->buf0, dx, dy, i, j, k, nx, ny);
 	}
 	}
@@ -1215,8 +1215,8 @@ void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 }
 /*******************************************************************************/
 
-//ORF
-//We do not use Kelton's code for this because he pre-allocates dwdx and dwdy as full
+//ORF 2023-06-08
+//We do not use Kelton's code for tilting terms because he pre-allocates dwdx and dwdy as full
 //3D arrays - these are temporary and can be calculated locally here
 
 #define ZVTILT BUFp
@@ -1224,7 +1224,7 @@ void do_zvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dx, dy;
-	float dwdx,dwdy,dwdxc[4],dwdyc[4];
+	float dwdx,dwdy,dwdxc[4],dwdyc[4],xvort,yvort,zvort_tilt;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
@@ -1233,37 +1233,151 @@ void do_zvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
 
     do_xvort(b, gd, msh, cmd);
 	// xvort will be in the buf0 array, and we want to copy it to dum0
-	#pragma omp parallel for private(i) 
+#pragma omp parallel for private(i) 
 	for (i=0; i<size; i++) {
 		b->dum0[i] = b->buf0[i];
 	}
     do_yvort(b, gd, msh, cmd);
 	// yvort will be in the buf0 array, and we want to copy it to dum1
-	#pragma omp parallel for private(i) 
+#pragma omp parallel for private(i) 
 	for (i=0; i<size; i++) {
 		b->dum1[i] = b->buf0[i];
 	}
 
-	#pragma omp parallel for private(i,j,k,dx,dy,dwdxc,dwdx,xvort,yvort,zvort_tilt) 
+#pragma omp parallel for private(i,j,k,dx,dy,dwdxc,dwdyc,dwdx,dwdy,xvort,yvort,zvort_tilt) 
 	for (k=0; k<nk; k++) {
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
-		dx = 1./(msh.rdy * UF(i));
-		dy = 1./(msh.rdz * VF(j));
-		dwdxc[0] = ( WA(i, j, k) - WA(i-1, j, k) ) / dx;
-		dwdxc[1] = ( WA(i+1, j, k) - WA(i, j, k) ) / dx;
-		dwdxc[2] = ( WA(i, j+1, k) - WA(i-1, j+1, k) ) / dx;
-		dwdxc[3] = ( WA(i+1, j+1, k) - WA(i, j+1, k) ) / dx;
-		dwdyc[0] = ( WA(i, j, k) - WA(i, j-1, k) ) / dy;
-		dwdyc[1] = ( WA(i+1, j, k) - WA(i, j, k) ) / dy;
-		dwdyc[2] = ( WA(i, j+1, k) - WA(i-1, j+1, k) ) / dy;
-		dwdyc[3] = ( WA(i+1, j+1, k) - WA(i, j+1, k) ) / dy;
+		dx = 1./(msh.rdx * UF(i));
+		dy = 1./(msh.rdy * VF(j));
+		dwdxc[0] = ( WAp(i, j, k) - WAp(i-1, j, k) ) / dx;
+		dwdxc[1] = ( WAp(i+1, j, k) - WAp(i, j, k) ) / dx;
+		dwdxc[2] = ( WAp(i, j+1, k) - WAp(i-1, j+1, k) ) / dx;
+		dwdxc[3] = ( WAp(i+1, j+1, k) - WAp(i, j+1, k) ) / dx;
+		dwdyc[0] = ( WAp(i, j, k) - WAp(i, j-1, k) ) / dy;
+		dwdyc[1] = ( WAp(i, j+1, k) - WAp(i, j, k) ) / dy;
+		dwdyc[2] = ( WAp(i, j, k+1) - WAp(i, j-1, k+1) ) / dy;
+		dwdyc[3] = ( WAp(i, j+1, k+1) - WAp(i, j, k+1) ) / dy;
 		dwdx = 0.25*(dwdxc[0]+dwdxc[1]+dwdxc[2]+dwdxc[3]);
 		dwdy = 0.25*(dwdyc[0]+dwdyc[1]+dwdyc[2]+dwdyc[3]);
 		xvort=TEMp(i,j,k);
 		yvort=TEM1p(i,j,k);
 		zvort_tilt=xvort*dwdx+yvort*dwdy;
-		BUFP(i,j,k) = zvort_tilt;
+		ZVTILT(i,j,k) = zvort_tilt;
+	}
+	}
+	}
+}
+
+/*******************************************************************************/
+
+#define XVTILT BUFp
+void do_xvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dy, dz;
+	float dudy,dudz,dudyc[4],dudzc[4],yvort,zvort,xvort_tilt;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	long size = (nk+1)*(nj+2)*(ni+2);
+
+    do_zvort(b, gd, msh, cmd);
+	// zvort will be in the buf0 array, and we want to copy it to dum0
+#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+    do_yvort(b, gd, msh, cmd);
+	// yvort will be in the buf0 array, and we want to copy it to dum1
+#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum1[i] = b->buf0[i];
+	}
+
+#pragma omp parallel for private(i,j) 
+	for (j=0; j<nj; j++)
+	for (i=0; i<ni; i++)
+		XVTILT(i,j,0) = 0.0;
+
+#pragma omp parallel for private(i,j,k,dy,dz,dudyc,dudzc,dudy,dudz,yvort,zvort,xvort_tilt) 
+	for (k=1; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		dy = 1./(msh.rdy * VF(j));
+		dz = 1./(msh.rdz * MF(k));
+		dudyc[0] = ( UAp(i, j, k) - UAp(i, j-1, k) ) / dy;
+		dudyc[1] = ( UAp(i+1, j, k) - UAp(i+1, j-1, k) ) / dy;
+		dudyc[2] = ( UAp(i, j+1, k) - UAp(i, j, k) ) / dy;
+		dudyc[3] = ( UAp(i+1, j+1, k) - UAp(i+1, j, k) ) / dy;
+		dudzc[0] = ( UAp(i, j, k) - UAp(i, j, k-1) ) / dz;
+		dudzc[1] = ( UAp(i+1, j, k) - UAp(i+1, j, k-1) ) / dz;
+		dudzc[2] = ( UAp(i, j, k+1) - UAp(i, j, k) ) / dz;
+		dudzc[0] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
+		dudy = 0.25*(dudyc[0]+dudyc[1]+dudyc[2]+dudyc[3]);
+		dudz = 0.25*(dudzc[0]+dudzc[1]+dudzc[2]+dudzc[3]);
+		zvort=TEMp(i,j,k);
+		yvort=TEM1p(i,j,k);
+		xvort_tilt=zvort*dudz+yvort*dudy;
+		XVTILT(i,j,k) = xvort_tilt;
+	}
+	}
+	}
+}
+
+/*******************************************************************************/
+
+#define YVTILT BUFp
+void do_yvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dz, dx;
+	float dvdx,dvdz,dvdxc[4],dvdzc[4],zvort,xvort,yvort_tilt;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	long size = (nk+1)*(nj+2)*(ni+2);
+
+    do_zvort(b, gd, msh, cmd);
+	// zvort will be in the buf0 array, and we want to copy it to dum0
+#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+    do_xvort(b, gd, msh, cmd);
+	// xvort will be in the buf0 array, and we want to copy it to dum1
+#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum1[i] = b->buf0[i];
+	}
+
+#pragma omp parallel for private(i,j) 
+	for (j=0; j<nj; j++)
+	for (i=0; i<ni; i++)
+		YVTILT(i,j,0) = 0.0;
+
+#pragma omp parallel for private(i,j,k,dz,dx,dvdzc,dvdxc,dvdz,dvdx,xvort,zvort,yvort_tilt) 
+	for (k=1; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		dx = 1./(msh.rdx * UF(i));
+		dz = 1./(msh.rdz * MF(k));
+		dvdxc[0] = ( VAp(i, j, k) - VAp(i-1, j, k) ) / dx;
+		dvdxc[1] = ( VAp(i+1, j, k) - VAp(i, j, k) ) / dx;
+		dvdxc[2] = ( VAp(i, j+1, k) - VAp(i-1, j+1, k) ) / dx;
+		dvdxc[3] = ( VAp(i+1, j+1, k) - VAp(i, j+1, k) ) / dx;
+		dvdzc[0] = ( VAp(i, j, k) - VAp(i, j, k-1) ) / dz;
+		dvdzc[1] = ( VAp(i, j+1, k) - VAp(i, j+1, k-1) ) / dz;
+		dvdzc[2] = ( VAp(i, j, k+1) - VAp(i, j, k) ) / dz;
+		dvdzc[3] = ( VAp(i, j+1, k+1) - VAp(i, j+1, k) ) / dz;
+		dvdx = 0.25*(dvdxc[0]+dvdxc[1]+dvdxc[2]+dvdxc[3]);
+		dvdz = 0.25*(dvdzc[0]+dvdzc[1]+dvdzc[2]+dvdzc[3]);
+		zvort=TEMp(i,j,k);
+		xvort=TEM1p(i,j,k);
+		yvort_tilt=zvort*dvdz+xvort*dvdx;
+		YVTILT(i,j,k) = yvort_tilt;
 	}
 	}
 	}
@@ -1861,10 +1975,13 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"yvort"))		   {CL;do_yvort(b,gd,msh,cmd);}
 		else if(same(var,"zvort"))		   {CL;do_zvort(b,gd,msh,cmd);}
 		else if(same(var,"xvort_stretch")) {CL;do_xvort_stretch(b,gd,msh,cmd);} 
-		else if(same(var,"yvort_stretch")) {CL;do_yvort_stretch(b,gd,msh,cmd);} 
-		else if(same(var,"zvort_stretch")) {CL;do_zvort_stretch(b,gd,msh,cmd);} 
+		else if(same(var,"xvort_tilt")) {CL;do_xvort_tilt(b,gd,msh,cmd);} 
 	    else if(same(var,"xvort_baro"))    {CL;do_xvort_baro(b,gd,snd,msh,cmd);}
+		else if(same(var,"yvort_stretch")) {CL;do_yvort_stretch(b,gd,msh,cmd);} 
+		else if(same(var,"yvort_tilt")) {CL;do_yvort_tilt(b,gd,msh,cmd);} 
 	    else if(same(var,"yvort_baro"))    {CL;do_yvort_baro(b,gd,snd,msh,cmd);}
+		else if(same(var,"zvort_stretch")) {CL;do_zvort_stretch(b,gd,msh,cmd);} 
+		else if(same(var,"zvort_tilt")) {CL;do_zvort_tilt(b,gd,msh,cmd);} 
 	    else if(same(var,"xvort_solenoid")){CL;do_xvort_solenoid(b,gd,snd,msh,cmd);}
 	    else if(same(var,"yvort_solenoid")){CL;do_yvort_solenoid(b,gd,snd,msh,cmd);}
 	    else if(same(var,"zvort_solenoid")){CL;do_zvort_solenoid(b,gd,snd,msh,cmd);}

@@ -1793,8 +1793,11 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"yvort")) {rh->u=1;rh->w=1;}
 		if(same(var,"zvort")) {rh->u=1;rh->v=1;}
 		if(same(var,"xvort_stretch")) {rh->v=1;rh->w=1;rh->budgets=1;}
+		if(same(var,"xvort_tilt")) {rh->u=1;rh->v=1;rh->w=1;rh->budgets=1;}
 		if(same(var,"yvort_stretch")) {rh->u=1;rh->w=1;rh->budgets=1;}
+		if(same(var,"yvort_tilt")) {rh->u=1;rh->v=1;rh->w=1;rh->budgets=1;}
 		if(same(var,"zvort_stretch")) {rh->u=1;rh->v=1;rh->budgets=1;}
+		if(same(var,"zvort_tilt")) {rh->u=1;rh->v=1;rh->w=1;rh->budgets=1;}
 		if(same(var,"xvort_baro")) {rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"yvort_baro")) {rh->thrhopert=1;rh->budgets=1;}
 		if(same(var,"xvort_solenoid")) {rh->ppert=1;rh->thrhopert=1;rh->budgets=1;}
@@ -1976,10 +1979,10 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		printf("thrhopert: reading...");
-//		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
+		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
 //ORF TEMPORARY FOR MICROBURST
-        printf("MICROBURST: SUBSTITUTE THPERT FOR THRHOPERT\n");
-		read_lofs_buffer(b->thrhopert,"thpert",dm,hm,rc,cmd);
+//      printf("MICROBURST: SUBSTITUTE THPERT FOR THRHOPERT\n");
+//		read_lofs_buffer(b->thrhopert,"thpert",dm,hm,rc,cmd);
 		BL;
 	}
 	if (rh.u)
