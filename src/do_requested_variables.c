@@ -468,6 +468,34 @@ void buf_w(buffers *b,grid gd)
 		BUFp(i,j,k)=WAp(i,j,k);
 }
 
+void buf_prespert(buffers *b,grid gd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		BUFp(i,j,k)=PRESPERTp(i,j,k)
+}
+
+void buf_thrhopert(buffers *b,grid gd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		BUFp(i,j,k)=THRHOPERTp(i,j,k)
+}
+
 /*******************************************************************************/
 
 /* More Memory Management Madness!!!!!
@@ -1951,6 +1979,32 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			else
 			{
 				buf_w(b,gd);
+			}
+		}
+		else if(same(var,"prespert"))
+		{
+			if(!rh.ppert)
+			{
+				buf0nx=gd.NX;ixoff=0;
+				buf0ny=gd.NY;iyoff=0;
+				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
+			}
+			else
+			{
+				buf_prespert(b,gd);
+			}
+		}
+		else if(same(var,"thrhopert"))
+		{
+			if(!rh.thrhopert)
+			{
+				buf0nx=gd.NX;ixoff=0;
+				buf0ny=gd.NY;iyoff=0;
+				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
+			}
+			else
+			{
+				buf_thrhopert(b,gd);
 			}
 		}
 		else if(same(var,"pipert"))        {CL;do_pipert(b,gd,snd,cmd);}
