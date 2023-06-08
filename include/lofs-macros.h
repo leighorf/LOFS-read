@@ -58,7 +58,7 @@
 #define  VAp(x,y,z) b->vstag[P3(x+1, y+1, z, nx+2, ny+2)]
 #define  WAp(x,y,z) b->wstag[P3(x+1, y+1, z, nx+2, ny+2)]
 
-#define  PRESPERTp(x,y,z) b->prespert[P3(x+1, y+1, z, nx+2, ny+2)]
+#define  PRESPERTp(x,y,z) b->ppert[P3(x+1, y+1, z, nx+2, ny+2)]
 #define  THRHOPERTp(x,y,z) b->thrhopert[P3(x+1, y+1, z, nx+2, ny+2)]
 
 #define BUF(x,y,z)  buf0[P3(x+1, y+1, z, nx+2, ny+2)]

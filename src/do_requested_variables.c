@@ -479,7 +479,7 @@ void buf_prespert(buffers *b,grid gd)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		BUFp(i,j,k)=PRESPERTp(i,j,k)
+		BUFp(i,j,k)=PRESPERTp(i,j,k);
 }
 
 void buf_thrhopert(buffers *b,grid gd)
@@ -493,7 +493,7 @@ void buf_thrhopert(buffers *b,grid gd)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		BUFp(i,j,k)=THRHOPERTp(i,j,k)
+		BUFp(i,j,k)=THRHOPERTp(i,j,k);
 }
 
 /*******************************************************************************/

@@ -156,14 +156,14 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->kmv =            1.0e-2;
 	zfpacc->netcdf->kmv_interp =     1.0e-2;
 
-	zfpacc->netcdf->wb_buoy =        1.0e-4;
-	zfpacc->netcdf->wb_buoy_interp = 1.0e-4;
-	zfpacc->netcdf->ub_pgrad =       1.0e-4;
-	zfpacc->netcdf->vb_pgrad =       1.0e-4;
-	zfpacc->netcdf->wb_pgrad =       1.0e-4;
-	zfpacc->netcdf->ub_pgrad_interp =1.0e-4;
-	zfpacc->netcdf->vb_pgrad_interp =1.0e-4;
-	zfpacc->netcdf->wb_pgrad_interp =1.0e-4;
+	zfpacc->netcdf->wb_buoy =        1.0e-3;
+	zfpacc->netcdf->wb_buoy_interp = 1.0e-3;
+	zfpacc->netcdf->ub_pgrad =       1.0e-2;
+	zfpacc->netcdf->vb_pgrad =       1.0e-2;
+	zfpacc->netcdf->wb_pgrad =       1.0e-2;
+	zfpacc->netcdf->ub_pgrad_interp =1.0e-2;
+	zfpacc->netcdf->vb_pgrad_interp =1.0e-2;
+	zfpacc->netcdf->wb_pgrad_interp =1.0e-2;
 	zfpacc->netcdf->xvort_stretch =  1.0e-4;
 	zfpacc->netcdf->yvort_stretch =  1.0e-4;
 	zfpacc->netcdf->zvort_stretch =  1.0e-4;
