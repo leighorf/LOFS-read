@@ -86,18 +86,18 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	for (i=0; i < MAXVARIABLES; i++) hm->zfpacc_LOFS_all[i] = (char *)(malloc(MAXSTR * sizeof(char)));
 
 /*
-
- 2022-08-23 Here are our default zfp accuracy parameters for saved netcdf variables -
- these are reasonably sane choices but watch out for post-processing issues! Either
- twiddle these to your heart's content, or create a routine that overwrites them. Could
- 'bulk set' them with say --zfp-set1 --zfp-set2 etc. new options, if you want to have
- different "tiers" of zfp or different research projects, etc...
-
+ 2022-08-23 Here are our default zfp accuracy parameters for saved
+ netcdf variables - these are reasonably sane choices but watch out for
+ post-processing issues! Either twiddle these to your heart's content,
+ or use command line options to save them (see parse_command_line), or
+ create a routine that overwrites them. Could 'bulk set' them with say
+ --zfp-set1 --zfp-set2 etc. new options, if you want to have different
+ "tiers" of zfp or different research projects, etc...
 */
 
-	/* Leigh Orf's default ZFP accuracy parameters */
+/* Leigh Orf's default ZFP accuracy parameters */
 
-	/* Each can be overridden on the command line */
+/* Each can be overridden on the command line */
 
 	zfpacc->netcdf->u       =        1.0e-2;
 	zfpacc->netcdf->v       =        1.0e-2;
@@ -110,7 +110,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->hwin_gr =        1.0e-2;
 	zfpacc->netcdf->u_gr =           1.0e-2;
 	zfpacc->netcdf->v_gr =           1.0e-2;
-	zfpacc->netcdf->thrhopert =      1.0e-2;
+	zfpacc->netcdf->thrhopert =      1.0e-3;
 	zfpacc->netcdf->prespert =       1.0e-2;
 	zfpacc->netcdf->rhopert =        1.0e-5;
 	zfpacc->netcdf->xvort =          1.0e-3;
@@ -128,10 +128,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ncg =            -1.0;
 	zfpacc->netcdf->dbz =            5.0;
 
-/* Begin Rachael lossless vars , NSSL: */
-	zfpacc->netcdf->qr =             -1.0;
-	zfpacc->netcdf->qs =             -1.0;
-	zfpacc->netcdf->qg =             -1.0;
+	zfpacc->netcdf->qr =             1.0e-3;
+	zfpacc->netcdf->qs =             1.0e-3;
+	zfpacc->netcdf->qg =             1.0e-3;
 /* NSSL microphysics only */
 	zfpacc->netcdf->qhl =            -1.0;
 	zfpacc->netcdf->crw =            -1.0;
@@ -165,14 +164,17 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ub_pgrad_interp =1.0e-4;
 	zfpacc->netcdf->vb_pgrad_interp =1.0e-4;
 	zfpacc->netcdf->wb_pgrad_interp =1.0e-4;
-	zfpacc->netcdf->xvort_stretch =  1.0e-6;
-	zfpacc->netcdf->yvort_stretch =  1.0e-6;
-	zfpacc->netcdf->zvort_stretch =  1.0e-6;
-	zfpacc->netcdf->xvort_baro =     1.0e-6;
-	zfpacc->netcdf->yvort_baro =     1.0e-6;
-	zfpacc->netcdf->xvort_solenoid = 1.0e-6;
-	zfpacc->netcdf->yvort_solenoid = 1.0e-6;
-	zfpacc->netcdf->zvort_solenoid = 1.0e-6;
+	zfpacc->netcdf->xvort_stretch =  1.0e-4;
+	zfpacc->netcdf->yvort_stretch =  1.0e-4;
+	zfpacc->netcdf->zvort_stretch =  1.0e-4;
+	zfpacc->netcdf->xvort_tilt =     1.0e-4;
+	zfpacc->netcdf->yvort_tilt =     1.0e-4;
+	zfpacc->netcdf->zvort_tilt =     1.0e-4;
+	zfpacc->netcdf->xvort_baro =     1.0e-4;
+	zfpacc->netcdf->yvort_baro =     1.0e-4;
+	zfpacc->netcdf->xvort_solenoid = 1.0e-5; //Solenoidal terms get a bit more accuracy - they are small!
+	zfpacc->netcdf->yvort_solenoid = 1.0e-5;
+	zfpacc->netcdf->zvort_solenoid = 1.0e-5;
 	zfpacc->netcdf->hvort =          1.0e-3;
 	zfpacc->netcdf->streamvort =     1.0e-3;
 	zfpacc->netcdf->qiqvpert =       1.0e-4;
@@ -1627,6 +1629,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"xvort_stretch"))  set_nc_meta_name_units_compression(zfpacc->netcdf->xvort_stretch,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
 		else if(same(var,"yvort_stretch"))  set_nc_meta_name_units_compression(zfpacc->netcdf->yvort_stretch,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
 		else if(same(var,"zvort_stretch"))  set_nc_meta_name_units_compression(zfpacc->netcdf->zvort_stretch,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"xvort_tilt"))  set_nc_meta_name_units_compression(zfpacc->netcdf->xvort_tilt,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"yvort_tilt"))  set_nc_meta_name_units_compression(zfpacc->netcdf->yvort_tilt,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
+		else if(same(var,"zvort_tilt"))  set_nc_meta_name_units_compression(zfpacc->netcdf->zvort_tilt,   *cmd,nid,hm,v3did,"long_name",var,"s^-2");
 		else if(same(var,"xvort_baro"))     set_nc_meta_name_units_compression(zfpacc->netcdf->xvort_baro,      *cmd,nid,hm,v3did,"long_name",var,"s^-2");
 		else if(same(var,"yvort_baro"))     set_nc_meta_name_units_compression(zfpacc->netcdf->yvort_baro,      *cmd,nid,hm,v3did,"long_name",var,"s^-2");
 		else if(same(var,"xvort_solenoid")) set_nc_meta_name_units_compression(zfpacc->netcdf->xvort_solenoid,  *cmd,nid,hm,v3did,"long_name",var,"s^-2");
