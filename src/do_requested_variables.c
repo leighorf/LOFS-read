@@ -1151,7 +1151,7 @@ void do_yvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	// calculate xvort and average it to the scalar mesh
+	// calculate yvort and average it to the scalar mesh
     do_yvort(b, gd, msh, cmd);
 	// yvort will be in the buf0 array, and we want/need
 	// to copy it to dum0 so that the stretching rate
@@ -1188,7 +1188,7 @@ void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	// calculate xvort and average it to the scalar mesh
+	// calculate zvort
     do_zvort(b, gd, msh, cmd);
 	// zvort will be in the buf0 array, and we want/need
 	// to copy it to dum0 so that the stretching rate
@@ -1212,6 +1212,61 @@ void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 	}
 	}
 
+}
+/*******************************************************************************/
+
+//ORF
+//We do not use Kelton's code for this because he pre-allocates dwdx and dwdy as full
+//3D arrays - these are temporary and can be calculated locally here
+
+#define ZVTILT BUFp
+void do_zvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx, dy;
+	float dwdx,dwdy,dwdxc[4],dwdyc[4];
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	long size = (nk+1)*(nj+2)*(ni+2);
+
+    do_xvort(b, gd, msh, cmd);
+	// xvort will be in the buf0 array, and we want to copy it to dum0
+	#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum0[i] = b->buf0[i];
+	}
+    do_yvort(b, gd, msh, cmd);
+	// yvort will be in the buf0 array, and we want to copy it to dum1
+	#pragma omp parallel for private(i) 
+	for (i=0; i<size; i++) {
+		b->dum1[i] = b->buf0[i];
+	}
+
+	#pragma omp parallel for private(i,j,k,dx,dy,dwdxc,dwdx,xvort,yvort,zvort_tilt) 
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		dx = 1./(msh.rdy * UF(i));
+		dy = 1./(msh.rdz * VF(j));
+		dwdxc[0] = ( WA(i, j, k) - WA(i-1, j, k) ) / dx;
+		dwdxc[1] = ( WA(i+1, j, k) - WA(i, j, k) ) / dx;
+		dwdxc[2] = ( WA(i, j+1, k) - WA(i-1, j+1, k) ) / dx;
+		dwdxc[3] = ( WA(i+1, j+1, k) - WA(i, j+1, k) ) / dx;
+		dwdyc[0] = ( WA(i, j, k) - WA(i, j-1, k) ) / dy;
+		dwdyc[1] = ( WA(i+1, j, k) - WA(i, j, k) ) / dy;
+		dwdyc[2] = ( WA(i, j+1, k) - WA(i-1, j+1, k) ) / dy;
+		dwdyc[3] = ( WA(i+1, j+1, k) - WA(i, j+1, k) ) / dy;
+		dwdx = 0.25*(dwdxc[0]+dwdxc[1]+dwdxc[2]+dwdxc[3]);
+		dwdy = 0.25*(dwdyc[0]+dwdyc[1]+dwdyc[2]+dwdyc[3]);
+		xvort=TEMp(i,j,k);
+		yvort=TEM1p(i,j,k);
+		zvort_tilt=xvort*dwdx+yvort*dwdy;
+		BUFP(i,j,k) = zvort_tilt;
+	}
+	}
+	}
 }
 
 /*******************************************************************************/
