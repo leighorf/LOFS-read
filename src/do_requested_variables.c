@@ -43,9 +43,9 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(k=1; k<nk; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
     	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
 	}
 	}
@@ -53,55 +53,18 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 	// lower boundary condition
 	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
 		WBUOY(i, j, 0) = 0.0;
 	}
 	}
 
 }
-
-/*
-#define WBUOY BUFp
-#define WBUOY_INTERP BUFp
-void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
-    	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
-	}
-	}
-	}
-
-	// lower boundary condition
-	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
-		WBUOY(i, j, 0) = 0.0;
-	}
-	}
-	//
-//Interpolate to scalar mesh
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
-		WBUOY_INTERP(i, j, k) = 0.5*(WBUOY(i, j, k) + WBUOY(i, j, k+1));
-	}
-	}
-	}
-
-}
-*/
 
 /*******************************************************************************/
+/* ORF STOPPED HERE MAKE SURE snd->th0 etc (all 1D arrays) can go to
+ * nk+1!!! If not read that much in. That may be where our top level
+ * corruption is. */
 
 #define WBUOY BUFp
 #define WBUOY_INTERP BUFp
@@ -113,11 +76,10 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	// need to calculate pipert first
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
     	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
 	}
 	}
@@ -125,16 +87,16 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
 
 	// lower boundary condition
 	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
 		WBUOY(i, j, 0) = 0.0;
 	}
 	}
 //Interpolate to scalar mesh
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
 		WBUOY_INTERP(i, j, k) = 0.5*(WBUOY(i, j, k) + WBUOY(i, j, k+1));
 	}
 	}
@@ -289,7 +251,7 @@ void do_wpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 //Interpolate to scalar mesh
 	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
+	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
 		WPGRADINTERP(i, j, k) = 0.5*(WPGRAD(i, j, k) + WPGRAD(i, j, k+1));
@@ -436,7 +398,7 @@ void buf_u(buffers *b,grid gd)
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
+	for(i=0; i<ni+1; i++)
 		BUFp(i,j,k)=UAp(i,j,k);
 }
 
@@ -449,7 +411,7 @@ void buf_v(buffers *b,grid gd)
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
+	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni; i++)
 		BUFp(i,j,k)=VAp(i,j,k);
 }
@@ -462,7 +424,7 @@ void buf_w(buffers *b,grid gd)
 	nx=ni; ny=nj; nz=nk;
 
 #pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
+	for(k=0; k<nk+1; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		BUFp(i,j,k)=WAp(i,j,k);
