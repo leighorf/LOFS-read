@@ -72,7 +72,7 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 #pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
+	for(k=1; k<nk+1; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=0; i<ni; i++) {
     	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
@@ -97,7 +97,6 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	}
 	}
 	}
-
 }
 
 /*******************************************************************************/
@@ -560,7 +559,7 @@ void calc_khh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 	nx=ni; ny=nj; nz=nk;
 
 	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 	read_lofs_buffer(b->buf0,"khh",dm,hm,rc,cmd);
@@ -582,7 +581,7 @@ void calc_kmh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 	nx=ni; ny=nj; nz=nk;
 
 	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 	read_lofs_buffer(b->buf0,"kmh",dm,hm,rc,cmd);
@@ -593,7 +592,6 @@ void calc_kmh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 	for(i=0; i<ni; i++)
 		KMH_INTERP(i,j,k) = 0.5*(KMH(i,j,k)+KMH(i,j,k+1));
 }
-
 /*******************************************************************************/
 #define KHV_INTERP BUFp
 #define KHV BUFp
@@ -604,7 +602,7 @@ void calc_khv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 	nx=ni; ny=nj; nz=nk;
 
 	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 	read_lofs_buffer(b->buf0,"khv",dm,hm,rc,cmd);
@@ -626,7 +624,7 @@ void calc_kmv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 	nx=ni; ny=nj; nz=nk;
 
 	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 	read_lofs_buffer(b->buf0,"kmv",dm,hm,rc,cmd);

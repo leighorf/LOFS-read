@@ -742,7 +742,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"basestate/rh0",snd->rho0,gd.Z0,gd.NZ+1);//NOTE: rh0 is kind of a typo, should be rho0; rh means rel. hum. in CM1
 	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ+1);
 	//Temporary - we now save this in LOFS
-	for (iz=0; iz < gd.NZ; iz++) snd->thv0[iz] = snd->th0[iz] * (1.0+reps*snd->qv0[iz])/(1.0+snd->qv0[iz]);
+	for (iz=0; iz < gd.NZ+1; iz++) snd->thv0[iz] = snd->th0[iz] * (1.0+reps*snd->qv0[iz])/(1.0+snd->qv0[iz]);
 
 // We recreate George's mesh/derivative calculation paradigm even though
 // we are usually isotropic. We need to have our code here match what
@@ -1972,7 +1972,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	if (rh.ppert)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		printf("prespert: reading...");
 		read_lofs_buffer(b->ppert,"prespert",dm,hm,rc,cmd);
@@ -1981,7 +1981,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	if (rh.thrhopert)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		printf("thrhopert: reading...");
 		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
