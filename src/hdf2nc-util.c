@@ -696,14 +696,14 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	msh->mf = (float *)malloc((gd.NZ) * sizeof(float));
 
 
-	snd->th0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->thv0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->qv0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->u0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->v0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->pres0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->pi0 = (float *)malloc(gd.NZ * sizeof(float));
-	snd->rho0 = (float *)malloc(gd.NZ * sizeof(float));
+	snd->th0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->thv0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->qv0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->u0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->v0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->pres0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->pi0 = (float *)malloc((gd.NZ+1) * sizeof(float));
+	snd->rho0 = (float *)malloc((gd.NZ+1) * sizeof(float));
 }
 
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
@@ -735,12 +735,12 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
 	//ASSUMES Z0=0!!
 //	for (k=gd.Z0; k<gd.NZ; k++) snd->qv0[k-gd.Z0] *= 1000.0; // g/kg now
-	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ);
-	get1dfloat (*f_id,(char *)"basestate/u0",snd->u0,gd.Z0,gd.NZ);
-	get1dfloat (*f_id,(char *)"basestate/v0",snd->v0,gd.Z0,gd.NZ);
-	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ);
-	get1dfloat (*f_id,(char *)"basestate/rh0",snd->rho0,gd.Z0,gd.NZ);//NOTE: rh0 is kind of a typo, should be rho0; rh means rel. hum. in CM1
-	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ);
+	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ+1);
+	get1dfloat (*f_id,(char *)"basestate/u0",snd->u0,gd.Z0,gd.NZ+1);
+	get1dfloat (*f_id,(char *)"basestate/v0",snd->v0,gd.Z0,gd.NZ+1);
+	get1dfloat (*f_id,(char *)"basestate/pres0",snd->pres0,gd.Z0,gd.NZ+1);
+	get1dfloat (*f_id,(char *)"basestate/rh0",snd->rho0,gd.Z0,gd.NZ+1);//NOTE: rh0 is kind of a typo, should be rho0; rh means rel. hum. in CM1
+	get1dfloat (*f_id,(char *)"basestate/pi0",snd->pi0,gd.Z0,gd.NZ+1);
 	//Temporary - we now save this in LOFS
 	for (iz=0; iz < gd.NZ; iz++) snd->thv0[iz] = snd->th0[iz] * (1.0+reps*snd->qv0[iz])/(1.0+snd->qv0[iz]);
 
@@ -1824,7 +1824,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		long bufsize,bswrite,totbufsize;
 		int ibuf=0;
 
-		printf("***********malloc bufsize X = %i bufsize Y = %i bufsize Z = %i tot=%i\n",gd.NX+2,gd.NY+2, gd.NZ+1,((gd.NX+2)*(gd.NY+2)*(gd.NZ+2)));
+		printf("***********malloc bufsize X = %i bufsize Y = %i bufsize Z = %i tot=%i\n",gd.NX+2,gd.NY+2, gd.NZ+1,((gd.NX+2)*(gd.NY+2)*(gd.NZ+1)));
 		bufsize = (long) (gd.NX+2) * (long) (gd.NY+2) * (long) (gd.NZ+1) * (long) sizeof(float);
 		bswrite = (long) (gd.NX) * (long) (gd.NY) * (long) (gd.NZ) * (long) sizeof(float);
 		totbufsize = bufsize;

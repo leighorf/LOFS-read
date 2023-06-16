@@ -33,7 +33,6 @@ void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
 }
 
 /*******************************************************************************/
-//NEED INTERPOLATED OPTION FOR THIS
 #define WBUOY BUFp
 void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 {
@@ -62,13 +61,6 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 }
 
 /*******************************************************************************/
-/* ORF STOPPED HERE MAKE SURE snd->th0 etc (all 1D arrays) can go to
- * nk+1!!! If not read that much in. That may be where our top level
- * corruption is. */
-
-/* I think the problem is this: Our 1d sounding arrays only go to NZ! We
- * need to add an extra point! */
-
 #define WBUOY BUFp
 #define WBUOY_INTERP BUFp
 void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
@@ -77,9 +69,10 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
     float dz,val;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
+#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=0; i<ni; i++) {
     	calc_buoyancy(b->thrhopert, snd->th0, b->buf0, i, j, k, ni, nj);
@@ -87,16 +80,17 @@ void do_wbuoy_interp(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	}
 	}
 
-	// lower boundary condition
-	#pragma omp parallel for private(i, j)
+// lower boundary condition
+#pragma omp parallel for private(i, j)
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
 		WBUOY(i, j, 0) = 0.0;
 	}
 	}
 //Interpolate to scalar mesh
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk-1; k++) {
+
+#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=0; i<ni; i++) {
 		WBUOY_INTERP(i, j, k) = 0.5*(WBUOY(i, j, k) + WBUOY(i, j, k+1));
