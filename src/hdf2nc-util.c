@@ -693,7 +693,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	msh->vh = (float *)malloc((gd.NY) * sizeof(float));
 	msh->vf = (float *)malloc((gd.NY+1) * sizeof(float));
 	msh->mh = (float *)malloc((gd.NZ) * sizeof(float));
-	msh->mf = (float *)malloc((gd.NZ) * sizeof(float));
+	msh->mf = (float *)malloc((gd.NZ+1) * sizeof(float));
 
 
 	snd->th0 = (float *)malloc((gd.NZ+1) * sizeof(float));
@@ -732,7 +732,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	get1dfloat (*f_id,(char *)"mesh/yffull",msh->yffull,0,hm.ny+1);
 	get1dfloat (*f_id,(char *)"mesh/zh",msh->zh,0,hm.nz);
 	get1dfloat (*f_id,(char *)"mesh/zf",msh->zf,0,hm.nz);
-	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ);
+	get1dfloat (*f_id,(char *)"basestate/qv0",snd->qv0,gd.Z0,gd.NZ+1);
 	//ASSUMES Z0=0!!
 //	for (k=gd.Z0; k<gd.NZ; k++) snd->qv0[k-gd.Z0] *= 1000.0; // g/kg now
 	get1dfloat (*f_id,(char *)"basestate/th0",snd->th0,gd.Z0,gd.NZ+1);
@@ -768,11 +768,11 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 	// ORF this only makes sense when Z0=0 for real
 	if(gd.Z0==0)
 	{
-		for (iz=gd.Z0+1; iz<=gd.Z1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
+		for (iz=gd.Z0+1; iz<=gd.Z1+1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
 		MFp(0) = MFp(1);
 	}
 	else
-		for (iz=gd.Z0; iz<=gd.Z1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
+		for (iz=gd.Z0; iz<=gd.Z1+1; iz++) MFp(iz-gd.Z0) = msh->dz/(msh->zh[iz]-msh->zf[iz-1]);
 	
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zfout[iz-gd.Z0] = msh->zf[iz]; 
 	for (iz=gd.Z0; iz<=gd.Z1; iz++) msh->zhout[iz-gd.Z0] = msh->zh[iz];
@@ -1974,7 +1974,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
-		printf("prespert: reading...");
+		printf("readahead: prespert...");
 		read_lofs_buffer(b->ppert,"prespert",dm,hm,rc,cmd);
 		BL;
 	}
@@ -1983,7 +1983,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
-		printf("thrhopert: reading...");
+		printf("readahead: thrhopert...");
 		read_lofs_buffer(b->thrhopert,"thrhopert",dm,hm,rc,cmd);
 //ORF TEMPORARY FOR MICROBURST
 //      printf("MICROBURST: SUBSTITUTE THPERT FOR THRHOPERT\n");
@@ -1993,18 +1993,18 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 	if (rh.u)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
-		printf("u: reading...");
+		printf("readahead: u...");
 		read_lofs_buffer(b->ustag,"u",dm,hm,rc,cmd);
 		BL;
 	}
 	if (rh.v)
 	{
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
-		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
-		printf("v: reading...");
+		printf("readahead: v...");
 		read_lofs_buffer(b->vstag,"v",dm,hm,rc,cmd);
 		BL;
 	}
@@ -2013,7 +2013,7 @@ void do_readahead(buffers *b,grid gd,readahead rh,dir_meta dm,hdf_meta hm,cmdlin
 		rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 		rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1+1;
 		rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
-		printf("w: reading...");
+		printf("readahead: w...");
 		read_lofs_buffer(b->wstag,"w",dm,hm,rc,cmd);
 		BL;
 	}

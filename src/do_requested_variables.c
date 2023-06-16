@@ -110,6 +110,7 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
+	printf("nk = %i\n",nk);
 	// need to calculate pipert first
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
@@ -216,39 +217,81 @@ void do_wpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
+	/*
+	for(k=0; k<nk+1; k++) {
+	for(j=-1; j<nj+1; j++) {
+	for(i=-1; i<ni+1; i++) {
+    	WPGRAD(i,j,k)=9999.0;
+	}
+	}
+	}
+	*/
 
 	// need to calculate pipert first
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
     	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
 	}
 	}
 	}
 
+	k=nk-1;
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		float tb0,tb1,th0,th1,qb0,qb1,pp0,pp1;
+		pp0=TEMp(i,j,k);
+		pp1=TEMp(i,j,k+1);
+		th0=THRHOPERTp(i,j,k);
+		th1=THRHOPERTp(i,j,k+1);
+		tb0=snd->th0[k];
+		tb1=snd->th0[k+1];
+		qb0=1000.0*snd->qv0[k];
+		qb1=1000.0*snd->qv0[k+1];
+		if(i==5&&j==5)printf("\nwpgradinterp: k=%i th0=%f th1=%f tb0=%f tb1=%f qb0=%f qb1=%f pp0=%f pp1=%f\n",k,th0,th1,tb0,tb1,qb0,qb1,pp0,pp1);
+	}
+	}
+
 	#pragma omp parallel for private(i,j,k,dz) 
 	for(k=1; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
 		dz = 1./(msh.rdz * MF(k)); 
+//		if(k==nk)printf("ARF: MF(k) = %f for k = %i\n",MF(k),k);
     	calc_pgrad_w(b->dum0, b->thrhopert, snd->qv0, snd->th0, b->buf0, dz, i, j, k, ni, nj);
 	}
 	}
 	}
 
+	k=nk-1;
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		float tb0,tb1,th0,th1,qb0,qb1,pg0,pg1;
+		th0=THRHOPERTp(i,j,k);
+		th1=THRHOPERTp(i,j,k+1);
+		pg0=WPGRAD(i,j,k);
+		pg1=WPGRAD(i,j,k+1);
+		tb0=snd->th0[k];
+		tb1=snd->th0[k+1];
+		qb0=1000.0*snd->qv0[k];
+		qb1=1000.0*snd->qv0[k+1];
+		if(i==5&&j==5)printf("wpgradinterp: MF = %f k=%i After calc:\nth0=%f th1=%f tb0=%f tb1=%f qb0=%f qb1=%f pg0=%f pg1=%f\n",MF(k),k,th0,th1,tb0,tb1,qb0,qb1,pg0,pg1);
+	}
+	}
+
 	// lower boundary condition
 	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
 		WPGRAD(i, j, 0) = 0.0;
 	}
 	}
 //Interpolate to scalar mesh
 	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
+	for(k=0; k<nk; k++) {
+	for(j=0; j<nj; j++) {
+	for(i=0; i<ni; i++) {
 		WPGRADINTERP(i, j, k) = 0.5*(WPGRAD(i, j, k) + WPGRAD(i, j, k+1));
 	}
 	}
