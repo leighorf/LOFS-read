@@ -95,10 +95,7 @@ inline void calc_pgrad_w(float *pipert, float *thrhopert, float *qv0, float *th0
 
     buf0 = pgradw;
 	tmpfoo=-cp*thrhow*dpidz;
-	if(k>332&&i==5&&j==5)printf("cp=%12.8e thrhow=%12.8e dpidz=%12.8e TMPFOO=%12.8e\n",cp,thrhow,dpidz,tmpfoo);
     BUF(i, j, k) = tmpfoo;
-	if(k>332&&i==5&&j==5)printf("ORF: cp=%e BUF=%e tmpfoo=%e i=%i j=%i k=%i dpidz = %e qvbar1 = %e qvbar2 = %e thbar1 = %e thbar2 = %e thrhopert1 = %e thrhopert2 = %e thrhow = %e\n",
-			cp,BUF(i,j,k),tmpfoo,i,j,k,dpidz,qvbar1,qvbar2,thbar1,thbar2,thrhopert1,thrhopert2,thrhow);
 }
 
 /* Compute the buoyancy forcing
