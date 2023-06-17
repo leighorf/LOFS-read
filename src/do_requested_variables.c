@@ -1298,7 +1298,7 @@ void do_xvort_tilt(buffers *b, grid gd, mesh msh, cmdline cmd)
 		dudzc[0] = ( UAp(i, j, k) - UAp(i, j, k-1) ) / dz;
 		dudzc[1] = ( UAp(i+1, j, k) - UAp(i+1, j, k-1) ) / dz;
 		dudzc[2] = ( UAp(i, j, k+1) - UAp(i, j, k) ) / dz;
-		dudzc[0] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
+		dudzc[3] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
 		dudy = 0.25*(dudyc[0]+dudyc[1]+dudyc[2]+dudyc[3]);
 		dudz = 0.25*(dudzc[0]+dudzc[1]+dudzc[2]+dudzc[3]);
 		zvort=TEMp(i,j,k);
@@ -1442,10 +1442,18 @@ void do_xvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 	for (k=1; k<nk; k++) {
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
-		// This routine uses a centerd difference - so dy 
+		// This routine uses a centered difference - so dy 
 		// needs to be set appropriately for the increased distance
-		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
-		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdy * MH(k+1));
+//ORF This puts us out nz+2 points out unfortunately, change to
+//something hopefully reasonable
+//Discuss with Kelton
+//		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
+//		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j));
+		dy = 2./(msh.rdy * VH(j));
+//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdy * MH(k+1));
+//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdy * MH(k));
+//		dz = 2./(msh.rdz*MF(k));
+		dz = 2./(msh.rdz*MH(k));
 		calc_xvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dy, dz, i, j, k, nx, ny);
 	}
 	}
@@ -1487,8 +1495,12 @@ void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 	for (i=0; i<ni; i++) {
 		// This routine uses a centerd difference - so dy 
 		// needs to be set appropriately for the increased distance
-		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
-		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
+//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i));
+		dx = 2./(msh.rdx * UH(i));
+//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
+//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k));
+		dz = 2./(msh.rdz * MH(k));
 		calc_yvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, dz, i, j, k, nx, ny);
 	}
 	}

@@ -76,8 +76,6 @@ inline void calc_pgrad_w(float *pipert, float *thrhopert, float *qv0, float *th0
     // get dpi/dz
     float *buf0 = pipert;
     float dpidz = (BUF(i, j, k) - BUF(i, j, k-1)) / dz;
-	if(k>332&&i==5&&j==5)printf("ORF INIT: k=%i dz=%f BUF(i,j,k-1)=%f BUF(i,j,k)=%f\n",k,dz,BUF(i,j,k),BUF(i,j,k-1));
-	float tmpfoo;
 
     // get theta_rho on W points by averaging them
     // to the staggered W level. NOTE: Need to do something
@@ -94,8 +92,7 @@ inline void calc_pgrad_w(float *pipert, float *thrhopert, float *qv0, float *th0
 
 
     buf0 = pgradw;
-	tmpfoo=-cp*thrhow*dpidz;
-    BUF(i, j, k) = tmpfoo;
+    BUF(i, j, k) = -cp*thrhow*dpidz;
 }
 
 /* Compute the buoyancy forcing

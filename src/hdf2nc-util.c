@@ -99,18 +99,18 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 /* Each can be overridden on the command line */
 
-	zfpacc->netcdf->u       =        1.0e-2;
-	zfpacc->netcdf->v       =        1.0e-2;
-	zfpacc->netcdf->w       =        1.0e-2;
-	zfpacc->netcdf->uinterp =        1.0e-2;
-	zfpacc->netcdf->vinterp =        1.0e-2;
-	zfpacc->netcdf->winterp =        1.0e-2;
-	zfpacc->netcdf->windmag_sr =     1.0e-2;
-	zfpacc->netcdf->hwin_sr =        1.0e-2;
-	zfpacc->netcdf->hwin_gr =        1.0e-2;
-	zfpacc->netcdf->u_gr =           1.0e-2;
-	zfpacc->netcdf->v_gr =           1.0e-2;
-	zfpacc->netcdf->thrhopert =      1.0e-3;
+	zfpacc->netcdf->u       =        3.0e-2;
+	zfpacc->netcdf->v       =        3.0e-2;
+	zfpacc->netcdf->w       =        3.0e-2;
+	zfpacc->netcdf->uinterp =        3.0e-2;
+	zfpacc->netcdf->vinterp =        3.0e-2;
+	zfpacc->netcdf->winterp =        3.0e-2;
+	zfpacc->netcdf->windmag_sr =     3.0e-2;
+	zfpacc->netcdf->hwin_sr =        3.0e-2;
+	zfpacc->netcdf->hwin_gr =        3.0e-2;
+	zfpacc->netcdf->u_gr =           3.0e-2;
+	zfpacc->netcdf->v_gr =           3.0e-2;
+	zfpacc->netcdf->thrhopert =      1.0e-2;
 	zfpacc->netcdf->prespert =       1.0e-2;
 	zfpacc->netcdf->rhopert =        1.0e-5;
 	zfpacc->netcdf->xvort =          1.0e-3;
@@ -120,8 +120,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 /* Keep in mind all mixing ratios are g/kg here*/
 /* Accuracy parameters less than 0.0 result in LOSSLESS ZFP */
 	zfpacc->netcdf->qc =             1.0e-3;
-	zfpacc->netcdf->qi =             5.0e-4;
-	zfpacc->netcdf->qvpert =         5.0e-4;
+	zfpacc->netcdf->qi =             1.0e-3;
+	zfpacc->netcdf->qvpert =         1.0e-3;
 	zfpacc->netcdf->ncr =            -1.0;
 	zfpacc->netcdf->nci =            -1.0;
 	zfpacc->netcdf->ncs =            -1.0;
