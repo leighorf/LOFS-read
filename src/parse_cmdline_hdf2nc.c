@@ -24,7 +24,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		OPT_WB_BUOY_ZFPACC, OPT_UB_PGRAD_ZFPACC, OPT_VB_PGRAD_ZFPACC, OPT_WB_PGRAD_ZFPACC, OPT_XVORT_STRETCH_ZFPACC,
 		OPT_YVORT_STRETCH_ZFPACC, OPT_ZVORT_STRETCH_ZFPACC, OPT_XVORT_BARO_ZFPACC, OPT_YVORT_BARO_ZFPACC, OPT_XVORT_SOLENOID_ZFPACC,
 		OPT_YVORT_SOLENOID_ZFPACC, OPT_ZVORT_SOLENOID_ZFPACC, OPT_HVORT_ZFPACC, OPT_STREAMVORT_ZFPACC, OPT_QIQVPERT_ZFPACC,
-		OPT_QTOT_ZFPACC, OPT_TEMPC_ZFPACC, OPT_HDIV_ZFPACC, OPT_WB_BUOY_INTERP_ZFPACC, OPT_UB_PGRAD_INTERP_ZFPACC, 
+		OPT_QTOT_ZFPACC, OPT_QCQI_ZFPACC, OPT_TEMPC_ZFPACC, OPT_HDIV_ZFPACC, OPT_WB_BUOY_INTERP_ZFPACC, OPT_UB_PGRAD_INTERP_ZFPACC, 
 		OPT_VB_PGRAD_INTERP_ZFPACC, OPT_WB_PGRAD_INTERP_ZFPACC
 	};
 
@@ -134,6 +134,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"streamvort_acc",optional_argument, 0,        OPT_STREAMVORT_ZFPACC},
 		{"qiqvpert_acc",optional_argument, 0,          OPT_QIQVPERT_ZFPACC},
 		{"qtot_acc",optional_argument, 0,              OPT_QTOT_ZFPACC},
+		{"qcqi_acc",optional_argument, 0,          OPT_QCQI_ZFPACC},
 		{"tempC_acc",optional_argument, 0,             OPT_TEMPC_ZFPACC},
 		{"hdiv_acc",optional_argument, 0,              OPT_HDIV_ZFPACC},
 
@@ -581,6 +582,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_QTOT_ZFPACC:
 				zfpacc->netcdf->qtot = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_QCQI_ZFPACC:
+				zfpacc->netcdf->qcqi = atof(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_TEMPC_ZFPACC:

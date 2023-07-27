@@ -674,6 +674,37 @@ void calc_qiqvpert(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_me
 		QIQVPERT(i,j,k) += TEM1p(i,j,k);
 }
 
+#define QCQI BUFp
+void calc_qcqi(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+//Just read two fields and add them
+
+	read_lofs_buffer(b->buf0,"qc",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) = BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		QCQI(i,j,k) += TEMp(i,j,k);
+}
+
 #define RHO BUFp
 
 void calc_rho(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
@@ -2011,6 +2042,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"vortmag"))	   {CL;calc_vortmag(b,gd,msh,cmd);}
 		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}
 		else if(same(var,"qiqvpert"))	   {CL;calc_qiqvpert(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"qcqi"))	   {CL;calc_qcqi(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qtot"))	   {CL;calc_qtot(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
