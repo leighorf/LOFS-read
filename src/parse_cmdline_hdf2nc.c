@@ -135,7 +135,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"qiqvpert_acc",optional_argument, 0,          OPT_QIQVPERT_ZFPACC},
 		{"qtot_acc",optional_argument, 0,              OPT_QTOT_ZFPACC},
 		{"qcqi_acc",optional_argument, 0,          OPT_QCQI_ZFPACC},
-		{"qgqhqr_acc",optional_argument, 0,          OPT_QGQHQR},
+		{"qgqhqr_acc",optional_argument, 0,          OPT_QGQHQR_ZFPACC},
 		{"tempC_acc",optional_argument, 0,             OPT_TEMPC_ZFPACC},
 		{"hdiv_acc",optional_argument, 0,              OPT_HDIV_ZFPACC},
 
@@ -589,7 +589,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				zfpacc->netcdf->qcqi = atof(optarg);
 				cmd->optcount++;
 				break;
-			case OPT_QGQHQR:
+			case OPT_QGQHQR_ZFPACC:
 				zfpacc->netcdf->qgqhqr = atof(optarg);
 				cmd->optcount++;
 				break;
