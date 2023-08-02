@@ -2088,6 +2088,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"streamvort"))	   {CL;calc_streamvort(b,gd,msh,cmd);}
 		else if(same(var,"qiqvpert"))	   {CL;calc_qiqvpert(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qcqi"))	   {CL;calc_qcqi(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"qgqhqr"))	   {CL;calc_qgqhqr(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qtot"))	   {CL;calc_qtot(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
