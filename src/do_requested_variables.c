@@ -705,6 +705,51 @@ void calc_qcqi(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta h
 		QCQI(i,j,k) += TEMp(i,j,k);
 }
 
+#define QGQHQR BUFp
+void calc_qgqhqr(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+//Just read three fields and add them
+
+	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) = BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qhl",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += TEMp(i,j,k);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		QGQHQR(i,j,k) = TEMp(i,j,k);
+}
+
 #define RHO BUFp
 
 void calc_rho(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
