@@ -74,7 +74,6 @@ typedef struct cmdline
 	int zfp;
 	int zfplossless;
 	int bitgroom1,bitgroom2,bitgroom3,bitgroom_nsd;
-	int use_interp;
 	int use_box_offset;
 	int filetype;
 	int nthreads;
