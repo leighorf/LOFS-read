@@ -711,7 +711,7 @@ void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd) {
 	snd->rho0 = (float *)malloc((gd.NZ+1) * sizeof(float));
 }
 
-void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
+void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, cmdline cmd, hid_t *f_id)
 {
 #include "../include/lofs-constants.h"
 	int ix,iy,iz,k;
@@ -729,8 +729,16 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, hid_t *f_id)
 		printf("********* dz not found in LOFS metadata; assuming isotropic, setting dz=dx\n");
 		msh->dz = msh->dx; msh->rdz=1.0/msh->dz;
 	}
-	get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
-	get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
+	if (!cmd.tusc30)
+	{
+		get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
+		get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
+	}
+	else
+	{
+		msh->umove = 18.75;
+		msh->vmove = 9.0;
+	}
 	get1dfloat (*f_id,(char *)"mesh/xhfull",msh->xhfull,0,hm.nx);
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);

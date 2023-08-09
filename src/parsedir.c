@@ -651,20 +651,28 @@ crave electrolytes.
 			get0dint(file_id,"grid/x1",&gd->saved_X1);
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 
-			if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from grid/nkwrite_val\n");
-				get0dint(file_id,"grid/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+
+			if(!cmd.tusc30)
+			{
+				if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
+					if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from grid/nkwrite_val\n");
+					get0dint(file_id,"grid/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+				}
+				else if (H5Lexists(file_id, "namelist/lofs/nkwrite_val", H5P_DEFAULT) > 0) {
+					if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from namelist/lofs/nkwrite_val\n");
+					get0dint(file_id,"namelist/lofs/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+				}
+				else if (H5Lexists(file_id, "misc/nkwrite_val", H5P_DEFAULT) > 0) {
+					if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from misc/nkwrite_val\n");
+					get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
+				}
+				else {
+					nkwrite = 2;
+				}
 			}
-			else if (H5Lexists(file_id, "namelist/lofs/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from namelist/lofs/nkwrite_val\n");
-				get0dint(file_id,"namelist/lofs/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
-			}
-			else if (H5Lexists(file_id, "misc/nkwrite_val", H5P_DEFAULT) > 0) {
-				if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from misc/nkwrite_val\n");
-				get0dint(file_id,"misc/nkwrite_val",&nkwrite);// ORF TODO must fix this madness and put Z0 and Z1 in grid group
-			}
-			else {
-				nkwrite = 2;
+			else
+			{
+				nkwrite=380;
 			}
 
 			gd->saved_Z1=nkwrite-1;

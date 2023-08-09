@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 	/* Allocate memory for 1d mesh and sounding arrays */
 	allocate_1d_arrays(hm, gd, &msh, &snd);
 
-	set_1d_arrays(hm,gd,&msh,&snd,&hdf_file_id);
+	set_1d_arrays(hm,gd,&msh,&snd,cmd,&hdf_file_id);
 
 	status = nc_create (nc.ncfilename, NC_CLOBBER|cmd.filetype, &nc.ncid);
 	if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
