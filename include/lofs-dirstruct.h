@@ -68,6 +68,7 @@ typedef struct cmdline
 	int verbose;
 	int do_swaths;
 	int do_allvars;
+	int inprogress;
 	int gzip;
 	int zfp;
 	int zfplossless;

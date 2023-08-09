@@ -184,7 +184,7 @@ void get_sorted_time_dirs (dir_meta *dm,cmdline cmd)
 			strcpy (tmpstr, dit->d_name);
 			if(cmd.debug)printf("%s ",tmpstr);fflush(stdout);
 			ns = strlen (tmpstr);
-			if (ns > 15)
+			if (ns > 15 && j <= dm->ntimedirs) //Second check is for --inprogress
 			{
 				for (i = 0; i < 7; i++)
 					rhsstr[i] = tmpstr[ns - 7 + i];
@@ -682,7 +682,8 @@ crave electrolytes.
 // 3D files... I think I'll add a new piece of metadata to the grid
 // group...
 
-		for (i = 0; i < dm->ntimedirs; i++)
+		if(cmd.debug)printf("cmd.inprogress = %i, dm->ntimedirs=%i\n",cmd.inprogress,dm->ntimedirs);
+		for (i = 0; i < ((cmd.inprogress)?(dm->ntimedirs-1):(dm->ntimedirs)); i++) //--inprogress
 		{
 			for (j=0; j < dm->nnodedirs; j++)
 				//WHY ARE WE DOING THIS? Because now that I am doing big assed runs I have situations
@@ -694,11 +695,11 @@ crave electrolytes.
 				if(cmd.debug)printf("get_all_available_times: topdir = %s\t timedir[%i] = %s\t nodedir[%i] = %s\n",dm->topdir,i,dm->timedir[i],j,dm->nodedir[j]);
 
 				open_directory(basedir_full);
+				if(cmd.debug)printf("get_all_available_times: %s\n",basedir_full);
 				while ((dit = readdir (dip)) != NULL)
 				{
 					strcpy (tmpstr, dit->d_name);
 					foochar = strstr(tmpstr,".cm1hdf5");
-					if(cmd.debug)printf("get_all_available_times: %s\n",basedir_full);
 					if (foochar != NULL) break;	// Got a cm1hdf5 file
 				}	
 				close_directory();
