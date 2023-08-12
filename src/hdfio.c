@@ -229,6 +229,9 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 			else if (same(nc->var3d[i].varname,"chw"))        zfpacc->lofs->chw =         nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"chl"))        zfpacc->lofs->chl =         nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"vhw"))        zfpacc->lofs->vhw =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"zhl"))        zfpacc->lofs->zhl =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"zhw"))        zfpacc->lofs->zhw =         nc->var3d[i].zfpacc_LOFS;
+			else if (same(nc->var3d[i].varname,"zrw"))        zfpacc->lofs->zrw =         nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"vhl"))        zfpacc->lofs->vhl =         nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"qv"))         zfpacc->lofs->qv =          nc->var3d[i].zfpacc_LOFS;
 			else if (same(nc->var3d[i].varname,"qvpert"))     zfpacc->lofs->qvpert =      nc->var3d[i].zfpacc_LOFS;

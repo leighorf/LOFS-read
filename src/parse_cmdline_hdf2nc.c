@@ -95,8 +95,8 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"cci_acc",optional_argument, 0,            OPT_CCI_ZFPACC},
 		{"chw_acc",optional_argument, 0,            OPT_CHW_ZFPACC},
 		{"chl_acc",optional_argument, 0,            OPT_CHL_ZFPACC},
-		{"chl_vhw",optional_argument, 0,            OPT_VHW_ZFPACC},
-		{"chl_vhl",optional_argument, 0,            OPT_VHL_ZFPACC},
+		{"vhw_acc",optional_argument, 0,            OPT_VHW_ZFPACC},
+		{"vhl_acc",optional_argument, 0,            OPT_VHL_ZFPACC},
 		{"prespert_acc",optional_argument, 0,       OPT_PRESPERT_ZFPACC},
 		{"thrhopert_acc",optional_argument, 0,      OPT_THRHOPERT_ZFPACC},
 		{"rho_acc",optional_argument, 0,               OPT_RHO_ZFPACC},
@@ -392,6 +392,14 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
             case OPT_CHL_ZFPACC:
 				zfpacc->netcdf->chl = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_VHL_ZFPACC:
+				zfpacc->netcdf->vhl = atof(optarg);
+				cmd->optcount++;
+				break;
+            case OPT_VHW_ZFPACC:
+				zfpacc->netcdf->vhw = atof(optarg);
 				cmd->optcount++;
 				break;
             case OPT_CHW_ZFPACC:

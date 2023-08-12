@@ -101,24 +101,24 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 /* Each can be overridden on the command line */
 
-	zfpacc->netcdf->u       =        3.0e-2;
-	zfpacc->netcdf->v       =        3.0e-2;
-	zfpacc->netcdf->w       =        3.0e-2;
-	zfpacc->netcdf->uinterp =        3.0e-2;
-	zfpacc->netcdf->vinterp =        3.0e-2;
-	zfpacc->netcdf->winterp =        3.0e-2;
+	zfpacc->netcdf->u       =        1.0e-1;
+	zfpacc->netcdf->v       =        1.0e-1;
+	zfpacc->netcdf->w       =        1.0e-1;
+	zfpacc->netcdf->uinterp =        1.0e-1;
+	zfpacc->netcdf->vinterp =        1.0e-1;
+	zfpacc->netcdf->winterp =        1.0e-1;
 	zfpacc->netcdf->windmag_sr =     3.0e-2;
 	zfpacc->netcdf->hwin_sr =        3.0e-2;
 	zfpacc->netcdf->hwin_gr =        3.0e-2;
 	zfpacc->netcdf->u_gr =           3.0e-2;
 	zfpacc->netcdf->v_gr =           3.0e-2;
 	zfpacc->netcdf->thrhopert =      1.0e-2;
-	zfpacc->netcdf->prespert =       1.0e-2;
+	zfpacc->netcdf->prespert =       1.0e-1;
 	zfpacc->netcdf->rhopert =        1.0e-5;
-	zfpacc->netcdf->xvort =          1.0e-3;
-	zfpacc->netcdf->yvort =          1.0e-3;
-	zfpacc->netcdf->zvort =          1.0e-3;
-	zfpacc->netcdf->vortmag =        1.0e-3;
+	zfpacc->netcdf->xvort =          1.0e-2;
+	zfpacc->netcdf->yvort =          1.0e-2;
+	zfpacc->netcdf->zvort =          1.0e-2;
+	zfpacc->netcdf->vortmag =        1.0e-2;
 /* Keep in mind all mixing ratios are g/kg here*/
 /* Accuracy parameters less than 0.0 result in LOSSLESS ZFP */
 	zfpacc->netcdf->qc =             1.0e-3;
@@ -147,6 +147,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->cci =            -1.0;
 	zfpacc->netcdf->vhw =            -1.0;
 	zfpacc->netcdf->vhl =            -1.0;
+	zfpacc->netcdf->zhl =            -1.0;
+	zfpacc->netcdf->zhw =            -1.0;
+	zfpacc->netcdf->zrw =            -1.0;
 
 	zfpacc->netcdf->tke_sg =         1.0e-2;
 	zfpacc->netcdf->khh =            1.0e-2;
@@ -177,8 +180,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->xvort_solenoid = 1.0e-5; //Solenoidal terms get a bit more accuracy - they are small!
 	zfpacc->netcdf->yvort_solenoid = 1.0e-5;
 	zfpacc->netcdf->zvort_solenoid = 1.0e-5;
-	zfpacc->netcdf->hvort =          1.0e-3;
-	zfpacc->netcdf->streamvort =     1.0e-3;
+	zfpacc->netcdf->hvort =          1.0e-2;
+	zfpacc->netcdf->streamvort =     1.0e-2;
 	zfpacc->netcdf->qiqvpert =       1.0e-4;
 	zfpacc->netcdf->qcqi =           1.0e-4;
 	zfpacc->netcdf->qgqhqr =         1.0e-4;
@@ -1614,6 +1617,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"ccn"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ccn,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"ccw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ccw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"chl"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->chl,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"vhl"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->vhl,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"vhw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->vhw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"chw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->chw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"crw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->crw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"csw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->csw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");

@@ -217,7 +217,11 @@ int main(int argc, char *argv[])
 	set_1d_arrays(hm,gd,&msh,&snd,cmd,&hdf_file_id);
 
 	status = nc_create (nc.ncfilename, NC_CLOBBER|cmd.filetype, &nc.ncid);
-	if (status != NC_NOERR) ERROR_STOP ("nc_create failed");
+	if (status != NC_NOERR)
+	{
+		fprintf(stderr,"Cannot create %s\n",nc.ncfilename);
+		ERROR_STOP ("nc_create failed");
+	}
 
 	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc);
 
