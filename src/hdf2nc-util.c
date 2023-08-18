@@ -46,7 +46,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->nthreads=1;
 	cmd->twodwrite=0;
 	cmd->inprogress=0;
-	cmd->write_cmd_file=1;
+	cmd->write_cmd_file=0; //CHANGED 2023-08-18. Defaults to no file.
 	cmd->debug=0;
 	cmd->gzip=0;
 	cmd->zfp=0;

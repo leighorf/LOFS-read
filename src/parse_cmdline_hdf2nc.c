@@ -10,7 +10,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
     enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
 	OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_INPROGRESS, OPT_TUSC30, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
 	OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_COMPRESS_BITGROOM_1, OPT_COMPRESS_BITGROOM_2,
-	OPT_COMPRESS_BITGROOM_3, OPT_COMPRESS_BITGROOM_NSD, OPT_NTHREADS, OPT_OFFSET, OPT_NOCMD, OPT_CENTISECONDS, OPT_TWODWRITE,
+	OPT_COMPRESS_BITGROOM_3, OPT_COMPRESS_BITGROOM_NSD, OPT_NTHREADS, OPT_OFFSET, OPT_WRITE_CMD_FILE, OPT_CENTISECONDS, OPT_TWODWRITE,
 	OPT_DEV_SHM_CACHE, OPT_CHECK_CMD_FILE,
         OPT_UINTERP_ZFPACC, OPT_VINTERP_ZFPACC, OPT_WINTERP_ZFPACC, OPT_U_ZFPACC, OPT_V_ZFPACC, OPT_W_ZFPACC,
 	OPT_HWIN_SR_ZFPACC, OPT_HWIN_GR_ZFPACC, OPT_WINDMAG_SR_ZFPACC, OPT_XVORT_ZFPACC, OPT_YVORT_ZFPACC, OPT_ZVORT_ZFPACC, OPT_VORTMAG_ZFPACC,
@@ -58,7 +58,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"nthreads", optional_argument, 0, OPT_NTHREADS},
 		{"twodwrite",optional_argument, 0, OPT_TWODWRITE},
 		{"offset",   optional_argument, 0, OPT_OFFSET},
-		{"nocmd",   optional_argument, 0, OPT_NOCMD},
+		{"writecmd",   optional_argument, 0, OPT_WRITE_CMD_FILE},
 		{"devshmcache", optional_argument, 0, OPT_DEV_SHM_CACHE},
 		{"checkcmd", optional_argument, 0, OPT_CHECK_CMD_FILE},
 		/* All the ZFP stuff for netcdf output now */
@@ -277,8 +277,8 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				cmd->use_box_offset=1;
 				cmd->optcount++;
 				break;
-			case OPT_NOCMD:
-				cmd->write_cmd_file=0;
+			case OPT_WRITE_CMD_FILE:
+				cmd->write_cmd_file=1;
 				cmd->optcount++;
 				break;
 			case OPT_TWODWRITE:
