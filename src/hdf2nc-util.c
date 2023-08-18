@@ -39,6 +39,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	gd->saved_Y1=0;
 	gd->saved_Z0=0;
 	gd->saved_Z1=0;
+	cmd->er10=0;
+	cmd->tusc30=0;
 	cmd->time=0.0;
 	cmd->got_base=0;
 	cmd->got_ncdir=0;
@@ -731,16 +733,30 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, cmdline cmd, 
 		printf("********* dz not found in LOFS metadata; assuming isotropic, setting dz=dx\n");
 		msh->dz = msh->dx; msh->rdz=1.0/msh->dz;
 	}
-	if (!cmd.tusc30)
-	{
-		get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
-		get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
-	}
-	else
+	/* Before we stored umove and vmove in the cm1hdf5 files */
+	if (cmd.tusc30)
 	{
 		msh->umove = 18.75;
 		msh->vmove = 9.0;
 	}
+	/* There is a bafflingly werid thing with the ER10 dataset... when I
+	 * run on concurrent files I get either:
+			umove = 15.200000 vmove = 10.500000 (correct)
+			umove = 18.750000 vmove = 9.000000 (incorrect)
+     I suspect it's someting with firstfilename but I am really quite baffled.
+	 I did not change box speed for the 10 meter run! Certainly not efery 0.2 seconds LOL */
+	else if (cmd.er10)
+	{
+		msh->umove = 15.2;
+		msh->vmove = 10.5;
+	}
+	else //The normal case!
+	{
+		get0dfloat (*f_id,(char *)"mesh/umove",&msh->umove);
+		get0dfloat (*f_id,(char *)"mesh/vmove",&msh->vmove);
+	}
+
+	printf("\numove = %f vmove = %f\n",msh->umove,msh->vmove);
 	get1dfloat (*f_id,(char *)"mesh/xhfull",msh->xhfull,0,hm.nx);
 	get1dfloat (*f_id,(char *)"mesh/yhfull",msh->yhfull,0,hm.ny);
 	get1dfloat (*f_id,(char *)"mesh/xffull",msh->xffull,0,hm.nx+1);

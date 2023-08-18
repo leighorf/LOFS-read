@@ -952,17 +952,19 @@ void calc_hwin_sr(buffers *b, grid gd, cmdline cmd)
 void calc_hwin_gr(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float ugr,vgr;
+	float ugr,vgr,umove,vmove;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
+	umove=msh.umove;vmove=msh.vmove;
+//	printf("umove = %f vmove = %f\n",msh.umove,msh.vmove);
 
 #pragma omp parallel for private(i,j,k,ugr,vgr)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 	{
-		ugr = 0.5*(UAp(i,j,k)+UAp(i+1,j,k)) + msh.umove;
-		vgr = 0.5*(VAp(i,j,k)+VAp(i,j+1,k)) + msh.vmove;
+		ugr = 0.5*(UAp(i,j,k)+UAp(i+1,j,k)) + umove;
+		vgr = 0.5*(VAp(i,j,k)+VAp(i,j+1,k)) + vmove;
 		HWIN_GR(i,j,k) = sqrt(ugr*ugr+vgr*vgr);
 	}
 }

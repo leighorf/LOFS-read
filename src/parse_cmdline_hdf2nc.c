@@ -8,7 +8,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 {
     int got_histpath,got_time,got_X0,got_X1,got_Y0,got_Y1,got_Z0,got_Z1;
     enum { OPT_HISTPATH = 1000, OPT_NCDIR, OPT_BASE, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_Z0, OPT_Z1,
-	OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_INPROGRESS, OPT_TUSC30, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
+	OPT_DEBUG, OPT_VERBOSE, OPT_REGENERATECACHE, OPT_INPROGRESS, OPT_ER10, OPT_TUSC30, OPT_SWATHS, OPT_NC3, OPT_COMPRESS_GZIP,
 	OPT_COMPRESS_ZFP, OPT_COMPRESS_ZFP_LOSSLESS, OPT_COMPRESS_BITGROOM_1, OPT_COMPRESS_BITGROOM_2,
 	OPT_COMPRESS_BITGROOM_3, OPT_COMPRESS_BITGROOM_NSD, OPT_NTHREADS, OPT_OFFSET, OPT_WRITE_CMD_FILE, OPT_CENTISECONDS, OPT_TWODWRITE,
 	OPT_DEV_SHM_CACHE, OPT_CHECK_CMD_FILE,
@@ -46,6 +46,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"recache",  optional_argument, 0, OPT_REGENERATECACHE},
 		{"inprogress",  optional_argument, 0, OPT_INPROGRESS},
 		{"tusc30",  optional_argument, 0, OPT_TUSC30},
+		{"er10",  optional_argument, 0, OPT_ER10},
 		{"swaths",   optional_argument, 0, OPT_SWATHS},
 		{"nc3",      optional_argument, 0, OPT_NC3},
 		{"gzip",     optional_argument, 0, OPT_COMPRESS_GZIP},
@@ -233,6 +234,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_TUSC30:
 				cmd->tusc30=1;
+				cmd->optcount++;
+				break;
+			case OPT_ER10:
+				cmd->er10=1;
 				cmd->optcount++;
 				break;
 			case OPT_SWATHS:

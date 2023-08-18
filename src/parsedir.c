@@ -652,7 +652,7 @@ crave electrolytes.
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 
 
-			if(!cmd.tusc30)
+			if(!cmd.tusc30) //Before we stored this in the cm1hdf5 files
 			{
 				if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
 					if(cmd.verbose)fprintf(stderr, "Grabbing nkwrite from grid/nkwrite_val\n");
