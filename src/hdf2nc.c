@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 		ERROR_STOP ("nc_create failed");
 	}
 
-	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc);
+	set_netcdf_attributes(&nc,gd,&cmd,&b,&hm,&hdf_file_id,&zfpacc,argc,argv);
 
 	add_CM1_LOFS_zfp_metadata_to_netcdf_file(&hm,&hdf_file_id,nc); // Writes global metadata to netCDF file, and also sets string arrays...
 

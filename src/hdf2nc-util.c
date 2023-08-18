@@ -1141,7 +1141,7 @@ herr_t twod_second_pass_hdf2nc(hid_t loc_id, const char *name, void *opdata)
     return 0;
 }
 
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc)
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc, int argc, char *argv[] )
 {
 	int status;
 	int nv;
@@ -1566,6 +1566,25 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 // Set some global metadata
 	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
 		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
+
+		{
+			int j,k;
+			k=0;
+			char *cmdstring;
+			cmdstring = (char *)(malloc(MAXSTR * sizeof(char)));
+			for (i=0; i<argc; i++)
+			{
+				for (j=0; j<strlen(argv[i]); j++)
+					{
+						cmdstring[k]=argv[i][j];
+						k++;
+					}
+				cmdstring[k]=' ';k++;
+			}
+			if(cmd->debug==1) printf("cmdstring = %s\n",cmdstring);
+			status = nc_put_att_text(nc->ncid,NC_GLOBAL,"commandline",strlen(cmdstring),cmdstring);
+		}
+
 
 // Set all the ZFP LOFS metadata, finally!
 //		for (i=0; i<hm->nzfplofs;i++)

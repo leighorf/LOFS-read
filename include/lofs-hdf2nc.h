@@ -142,7 +142,7 @@ void get_hdf_metadata(dir_meta dm, hdf_meta *hm, cmdline *cmd, ncstruct *nc, cha
 void set_span(grid *gd,hdf_meta hm,cmdline cmd);
 void allocate_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd);
 void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, cmdline cmd, hid_t *f_id);
-void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc);
+void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_meta *hm, hid_t *f_id, zfpacc *zfpacc, int argc, char *argv[]);
 void nc_write_1d_data (ncstruct nc, grid gd, mesh msh, sounding snd, cmdline cmd);
 void set_readahead(readahead *rh,ncstruct nc, cmdline cmd);
 void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd);
