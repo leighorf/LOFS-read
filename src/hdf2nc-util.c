@@ -1649,7 +1649,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"qs"))			    set_nc_meta_name_units_compression(zfpacc->netcdf->qs,              *cmd,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"ncs"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ncs,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"cci"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->cci,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
-		else if(same(var,"ccn"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ccn,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"ccn"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ccn,             *cmd,nid,hm,v3did,"long_name",var,"#");
 		else if(same(var,"ccw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->ccw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"chl"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->chl,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"vhl"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->vhl,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
@@ -1657,6 +1657,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"chw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->chw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"crw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->crw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
 		else if(same(var,"csw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->csw,             *cmd,nid,hm,v3did,"long_name",var,"cm^-3");
+		else if(same(var,"zhl"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->zhl,             *cmd,nid,hm,v3did,"long_name",var,"Z");
+		else if(same(var,"zhw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->zhw,             *cmd,nid,hm,v3did,"long_name",var,"Z");
+		else if(same(var,"zrw"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->zrw,             *cmd,nid,hm,v3did,"long_name",var,"Z");
 		else if(same(var,"rho"))		    set_nc_meta_name_units_compression(zfpacc->netcdf->rho,             *cmd,nid,hm,v3did,"long_name",var,"kg/m^3");
 		else if(same(var,"qv"))		        set_nc_meta_name_units_compression(zfpacc->netcdf->qv,              *cmd,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"wb_buoy"))        set_nc_meta_name_units_compression(zfpacc->netcdf->wb_buoy,         *cmd,nid,hm,v3did,"long_name",var,"m/s^2");
