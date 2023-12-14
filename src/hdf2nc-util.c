@@ -147,8 +147,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ccn =            -1.0;
 	zfpacc->netcdf->ccw =            -1.0;
 	zfpacc->netcdf->cci =            -1.0;
-	zfpacc->netcdf->vhw =            -1.0;
-	zfpacc->netcdf->vhl =            -1.0;
+	zfpacc->netcdf->vhw =            1.0e-11;
+	zfpacc->netcdf->vhl =            1.0e-12;
 	zfpacc->netcdf->zhl =            -1.0;
 	zfpacc->netcdf->zhw =            -1.0;
 	zfpacc->netcdf->zrw =            -1.0;
@@ -1354,6 +1354,29 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 
 // This is our main "loop over all requested variable names" loop that
 // sets all the metadata shit.
+//
+// Set some global metadata
+	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
+		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
+
+		{
+			int j,k;
+			k=0;
+			char *cmdstring;
+			cmdstring = (char *)(malloc(MAXSTR * sizeof(char)));
+			for (i=0; i<argc; i++)
+			{
+				for (j=0; j<strlen(argv[i]); j++)
+					{
+						cmdstring[k]=argv[i][j];
+						k++;
+					}
+				cmdstring[k]=' ';k++;
+			}
+			if(cmd->debug==1) printf("cmdstring = %s\n",cmdstring);
+			status = nc_put_att_text(nc->ncid,NC_GLOBAL,"commandline",strlen(cmdstring),cmdstring);
+		}
+
 
 	for (ivar = 0; ivar < cmd->nvar; ivar++)
 	{
@@ -1577,28 +1600,6 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		{
 			printf ("Cannot nc_def_var for var #%i %s, status = %i, message = %s\n", ivar, nc->var3d[ivar].varname,status,nc_strerror(status));
 			ERROR_STOP("nc_def_var failed");
-		}
-
-// Set some global metadata
-	 	set_nc_meta_global_string(nc->ncid,"cm1_lofs_version", "1.0");
-		i=1; set_nc_meta_global_integer(nc->ncid,"uniform_mesh",&i);
-
-		{
-			int j,k;
-			k=0;
-			char *cmdstring;
-			cmdstring = (char *)(malloc(MAXSTR * sizeof(char)));
-			for (i=0; i<argc; i++)
-			{
-				for (j=0; j<strlen(argv[i]); j++)
-					{
-						cmdstring[k]=argv[i][j];
-						k++;
-					}
-				cmdstring[k]=' ';k++;
-			}
-			if(cmd->debug==1) printf("cmdstring = %s\n",cmdstring);
-			status = nc_put_att_text(nc->ncid,NC_GLOBAL,"commandline",strlen(cmdstring),cmdstring);
 		}
 
 
