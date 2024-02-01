@@ -153,6 +153,8 @@ int main(int argc, char *argv[])
 		ii=cmd.nvar_cmdline;
 		interpval[ii]=hwin_gr;
 		interpval[ii+1]=hwin_sr;
+/* Below code pads everything with spaces. Tabs are better for true csv. */
+
 /*
 		if(cmd.header)
 		{
