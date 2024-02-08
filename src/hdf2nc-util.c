@@ -132,9 +132,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ncg =            -1.0;
 	zfpacc->netcdf->dbz =            5.0;
 
-	zfpacc->netcdf->qr =             1.0e-3;
-	zfpacc->netcdf->qs =             1.0e-3;
-	zfpacc->netcdf->qg =             1.0e-3;
+	zfpacc->netcdf->qr =             -1.0;
+	zfpacc->netcdf->qs =             -1.0;
+	zfpacc->netcdf->qg =             -1.0;
 /* NSSL microphysics only */
 	zfpacc->netcdf->qhl =            -1.0;
 	zfpacc->netcdf->crw =            -1.0;
@@ -147,8 +147,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->ccn =            -1.0;
 	zfpacc->netcdf->ccw =            -1.0;
 	zfpacc->netcdf->cci =            -1.0;
-	zfpacc->netcdf->vhw =            1.0e-11;
-	zfpacc->netcdf->vhl =            1.0e-12;
+	zfpacc->netcdf->vhw =            -1.0;
+	zfpacc->netcdf->vhl =            -1.0;
 	zfpacc->netcdf->zhl =            -1.0;
 	zfpacc->netcdf->zhw =            -1.0;
 	zfpacc->netcdf->zrw =            -1.0;
@@ -733,6 +733,7 @@ void set_1d_arrays(hdf_meta hm, grid gd, mesh *msh, sounding *snd, cmdline cmd, 
 		printf("********* dz not found in LOFS metadata; assuming isotropic, setting dz=dx\n");
 		msh->dz = msh->dx; msh->rdz=1.0/msh->dz;
 	}
+//	printf("set_1d_arrays: cmd.tusc30 = %i\n", cmd.tusc30);
 	/* Before we stored umove and vmove in the cm1hdf5 files */
 	if (cmd.tusc30)
 	{

@@ -8,8 +8,8 @@ endif
 CC = h5cc
 #ZFP=/work/06618/orf/frontera/build/git/zfp/build
 #H5ZZFP=/work/06618/orf/frontera/build/git/H5Z-ZFP/src
-   ZFP=/home1/06618/orf/build/zfp-latest/zfp
-H5ZZFP=/home1/06618/orf/build/zfp-latest/H5Z-ZFP/installed
+   ZFP=/home1/06618/orf/build/git/zfp-latest/zfp
+H5ZZFP=/home1/06618/orf/build/git/zfp-latest/H5Z-ZFP/installed
 CFLAGS = -fopenmp -O3 -fPIC  -I../include -I$(TACC_NETCDF_INC) -I$(H5ZZFP)/include -I$(TACC_HDF5_INC) -DUSE_LARGEFILE64 -D_FILE_OFFSET_BITS=64
 LINKOPTS  = -L$(ZFP)/lib -L$(H5ZZFP)/lib -L$(TACC_NETCDF_LIB) -lh5zzfp -lzfp -lnetcdf
 
@@ -54,7 +54,6 @@ install: hdf2nc stash grabpoint
 	install -m 0755 ../bin/sndmod $(PREFIX)/bin
 	install -m 0755 ../bin/cm12snd $(PREFIX)/bin
 	install -m 0755 ../bin/hdf2nc $(PREFIX)/bin
-	install -m 0755 ../bin/hdf2nc /scratch3/06618/orf/bin
 	install -m 0755 ../bin/stash $(PREFIX)/bin
 	install -m 0755 ../bin/grabpoint $(PREFIX)/bin
 	install -m 0755 ../lib/liblofs.a $(PREFIX)/lib
