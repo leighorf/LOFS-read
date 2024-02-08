@@ -604,7 +604,7 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 		printf("xc: %f\n",xc);
 		printf("yc: %f\n",yc);
 		printf("zc: %f\n",zc);
-		ERROR_STOP("Above numbers should be monotonically increasing. Your requested data does not it within the saved data!\n");
+		ERROR_STOP("Above numbers should be monotonically increasing. Your requested data does not fit within the saved data!\n");
 	}
 	if(gd->X0<gd->saved_X0)
 	{

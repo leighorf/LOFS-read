@@ -153,7 +153,9 @@ int main(int argc, char *argv[])
 		ii=cmd.nvar_cmdline;
 		interpval[ii]=hwin_gr;
 		interpval[ii+1]=hwin_sr;
+/* Below code pads everything with spaces. Tabs are better for true csv. */
 
+/*
 		if(cmd.header)
 		{
 			sprintf(header,"%20s%20s%20s%20s","time","xpos","ypos","zpos");
@@ -175,6 +177,29 @@ int main(int argc, char *argv[])
 		}
 		sprintf(tmpstr,"%20.7f",hwin_gr); strcat(values,tmpstr);
 		sprintf(tmpstr,"%20.7f",hwin_sr); strcat(values,tmpstr);
+		printf("%s\n",values);
+*/
+		if(cmd.header)
+		{
+			sprintf(header,"%s\t%s\t%s\t%\t","time","xpos","ypos","zpos");
+			for (i=0; i<cmd.nvar_cmdline; i++)
+			{
+				sprintf(tmpstr,"%s\t",cmd.varname_cmdline[i]);
+				strcat(header,tmpstr);
+			}
+			sprintf(tmpstr,"%s\t","hwin_gr"); strcat(header,tmpstr);
+			sprintf(tmpstr,"%s","hwin_sr"); strcat(header,tmpstr);
+
+			printf("%s\n",header);
+		}
+		sprintf(values,"%0.7f\t%0.7f\t%0.7f\t%0.7f\t",cmd.time,gd.XC,gd.YC,gd.ZC);
+		for (i=0; i<cmd.nvar_cmdline; i++)
+		{
+			sprintf(tmpstr,"%0.7f\t",interpval[i]);
+			strcat(values,tmpstr);
+		}
+		sprintf(tmpstr,"%0.7f\t",hwin_gr); strcat(values,tmpstr);
+		sprintf(tmpstr,"%0.7f",hwin_sr); strcat(values,tmpstr);
 		printf("%s\n",values);
 	}
 	exit(0);
