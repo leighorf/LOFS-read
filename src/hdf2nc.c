@@ -2,6 +2,7 @@
 #include "../include/lofs-dirstruct.h"
 #include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-limits.h"
+#include <omp.h>
 
 //ORF dealing with floating point names in our netcdf files is a pain
 //smalleps needs to be set carefully, it's only for making netcdf file names
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd,&zfpacc);
 
-	omp_set_num_threads(cmd->nthreads);
+	omp_set_num_threads(cmd.nthreads);
 	
 	cmd.nvar_cmdline = argc - cmd.argc_hdf2nc_min - cmd.optcount;
 		
