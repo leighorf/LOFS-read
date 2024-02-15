@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
 	init_structs(&cmd,&dm,&gd,&nc,&rh,&hm,&zfpacc);
 
 	parse_cmdline_hdf2nc(argc,argv,&cmd,&dm,&gd,&zfpacc);
+
+	omp_set_num_threads(cmd->nthreads);
 	
 	cmd.nvar_cmdline = argc - cmd.argc_hdf2nc_min - cmd.optcount;
 		
