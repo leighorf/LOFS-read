@@ -45,7 +45,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->got_base=0;
 	cmd->got_ncdir=0;
 	cmd->optcount=0;
-	cmd->nthreads=1;
+	cmd->nthreads=8; //Changed 2/15/24
 	cmd->twodwrite=0;
 	cmd->inprogress=0;
 	cmd->write_cmd_file=0; //CHANGED 2023-08-18. Defaults to no file.
