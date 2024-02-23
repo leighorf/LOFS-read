@@ -56,8 +56,8 @@ typedef struct lofs_zfp
 	float qvpert,thpert,th,prs;
 	float pi,pipert,rho,rhopert;
 	float tke_sg,km,kh,qv;
-	/* I don't save derived quantities mucn anymore,
-	 * calculate them on the fly is the way to go but
+	/* I don't save derived quantities in CM1 much anymore,
+	 * in stead I calculate them on the fly which is the way to go but
 	 * here is vorticity anyway */
 	float xvort,yvort,zvort,vortmag;
 } lofs;
@@ -77,8 +77,8 @@ typedef struct netcdf_zfp
 	float kmh,kmv,khh,khv;
 
 	/* Now, derived variables... add at your leisure */
-	/* For instance, budget stuff will need to be added here */
 	/* For now I only include what I'm using at the moment */
+	/* vorticity and momentum tendancy takes up much of the derived stuff*/
 	float uinterp,vinterp,winterp;
 	float xvort,yvort,zvort,vortmag;
 	float hwin_sr,hwin_gr,windmag_sr,u_gr,v_gr;

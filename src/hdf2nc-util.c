@@ -101,19 +101,19 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 
 /* Leigh Orf's default ZFP accuracy parameters */
 
-/* Each can be overridden on the command line */
+/* Each can be overridden on the command line i.e.: hdf2nc --thrhopert_acc=0.001 --prespert_acc=0.01 ... etc */
 
-	zfpacc->netcdf->u       =        1.0e-1;
-	zfpacc->netcdf->v       =        1.0e-1;
-	zfpacc->netcdf->w       =        1.0e-1;
-	zfpacc->netcdf->uinterp =        1.0e-1;
-	zfpacc->netcdf->vinterp =        1.0e-1;
-	zfpacc->netcdf->winterp =        1.0e-1;
-	zfpacc->netcdf->windmag_sr =     3.0e-2;
-	zfpacc->netcdf->hwin_sr =        3.0e-2;
-	zfpacc->netcdf->hwin_gr =        3.0e-2;
-	zfpacc->netcdf->u_gr =           3.0e-2;
-	zfpacc->netcdf->v_gr =           3.0e-2;
+	zfpacc->netcdf->u       =        1.0e-2;
+	zfpacc->netcdf->v       =        1.0e-2;
+	zfpacc->netcdf->w       =        1.0e-2;
+	zfpacc->netcdf->uinterp =        1.0e-2;
+	zfpacc->netcdf->vinterp =        1.0e-2;
+	zfpacc->netcdf->winterp =        1.0e-2;
+	zfpacc->netcdf->windmag_sr =     1.0e-2;
+	zfpacc->netcdf->hwin_sr =        1.0e-2;
+	zfpacc->netcdf->hwin_gr =        1.0e-2;
+	zfpacc->netcdf->u_gr =           1.0e-2;
+	zfpacc->netcdf->v_gr =           1.0e-2;
 	zfpacc->netcdf->thrhopert =      1.0e-2;
 	zfpacc->netcdf->prespert =       1.0e-1;
 	zfpacc->netcdf->rhopert =        1.0e-5;
@@ -121,6 +121,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->yvort =          1.0e-2;
 	zfpacc->netcdf->zvort =          1.0e-2;
 	zfpacc->netcdf->vortmag =        1.0e-2;
+	zfpacc->netcdf->streamvort =     1.0e-2;
 /* Keep in mind all mixing ratios are g/kg here*/
 /* Accuracy parameters less than 0.0 result in LOSSLESS ZFP */
 	zfpacc->netcdf->qc =             1.0e-3;
@@ -183,7 +184,6 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->yvort_solenoid = 1.0e-5;
 	zfpacc->netcdf->zvort_solenoid = 1.0e-5;
 	zfpacc->netcdf->hvort =          1.0e-2;
-	zfpacc->netcdf->streamvort =     1.0e-2;
 	zfpacc->netcdf->qiqvpert =       1.0e-4;
 	zfpacc->netcdf->qcqi =           1.0e-4;
 	zfpacc->netcdf->qgqhqr =         1.0e-4;
@@ -192,7 +192,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->hdiv =           1.0e-3;
 
 	/* These are read only in the sense that we read them from LOFS attributes. These
-	 * are the zfp accuracy values that were written with CMI-LOFS. Initialize
+	 * are the zfp accuracy values that were written with CM1-LOFS. Initialize
 	 * negative for existence testing */
 
 	zfpacc->lofs->u = -1.0;
@@ -281,7 +281,7 @@ void get_saved_base(char *timedir, char *saved_base)
 void set_span(grid *gd,hdf_meta hm,cmdline cmd)
 {
 	/* We do this because of stencils. Note, saved_Z0 is always 0 in LOFS.
-	 * If we want to save only elevated data, set lower data to float(0.0) and compress*/
+	 * If we want to save only elevated data, you could set lower data to float(0.0) and compress*/
 
 	gd->saved_X0+=1; gd->saved_X1-=1;
 	gd->saved_Y0+=1; gd->saved_Y1-=1;
