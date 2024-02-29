@@ -1994,6 +1994,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			{
 				buf0nx=gd.NX;ixoff=0;
 				buf0ny=gd.NY;iyoff=0;
+				printf("reading...");FL;
 				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
@@ -2007,6 +2008,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			{
 				buf0nx=gd.NX;ixoff=0;
 				buf0ny=gd.NY;iyoff=0;
+				printf("reading...");FL;
 				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
@@ -2020,6 +2022,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			{
 				buf0nx=gd.NX;ixoff=0;
 				buf0ny=gd.NY;iyoff=0;
+				printf("reading...");FL;
 				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
@@ -2033,6 +2036,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			{
 				buf0nx=gd.NX;ixoff=0;
 				buf0ny=gd.NY;iyoff=0;
+				printf("reading...");FL;
 				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
@@ -2046,6 +2050,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 			{
 				buf0nx=gd.NX;ixoff=0;
 				buf0ny=gd.NY;iyoff=0;
+				printf("reading...");FL;
 				read_lofs_buffer(b->buf,var,dm,hm,rc,cmd);
 			}
 			else
