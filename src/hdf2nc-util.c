@@ -1365,6 +1365,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			k=0;
 			char *cmdstring;
 			cmdstring = (char *)(malloc(MAXSTR * sizeof(char)));
+
 			for (i=0; i<argc; i++)
 			{
 				for (j=0; j<strlen(argv[i]); j++)
@@ -1374,6 +1375,7 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 					}
 				cmdstring[k]=' ';k++;
 			}
+			cmdstring[k-1]='\0';
 			if(cmd->debug==1) printf("cmdstring = %s\n",cmdstring);
 			status = nc_put_att_text(nc->ncid,NC_GLOBAL,"commandline",strlen(cmdstring),cmdstring);
 		}
