@@ -17,7 +17,7 @@ void do_pipert(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	// We're going to calculate over the whole
 	// domain size read because often times
 	// derivatives operate on this data. The
@@ -41,7 +41,7 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=0; i<ni; i++) {
@@ -51,7 +51,7 @@ void do_wbuoy(buffers *b, grid gd, sounding *snd, cmdline cmd)
 	}
 
 	// lower boundary condition
-	#pragma omp parallel for private(i, j)
+#pragma omp parallel for private(i, j)
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
 		WBUOY(i, j, 0) = 0.0;
@@ -111,7 +111,7 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -120,7 +120,7 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dz) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -131,7 +131,7 @@ void do_wpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 
 	// lower boundary condition
-	#pragma omp parallel for private(i, j)
+#pragma omp parallel for private(i, j)
 	for (j=-1; j<nj+1; j++) {
 	for (i=-1; i<ni+1; i++) {
 		WPGRAD(i, j, 0) = 0.0;
@@ -152,7 +152,7 @@ void do_upgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -161,7 +161,7 @@ void do_upgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dx) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=0; i<ni+1; i++) {
@@ -185,7 +185,7 @@ void do_vpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -194,7 +194,7 @@ void do_vpgrad(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dy) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=0; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -227,7 +227,7 @@ void do_wpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dz) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk+1; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=0; i<ni; i++) {
@@ -238,7 +238,7 @@ void do_wpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 
 	// lower boundary condition
-	#pragma omp parallel for private(i, j)
+#pragma omp parallel for private(i, j)
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
 		WPGRAD(i, j, 0) = 0.0;
@@ -269,7 +269,7 @@ void do_upgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -278,7 +278,7 @@ void do_upgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dx) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=0; i<ni+1; i++) {
@@ -289,7 +289,8 @@ void do_upgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 
 //Interpolate to scalar mesh
-	#pragma omp parallel for private(i,j,k) 
+//#pragma omp parallel for private(i,j,k) 
+//Watch out with same var on left as right, do not parallelize
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=0; i<ni; i++) {
@@ -313,7 +314,7 @@ void do_vpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 
 	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=-1; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -322,7 +323,7 @@ void do_vpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 	}
 
-	#pragma omp parallel for private(i,j,k,dy) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=0; j<nj+1; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -333,7 +334,8 @@ void do_vpgrad_interp(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd)
 	}
 
 //Interpolate to scalar mesh
-	#pragma omp parallel for private(i,j,k) 
+//#pragma omp parallel for private(i,j,k) 
+//Do not parallelize here
 	for(k=0; k<nk+1; k++) {
 	for(j=0; j<nj; j++) {
 	for(i=-1; i<ni+1; i++) {
@@ -480,7 +482,7 @@ void calc_uinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 		read_lofs_buffer(b->buf0,"u",dm,hm,rc,cmd);
 	}
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -511,7 +513,7 @@ void calc_vinterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 		read_lofs_buffer(b->buf0,"v",dm,hm,rc,cmd);
 	}
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -542,7 +544,7 @@ void calc_winterp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 		read_lofs_buffer(b->buf0,"w",dm,hm,rc,cmd);
 	}
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0;k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -564,7 +566,7 @@ void calc_khh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 
 	read_lofs_buffer(b->buf0,"khh",dm,hm,rc,cmd);
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -586,7 +588,7 @@ void calc_kmh_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 
 	read_lofs_buffer(b->buf0,"kmh",dm,hm,rc,cmd);
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -607,7 +609,7 @@ void calc_khv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 
 	read_lofs_buffer(b->buf0,"khv",dm,hm,rc,cmd);
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -629,7 +631,7 @@ void calc_kmv_interp(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_
 
 	read_lofs_buffer(b->buf0,"kmv",dm,hm,rc,cmd);
 
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -810,6 +812,31 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 		QV(i,j,k) = BUFp(i,j,k) + 1000.0*snd->qv0[k];
 	}
 
+}
+#define PRESSURE_ND BUFp
+
+void calc_pres_nd(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+	float pi;
+	float foo;
+	int ifoo;
+
+rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"prespert",dm,hm,rc,cmd);
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
+	{
+		PRESSURE_ND(i,j,k) = (BUFp(i,j,k) + snd->pres0[k])/snd->pres0[k];
+	}
 }
 
 #define TEMPC BUFp
@@ -1019,7 +1046,7 @@ void calc_windmag_sr(buffers *b, grid gd, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-#pragma omp parallel for private(i,j,k,usr,vsr,w)
+#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -1043,7 +1070,7 @@ void calc_hdiv(buffers *b, grid gd, mesh msh, cmdline cmd)
 	nx=ni; ny=nj; nz=nk;
 	rdx=msh.rdx; rdy=msh.rdy;
 
-#pragma omp parallel for private(i,j,k,dudx,dvdy)
+#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -1079,7 +1106,7 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(i=0; i<ni+1; i++) {
 		dy = 1./(msh.rdy * VF(j)); 
 		dz = 1./(msh.rdz * MF(k)); 
-		calc_xvort(b->vstag, b->wstag, b->buf0, dy, dz, i, j, k, ni, nj);
+		calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
 	}
 	}
 	}
@@ -1088,15 +1115,15 @@ void do_xvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni+1; i++)
 	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
+		TEMp(i,j,0)=TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
 
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		XVORT(i,j,k) = 0.25 * (BUFp(i,j,k)+BUFp(i,j+1,k)+BUFp(i,j,k+1)+BUFp(i,j+1,k+1));
+		XVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i,j+1,k)+TEMp(i,j,k+1)+TEMp(i,j+1,k+1));
 }
 
 /*******************************************************************************/
@@ -1110,13 +1137,13 @@ void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k,dx,dz) 
+#pragma omp parallel for private(i,j,k,dx,dz) 
 	for(k=1; k<nk+1; k++) {
 	for(j=0; j<nj+1; j++) {
 	for(i=0; i<ni+1; i++) {
 		dz = 1./(msh.rdz * MF(k)); 
 		dx = 1./(msh.rdx * UF(i)); 
-		calc_yvort(b->ustag, b->wstag, b->buf0, dx, dz, i, j, k, ni, nj);
+		calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
 	}
 	}
 	}
@@ -1125,15 +1152,15 @@ void do_yvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(j=0; j<nj+1; j++)
 	for(i=0; i<ni+1; i++)
 	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
+		TEMp(i,j,0)=TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
 
 	#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		YVORT(i,j,k) = 0.25 * (YVORT(i,j,k)+YVORT(i+1,j,k)+YVORT(i,j,k+1)+YVORT(i+1,j,k+1));
+		YVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j,k+1)+TEMp(i+1,j,k+1));
 }
 
 /*******************************************************************************/
@@ -1147,13 +1174,13 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k,dx,dy) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk+1; k++) {
 	for(j=0; j<nj+1; j++) {
 	for(i=0; i<ni+1; i++) {
 		dy = 1./(msh.rdy * VF(j));
 		dx = 1./(msh.rdx * UF(i)); 
-    	calc_zvort(b->ustag, b->vstag, b->buf0, dx, dy, i, j, k, ni, nj);
+    	calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
 	}
 	}
 	}
@@ -1162,7 +1189,7 @@ void do_zvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		ZVORT(i,j,k) = 0.25 * (ZVORT(i,j,k)+ZVORT(i+1,j,k)+ZVORT(i,j+1,k)+ZVORT(i+1,j+1,k));
+		ZVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j+1,k)+TEMp(i+1,j+1,k));
 }
 
 /*******************************************************************************/
@@ -1186,7 +1213,7 @@ void do_xvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 		b->dum0[i] = b->buf0[i];
 	}
 
-	#pragma omp parallel for private(i,j,k,dy,dz) 
+#pragma omp parallel for private(i,j,k) 
 	for (k=0; k<nk; k++) {
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
@@ -1532,107 +1559,191 @@ void do_xvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd
 //		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdy * MH(k));
 //		dz = 2./(msh.rdz*MF(k));
 		dz = 2./(msh.rdz*MH(k));
-		calc_xvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dy, dz, i, j, k, nx, ny);
-	}
-	}
-	}
+			calc_xvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dy, dz, i, j, k, nx, ny);
+		}
+		}
+		}
 
-	// lower boundary condition
-	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
-		XVSOL(i, j, 0) = 0.0;
-	}
-	}
+		// lower boundary condition
+		#pragma omp parallel for private(i, j)
+		for (j=-1; j<nj+1; j++) {
+		for (i=-1; i<ni+1; i++) {
+			XVSOL(i, j, 0) = 0.0;
+		}
+		}
 
-}
-/*******************************************************************************/
+	}
+	/*******************************************************************************/
 
 #define YVSOL BUFp
-void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dx, dz;
+	void do_yvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
+	{
+		int i,j,k,ni,nj,nk,nx,ny,nz;
+		float dx, dz;
 
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
+		ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+		nx=ni; ny=nj; nz=nk;
 
-	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
-    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
-	}
-	}
+		// need to calculate pipert first
+		#pragma omp parallel for private(i,j,k) 
+		for(k=0; k<nk+1; k++) {
+		for(j=-1; j<nj+1; j++) {
+		for(i=-1; i<ni+1; i++) {
+			calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+		}
+		}
+		}
+
+		#pragma omp parallel for private(i,j,k,dx,dz) 
+		for (k=1; k<nk; k++) {
+		for (j=0; j<nj; j++) {
+		for (i=0; i<ni; i++) {
+			// This routine uses a centerd difference - so dy 
+			// needs to be set appropriately for the increased distance
+	//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+	//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i));
+			dx = 2./(msh.rdx * UH(i));
+	//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
+	//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k));
+			dz = 2./(msh.rdz * MH(k));
+			calc_yvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, dz, i, j, k, nx, ny);
+		}
+		}
+		}
+
+		// lower boundary condition
+		#pragma omp parallel for private(i, j)
+		for (j=-1; j<nj+1; j++) {
+		for (i=-1; i<ni+1; i++) {
+			YVSOL(i, j, 0) = 0.0;
+		}
+		}
+
 	}
 
-	#pragma omp parallel for private(i,j,k,dx,dz) 
-	for (k=1; k<nk; k++) {
-	for (j=0; j<nj; j++) {
-	for (i=0; i<ni; i++) {
-		// This routine uses a centerd difference - so dy 
-		// needs to be set appropriately for the increased distance
-//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
-//		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i));
-		dx = 2./(msh.rdx * UH(i));
-//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k+1));
-//		dz = 1./(msh.rdz * MH(k-1)) + 1./(msh.rdz * MH(k));
-		dz = 2./(msh.rdz * MH(k));
-		calc_yvort_solenoid(b->dum0, b->thrhopert, snd->th0, snd->qv0, b->buf0, dx, dz, i, j, k, nx, ny);
-	}
-	}
-	}
-
-	// lower boundary condition
-	#pragma omp parallel for private(i, j)
-	for (j=-1; j<nj+1; j++) {
-	for (i=-1; i<ni+1; i++) {
-		YVSOL(i, j, 0) = 0.0;
-	}
-	}
-
-}
-
-/*******************************************************************************/
+	/*******************************************************************************/
 
 #define ZVSOL BUFp
-void do_zvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dx, dy;
+	void do_zvort_solenoid(buffers *b, grid gd, sounding *snd, mesh msh, cmdline cmd) 
+	{
+		int i,j,k,ni,nj,nk,nx,ny,nz;
+		float dx, dy;
 
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
+		ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+		nx=ni; ny=nj; nz=nk;
 
-	// need to calculate pipert first
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk+1; k++) {
-	for(j=-1; j<nj+1; j++) {
-	for(i=-1; i<ni+1; i++) {
-    	calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
-	}
-	}
+		// need to calculate pipert first
+		#pragma omp parallel for private(i,j,k) 
+		for(k=0; k<nk+1; k++) {
+		for(j=-1; j<nj+1; j++) {
+		for(i=-1; i<ni+1; i++) {
+			calc_pipert(b->ppert, snd->pres0, b->dum0, i, j, k, ni, nj);
+		}
+		}
+		}
+
+		#pragma omp parallel for private(i,j,k,dx,dy) 
+		for (k=0; k<nk+1; k++) {
+		for (j=0; j<nj; j++) {
+		for (i=0; i<ni; i++) {
+			// This routine uses a centerd difference - so dy 
+			// needs to be set appropriately for the increased distance
+			dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
+			dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
+			calc_zvort_solenoid(b->dum0, b->thrhopert, b->buf0, dx, dy, i, j, k, nx, ny);
+		}
+		}
+		}
+
 	}
 
-	#pragma omp parallel for private(i,j,k,dx,dy) 
-	for (k=0; k<nk+1; k++) {
-	for (j=0; j<nj; j++) {
-	for (i=0; i<ni; i++) {
-		// This routine uses a centerd difference - so dy 
-		// needs to be set appropriately for the increased distance
-		dx = 1./(msh.rdx * UH(i-1)) + 1./(msh.rdx * UH(i+1));
-		dy = 1./(msh.rdy * VH(j-1)) + 1./(msh.rdy * VH(j+1));
-		calc_zvort_solenoid(b->dum0, b->thrhopert, b->buf0, dx, dy, i, j, k, nx, ny);
+	/*******************************************************************************/
+
+	void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+	{
+		int i,j,k,ni,nj,nk,nx,ny,nz;
+		float dx,dy,dz;
+
+		ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+		nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k) 
+		for(k=1; k<nk; k++) {
+			dz = 1./(msh.rdz * MF(k)); 
+			// If we parallelize over j and give each thread a row to
+			// work on, then we take advantage of caching and memory
+			// linearity. 
+			for(j=0; j<nj+1; j++) {
+				dy = 1./(msh.rdy * VF(j)); 
+				for(i=0; i<ni; i++) {
+					calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
+			}
+		}
 	}
-	}
+//This is dependent upon our current free slip bc, see CM1 for other decisions
+	for(j=0; j<nj+1; j++)
+	for(i=0; i<ni; i++)
+	{
+		TEMp(i,j,0)=TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
 
+#define XVORT BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		XVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i,j+1,k)+TEMp(i,j,k+1)+TEMp(i,j+1,k+1));
+
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
+
+#define YVORT BUFp
+#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
+		dz = 1./(msh.rdz * MF(k)); 
+		for(j=0; j<nj; j++) {
+			for(i=0; i<ni+1; i++) {
+				dx = 1./(msh.rdx * UF(i)); 
+    			calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
+			}
+		}
+	}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni+1; i++)
+	{
+		TEMp(i,j,0)=TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
+	}
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		YVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j,k+1)+TEMp(i+1,j,k+1));
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
+
+#define HVORT BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		HVORT(i,j,k) = sqrt(TEM1p(i,j,k));
 }
 
 /*******************************************************************************/
 
-void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+void calc_vortmag(buffers *b, grid gd, mesh msh, cmdline cmd)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dx,dy,dz;
@@ -1640,7 +1751,118 @@ void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
 
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
+		dz = 1./(msh.rdz * MF(k)); 
+		// If we parallelize over j and give each thread a row to
+		// work on, then we take advantage of caching and memory
+		// linearity. 
+		for(j=0; j<nj+1; j++) {
+			dy = 1./(msh.rdy * VF(j)); 
+			for(i=0; i<ni; i++) {
+    			calc_xvort(b->vstag, b->wstag, b->dum0, dy, dz, i, j, k, ni, nj);
+			}
+		}
+	}
+//This is dependent upon our current free slip bc, see CM1 for other decisions
+#pragma omp parallel for private(i,j) 
+	for(j=0; j<nj+1; j++)
+	for(i=0; i<ni; i++)
+	{
+		TEMp(i,j,0)= TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
+	}
+
+#define XVORT BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		XVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i,j+1,k)+TEMp(i,j,k+1)+TEMp(i,j+1,k+1));
+
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
+
+#pragma omp parallel for private(i,j,k) 
+	for(k=1; k<nk; k++) {
+		dz = 1./(msh.rdz * MF(k)); 
+		for(j=0; j<nj; j++) {
+			for(i=0; i<ni+1; i++) {
+				dx = 1./(msh.rdx * UF(i)); 
+    			calc_yvort(b->ustag, b->wstag, b->dum0, dx, dz, i, j, k, ni, nj);
+			}
+		}
+	}
+//This is dependent upon our current free slip bc, see CM1 for other
+//decisions
+#pragma omp parallel for private(i,j,k) 
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni+1; i++)
+	{
+		TEMp(i,j,0)=TEMp(i,j,1);
+		TEMp(i,j,nk)=TEMp(i,j,nk-1);
+	}
+#define YVORT BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		YVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j,k+1)+TEMp(i+1,j,k+1));
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
+
+#pragma omp parallel for private(i,j,k) 
+	for(k=0; k<nk; k++) {
+		for(j=0; j<nj+1; j++) {
+			dy = 1./(msh.rdy * VF(j)); 
+			for(i=0; i<ni+1; i++) {
+				dx = 1./(msh.rdx * UF(i)); 
+    			calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
+			}
+		}
+	}
+#define ZVORT BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		ZVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j+1,k)+TEMp(i+1,j+1,k));
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEM1p(i,j,k) += ZVORT(i,j,k)*ZVORT(i,j,k);
+
+#define VORTMAG BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		VORTMAG(i,j,k) = sqrt(TEM1p(i,j,k));
+}
+
+/*******************************************************************************/
+
+#define STREAMVORT BUFp
+void calc_streamvort(buffers *b, grid gd, mesh msh, cmdline cmd)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float dx,dy,dz;
+	float uinterp,vinterp,winterp;
+
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk; k++) {
 		dz = 1./(msh.rdz * MF(k)); 
 		// If we parallelize over j and give each thread a row to
@@ -1673,10 +1895,9 @@ void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
+		TEM1p(i,j,k) =  XVORT(i,j,k)*0.5*(UAp(i,j,k)+UAp(i+1,j,k));
 
-#define YVORT BUFp
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=1; k<nk; k++) {
 		dz = 1./(msh.rdz * MF(k)); 
 		for(j=0; j<nj; j++) {
@@ -1694,7 +1915,8 @@ void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 		TEMp(i,j,0)=TEMp(i,j,1);
 		TEMp(i,j,nk)=TEMp(i,j,nk-1);
 	}
-#pragma omp parallel for private(i,j,k)
+#define YVORT BUFp
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
@@ -1703,215 +1925,24 @@ void calc_hvort(buffers *b, grid gd, mesh msh, cmdline cmd)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
-
-#define HVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		HVORT(i,j,k) = sqrt(TEM1p(i,j,k));
-}
-
-/*******************************************************************************/
-
-void calc_vortmag(buffers *b, grid gd, mesh msh, cmdline cmd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dx,dy,dz;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
-		dz = 1./(msh.rdz * MF(k)); 
-		// If we parallelize over j and give each thread a row to
-		// work on, then we take advantage of caching and memory
-		// linearity. 
-		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); 
-			for(i=0; i<ni; i++) {
-    			calc_xvort(b->vstag, b->wstag, b->buf0, dy, dz, i, j, k, ni, nj);
-			}
-		}
-	}
-//This is dependent upon our current free slip bc, see CM1 for other decisions
-	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni; i++)
-	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
-	}
-
-#define XVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		XVORT(i,j,k) = 0.25 * (BUFp(i,j,k)+BUFp(i,j+1,k)+BUFp(i,j,k+1)+BUFp(i,j+1,k+1));
-
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) = XVORT(i,j,k)*XVORT(i,j,k);
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
-		dz = 1./(msh.rdz * MF(k)); 
-		for(j=0; j<nj; j++) {
-			for(i=0; i<ni+1; i++) {
-				dx = 1./(msh.rdx * UF(i)); 
-    			calc_yvort(b->ustag, b->wstag, b->buf0, dx, dz, i, j, k, ni, nj);
-			}
-		}
-	}
-//This is dependent upon our current free slip bc, see CM1 for other
-//decisions
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni+1; i++)
-	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
-	}
-#define YVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		YVORT(i,j,k) = 0.25 * (BUFp(i,j,k)+BUFp(i+1,j,k)+BUFp(i,j,k+1)+BUFp(i+1,j,k+1));
-
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) += YVORT(i,j,k)*YVORT(i,j,k);
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=0; k<nk; k++) {
-		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); 
-			for(i=0; i<ni+1; i++) {
-				dx = 1./(msh.rdx * UF(i)); 
-    			calc_zvort(b->ustag, b->vstag, b->buf0, dx, dy, i, j, k, ni, nj);
-			}
-		}
-	}
-#define ZVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		ZVORT(i,j,k) = 0.25 * (BUFp(i,j,k)+BUFp(i+1,j,k)+BUFp(i,j+1,k)+BUFp(i+1,j+1,k));
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) += ZVORT(i,j,k)*ZVORT(i,j,k);
-
-#define VORTMAG BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		VORTMAG(i,j,k) = sqrt(TEM1p(i,j,k));
-}
-
-/*******************************************************************************/
-
-#define STREAMVORT BUFp
-void calc_streamvort(buffers *b, grid gd, mesh msh, cmdline cmd)
-{
-	int i,j,k,ni,nj,nk,nx,ny,nz;
-	float dx,dy,dz;
-	float uinterp,vinterp,winterp;
-
-	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
-	nx=ni; ny=nj; nz=nk;
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
-		dz = 1./(msh.rdz * MF(k)); 
-		// If we parallelize over j and give each thread a row to
-		// work on, then we take advantage of caching and memory
-		// linearity. 
-		for(j=0; j<nj+1; j++) {
-			dy = 1./(msh.rdy * VF(j)); 
-			for(i=0; i<ni; i++) {
-    			calc_xvort(b->vstag, b->wstag, b->buf0, dy, dz, i, j, k, ni, nj);
-			}
-		}
-	}
-//This is dependent upon our current free slip bc, see CM1 for other decisions
-	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni; i++)
-	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
-	}
-
-#define XVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		XVORT(i,j,k) = 0.25 * (XVORT(i,j,k)+XVORT(i,j+1,k)+XVORT(i,j,k+1)+XVORT(i,j+1,k+1));
-
-
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		TEM1p(i,j,k) =  XVORT(i,j,k)*0.5*(UAp(i,j,k)+UAp(i+1,j,k));
-
-	#pragma omp parallel for private(i,j,k) 
-	for(k=1; k<nk; k++) {
-		dz = 1./(msh.rdz * MF(k)); 
-		for(j=0; j<nj; j++) {
-			for(i=0; i<ni+1; i++) {
-				dx = 1./(msh.rdx * UF(i)); 
-    			calc_yvort(b->ustag, b->wstag, b->buf0, dx, dz, i, j, k, ni, nj);
-			}
-		}
-	}
-//This is dependent upon our current free slip bc, see CM1 for other
-//decisions
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni+1; i++)
-	{
-		BUFp(i,j,0)=BUFp(i,j,1);
-		BUFp(i,j,nk)=BUFp(i,j,nk-1);
-	}
-#define YVORT BUFp
-#pragma omp parallel for private(i,j,k)
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
-		YVORT(i,j,k) = 0.25 * (YVORT(i,j,k)+YVORT(i+1,j,k)+YVORT(i,j,k+1)+YVORT(i+1,j,k+1));
-
-	for(k=0; k<nk; k++)
-	for(j=0; j<nj; j++)
-	for(i=0; i<ni; i++)
 		TEM1p(i,j,k) += YVORT(i,j,k)*0.5*(VAp(i,j,k)+VAp(i,j+1,k));
 
-	#pragma omp parallel for private(i,j,k) 
+#pragma omp parallel for private(i,j,k) 
 	for(k=0; k<nk; k++) {
 		for(j=0; j<nj+1; j++) {
 			dy = 1./(msh.rdy * VF(j)); 
 			for(i=0; i<ni+1; i++) {
 				dx = 1./(msh.rdx * UF(i)); 
-    			calc_zvort(b->ustag, b->vstag, b->buf0, dx, dy, i, j, k, ni, nj);
+    			calc_zvort(b->ustag, b->vstag, b->dum0, dx, dy, i, j, k, ni, nj);
 			}
 		}
 	}
 #define ZVORT BUFp
-#pragma omp parallel for private(i,j,k)
+//#pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		ZVORT(i,j,k) = 0.25 * (ZVORT(i,j,k)+ZVORT(i+1,j,k)+ZVORT(i,j+1,k)+ZVORT(i+1,j+1,k));
+		ZVORT(i,j,k) = 0.25 * (TEMp(i,j,k)+TEMp(i+1,j,k)+TEMp(i,j+1,k)+TEMp(i+1,j+1,k));
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
@@ -2098,6 +2129,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"qgqhqr"))	   {CL;calc_qgqhqr(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qtot"))	   {CL;calc_qtot(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
+		else if(same(var,"pres_nd"))	  {CL;calc_pres_nd(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"qv"))	   {CL;calc_qv(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"kmh_interp"))	   {CL;calc_kmh_interp(b,gd,msh,cmd,dm,hm,rc);}
