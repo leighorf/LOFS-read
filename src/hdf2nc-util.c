@@ -599,11 +599,11 @@ float grabpoint(grid *gd,hdf_meta hm,dir_meta dm,cmdline cmd, mesh msh, char *va
 
 	if (gd->X0>gd->X1||gd->Y0>gd->Y1||gd->X1<gd->saved_X0||gd->Y1<gd->saved_Y0||gd->X0>gd->saved_X1||gd->Y0>gd->saved_Y1)
 	{
-		printf("X: %i %i %i %i\n",gd->saved_X0,gd->X0,gd->X1,gd->saved_X1);
-		printf("Y: %i %i %i %i\n",gd->saved_X0,gd->Y0,gd->Y1,gd->saved_Y1);
-		printf("xc: %f\n",xc);
-		printf("yc: %f\n",yc);
-		printf("zc: %f\n",zc);
+		fprintf(stderr,"X: %i %i %i %i\n",gd->saved_X0,gd->X0,gd->X1,gd->saved_X1);
+		fprintf(stderr,"Y: %i %i %i %i\n",gd->saved_X0,gd->Y0,gd->Y1,gd->saved_Y1);
+		fprintf(stderr,"xc: %f\n",xc);
+		fprintf(stderr,"yc: %f\n",yc);
+		fprintf(stderr,"zc: %f\n",zc);
 		ERROR_STOP("Above numbers should be monotonically increasing. Your requested data does not fit within the saved data!\n");
 	}
 	if(gd->X0<gd->saved_X0)

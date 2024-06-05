@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 */
 		if(cmd.header)
 		{
-			sprintf(header,"%s\t%s\t%s\t%\t","time","xpos","ypos","zpos");
+			sprintf(header,"%s\t%s\t%s\t%s\t","time","xpos","ypos","zpos");
 			for (i=0; i<cmd.nvar_cmdline; i++)
 			{
 				sprintf(tmpstr,"%s\t",cmd.varname_cmdline[i]);
