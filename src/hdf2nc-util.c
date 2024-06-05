@@ -3,6 +3,7 @@
 #include "../include/lofs-hdf2nc.h"
 #include "../include/lofs-read.h"
 #include "../include/lofs-macros.h"
+#include "../include/h5z-sperr.h"
 
 void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *rh, hdf_meta *hm, zfpacc *zfpacc)
 {
@@ -52,6 +53,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	cmd->debug=0;
 	cmd->gzip=0;
 	cmd->zfp=0;
+	cmd->sperr=0;
 	cmd->zfplossless=0;
 	cmd->bitgroom1=0;
 	cmd->bitgroom2=0;
@@ -884,19 +886,21 @@ void set_nc_meta_name_units_compression(double zfpacc_netcdf,cmdline cmd, int nc
 {
 	int len,status;
 	int varnameid;
-	int do_zfp,do_bg1,do_bg2,do_bg3;
+	int do_zfp,do_sperr,do_bg1,do_bg2,do_bg3;
 	int i,do_zfp_lossless=0,flag_adjust=0;
 	unsigned int cdata[4]; /* for the ZFP stuff */
 	char attstr[MAXSTR];
 	float zfpacc_netcdf_old;
 
 	do_zfp=cmd.zfp;
+	do_sperr=cmd.sperr;
 	do_bg1=cmd.bitgroom1;
 	do_bg2=cmd.bitgroom2;
 	do_bg3=cmd.bitgroom3;
 
 	i=0;
 	if(do_zfp)i++;
+	if(do_sperr)i++;
 	if(do_bg1)i++;
 	if(do_bg2)i++;
 	if(do_bg3)i++;
@@ -977,6 +981,12 @@ void set_nc_meta_name_units_compression(double zfpacc_netcdf,cmdline cmd, int nc
 		{
 			ERROR_STOP("nc_def_var_filter failed");
 		}
+	}
+
+	else if (do_sperr)
+	{
+		unsigned int cd_values = H5Z_SPERR_make_cd_values(1, 6.4, 0);
+		nc_def_var_filter(ncid, v3d->varnameid, 32028, 1, &cd_values);
 	}
 
 /* BitGroom, Granular BitRound, and Bit Round

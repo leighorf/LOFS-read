@@ -73,6 +73,7 @@ typedef struct cmdline
 	int gzip;
 	int zfp;
 	int zfplossless;
+	int sperr;
 	int bitgroom1,bitgroom2,bitgroom3,bitgroom_nsd;
 	int use_box_offset;
 	int filetype;
