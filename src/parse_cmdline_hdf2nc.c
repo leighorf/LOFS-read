@@ -299,7 +299,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_NTHREADS:
 				cmd->nthreads=atoi(optarg);
-				omp_set_num_threads(cmd->nthreads);
+//	this needs to happen in hdf2nc.c	omp_set_num_threads(cmd->nthreads);
 				cmd->optcount++;
 				break;
 			case OPT_DEV_SHM_CACHE:

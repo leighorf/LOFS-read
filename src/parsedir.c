@@ -652,6 +652,7 @@ crave electrolytes.
 			get0dint(file_id,"grid/y1",&gd->saved_Y1);
 
 
+//			printf("ORF: parsedir: cmd.tusc30 = %i\n",cmd.tusc30);
 			if(!cmd.tusc30) //Before we stored this in the cm1hdf5 files
 			{
 				if (H5Lexists(file_id, "grid/nkwrite_val", H5P_DEFAULT) > 0) {
