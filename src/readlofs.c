@@ -125,6 +125,226 @@ herr_t twod_second_pass(hid_t loc_id, const char *name, void *opdata)
 //
 //
 
+
+//2024-06-14
+// nuke_lofs_files routine to cull hdf5 files that lie outside of the requested cube
+// Since we don't always know what we want to save before the run, this will give fine
+// grained control over deleting saved files that lie outside of the region of interest that is
+// specified by our normal --x0,--x1,--y0,--y1 flags
+// This is being done in anticipation of saving a lot of data for the studying the anvil as it spreads.
+// For sure during the early stage of the storm we can nuke a lot of files.
+// This is all about quotas, nothing more, otherwise we'd happily just keep everything
+//
+// I started with read_lofs_buffer since that code deals with the actual files and
+// constructs the file names and bounding cube. The routine will calculate the bounds of
+// the data we want to save, and then output the filenames of the files we do NOT want to
+// save - the ones we want to cull. It will write to a file rather than doing the actual
+// deleting here, for paranoia's sake.
+
+void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
+{
+	int i, tb;
+	int maxfilelength = 512;
+	char **nodefile;
+	char datasetname[100];
+	int numhdf;
+
+	hsize_t count3[3];
+	hsize_t offset_in3[3],offset_out3[3];
+	hsize_t count2[2];
+	hsize_t offset_in2[2],offset_out2[2];
+	hid_t file_id,dataset_id,dataspace_id,memoryspace_id;
+	hid_t swath_dataset_id,swath_dataspace_id,swath_memoryspace_id, single_swath_memoryspace_id;
+	int status;
+	int numi, numj;
+	int ihdf;
+
+	int ix,iy;
+
+	int gnx, gny, gnz;
+	int fx0=0, fxf=0, fy0=0, fyf=0;	/* file indices */
+	int sx0, sxf, sy0, syf;
+	int ax0, axf, ay0, ayf;
+	int snx, sny, snz, dxleft, dxright, dybot, dytop, ixnode, iynode, k, nxnode;
+	int rank;
+	double eps;
+ // filetimes is the actual times stored in the hdf5 file dirtimes
+ // contains the list of times contained in the directory names, which
+ // corresponds to the first time in the hdf files.
+	int time_is_in_file;
+
+ // Some silly 'heartbeat' output - letter written to screen is
+ // proportional to fraction of 2D horizontal extent of file read; z
+ // means you read the whole horizontal space in the file, a means you
+ // read a tiny subset, etc.
+
+	char *alph="abcdefghijklmnopqrstuvwxyz";
+	int letter;
+	int retval;
+	int ntimes,timeindex;
+	hsize_t dims[1],maxdims[1];
+	double *filetimes;
+
+	typedef struct hdfstruct
+	{
+		int x0, xf, y0, yf;
+		int sx0, sxf, sy0, syf;
+		int ax0, axf, ay0, ayf;
+		int myi, myj;
+	} HDFstruct;
+
+	HDFstruct **hdf;
+
+	if(cmd.verbose)
+	{
+		printf("\nrc.X0 = %5i\t rc.X1 = %5i\n",rc.X0,rc.X1);
+		printf("rc.Y0 = %5i\t rc.Y1 = %5i\n",rc.Y0,rc.Y1);
+		printf("rc.Z0 = %5i\t rc.Z1 = %5i\n",rc.Z0,rc.Z1);
+//		printf("\nReading %s...\n",varname);
+	}
+
+//ORF TEMP
+//	cmd.verbose=1;
+//  cmd.debug=1;
+
+	gnx = rc.X1 - rc.X0 + 1;
+	gny = rc.Y1 - rc.Y0 + 1;
+	gnz = rc.Z1 - rc.Z0 + 1;
+
+	numhdf = hm.rankx * hm.ranky;
+
+	/* ORF 2021-10-18 Note: numhdf will be larger than the actual number
+	 * of saved hdf files if the user did not save the full domain. That
+	 * is OK because we only allocate short character arrays 
+	 * here for creating the file names, so allocating more than we need
+	 * is no big whoop */
+
+	if ((hdf = (HDFstruct **) malloc (numhdf * sizeof (HDFstruct *))) == NULL) ERROR_STOP("Insufficient memory for HDFstruct");
+	for (i = 0; i < numhdf; i++)
+	{
+		if ((hdf[i] = (HDFstruct *) malloc (sizeof (HDFstruct))) == NULL) ERROR_STOP("Insufficient memory for HDFstruct");
+	}
+
+	if ((nodefile = (char **) malloc (numhdf * sizeof (char *))) == NULL)  ERROR_STOP("Insufficient memory for nodefile");
+
+	eps=1.0e-3;
+	if (!is_between_fuzzy(dm.alltimes[0],dm.alltimes[dm.ntottimes-1],cmd.time))
+	{
+		// edge case: Asking for last time will fail unless we check
+		// this
+		if(fabs(dm.alltimes[dm.ntottimes-1]-cmd.time)>eps)
+		{
+			fprintf(stderr,"Out of range: %f must be within the range %f to %f\n",cmd.time,dm.alltimes[0],dm.alltimes[dm.ntottimes-1]);
+			ERROR_STOP("Requested time not within range\n");
+		}
+	}
+	if(cmd.debug)
+	{
+		for (i=0; i < dm.ntimedirs; i++)
+			printf("SANITY CHECK: dirtimes = %lf\n",dm.dirtimes[i]);
+	}
+	for (i=0; i < dm.ntimedirs-1; i++)
+	{
+		if(cmd.debug) printf("DEBUG: dirtimes[%i] = %lf, dirtimes[%i] = %lf, time = %lf\n",i,dm.dirtimes[i],i+1,dm.dirtimes[i+1],cmd.time);
+		if (is_between_fuzzy(dm.dirtimes[i],dm.dirtimes[i+1],cmd.time)) break;
+	}
+	tb = i;
+	if (dm.ntimedirs == 1) tb = 0;
+	for (i = 0; i < numhdf; i++)
+	{
+		if ((nodefile[i] = (char *) malloc (MAXSTR*sizeof(char))) == NULL) ERROR_STOP("Insufficient memory");
+		/* Construct the cm1hdf5 file name and path, which is full of tasty metadata! */
+		sprintf (nodefile[i], "%s/%s/%07i/%s_%07i.cm1hdf5", dm.topdir,dm.timedir[tb],(dm.dn!=-1)?((i/dm.dn)*dm.dn):0,dm.timedir[tb],i);
+	}
+
+	eps = 1.0e-3;
+
+	time_is_in_file = FALSE;
+	for (i=0; i<dm.ntottimes; i++)
+	{
+		if (fabs(cmd.time-dm.alltimes[i])<eps)
+		{
+			time_is_in_file = TRUE;
+			break;
+		}
+	}
+
+	if (time_is_in_file == FALSE)
+	{
+		fprintf(stderr,"Requested time %lf was not saved\n",cmd.time);
+		fprintf(stderr,"Available times follow:");
+		for (i=0; i<dm.ntottimes; i++)
+		{
+			fprintf(stderr," %f",dm.alltimes[i]);
+		}
+		fprintf(stderr,"\n");
+	}
+	if (time_is_in_file == FALSE)	ERROR_STOP("Invalid time requested");
+
+	/* We build our decomposition from metadata stored in each hdf file */
+
+	numi = hm.nx / hm.rankx;
+	numj = hm.ny / hm.ranky;
+	for (ihdf = 0; ihdf < numhdf; ihdf++) /* just i not ihdf */
+	{
+		hdf[ihdf]->myj = ihdf / hm.rankx;
+		hdf[ihdf]->myi = ihdf % hm.rankx;
+		hdf[ihdf]->x0 = hdf[ihdf]->myi * numi;
+		hdf[ihdf]->xf = (hdf[ihdf]->myi + 1) * numi - 1;
+		hdf[ihdf]->y0 = hdf[ihdf]->myj * numj; 
+		hdf[ihdf]->yf = (hdf[ihdf]->myj + 1) * numj - 1;
+		if (cmd.debug)
+			fprintf (stderr, "myj = %i myi =%i x0 = %i xf = %i y0 = %i yf = %i\n",
+				 hdf[ihdf]->myj, hdf[ihdf]->myi, hdf[ihdf]->x0, hdf[ihdf]->xf, hdf[ihdf]->y0, hdf[ihdf]->yf);
+	}
+
+	/* first check if our requested subcube lies within our data */
+
+	if (is_not_between_int (0, hm.nx - 1, rc.X0)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, rc.Y0)) ERROR_STOP("Chosen y data out of range");
+	if (is_not_between_int (0, hm.nz - 1, rc.Z0)) ERROR_STOP("Chosen z data out of range");
+
+	if (is_not_between_int (0, hm.nx - 1, rc.X1)) ERROR_STOP("Chosen x data out of range");
+	if (is_not_between_int (0, hm.ny - 1, rc.Y1)) ERROR_STOP("Chosen y data out of range");
+//ORF: we don't do this check for swaths, they are handled differently,
+//but we are using the z dimension
+//	if ((strcmp(varname,"swaths")) && is_not_between_int (0, hm.nz - 1, rc.Z1)) ERROR_STOP("Chosen z data out of range");
+
+	for (i = 0; i < numhdf; i++)
+	{
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, rc.X0) && is_between_int (hdf[i]->y0, hdf[i]->yf, rc.Y0))
+		{
+			fx0 = hdf[i]->myi;
+			fy0 = hdf[i]->myj;
+			if (cmd.debug) fprintf (stderr, "found fx0,fy0 = %i,%i\n", fx0, fy0);
+		}
+		if (is_between_int (hdf[i]->x0, hdf[i]->xf, rc.X1) && is_between_int (hdf[i]->y0, hdf[i]->yf, rc.Y1))
+		{
+			fxf = hdf[i]->myi;
+			fyf = hdf[i]->myj;
+			if (cmd.debug) fprintf (stderr, "found fxf,fyf = %i,%i\n", fxf, fyf);
+		}
+	}
+
+	for (i = 0; i < numhdf; i++)
+	{
+		if (hdf[i]->myi < fx0 || hdf[i]->myi > fxf || hdf[i]->myj < fy0 || hdf[i]->myj > fyf)
+		{
+			printf("/bin/rm %s\n",nodefile[i])
+		}
+	}
+
+	/* free all pointers */
+	for (i = 0; i < numhdf; i++)
+	{
+		free (hdf[i]);
+		free (nodefile[i]);
+	}
+	free (hdf);
+	free (nodefile);
+	if(cmd.verbose)printf("\n");
+}
+
 void read_lofs_buffer(float *buf, char *varname, dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
 {
 	int i, tb;

@@ -159,5 +159,7 @@ int mkdir_p(const char *path);
 void add_CM1_LOFS_zfp_metadata_to_netcdf_file (hdf_meta *hm, hid_t *f_id, ncstruct nc);
 void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd, zfpacc *zfpacc);
 float grabpoint(grid *gd,hdf_meta hm,dir_meta dm, cmdline cmd,mesh msh, char *varname);
+void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
+void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
 
 #endif

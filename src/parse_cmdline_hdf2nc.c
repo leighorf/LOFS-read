@@ -731,3 +731,85 @@ void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 
 	if (bail)   { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }
+
+void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)
+{
+	int got_histpath,got_time,got_X0,got_Y0,got_X1,got_Y1;
+	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1 };
+
+	static struct option long_options[] =
+	{
+		{"histpath", required_argument, 0, OPT_HISTPATH},
+		{"time",     required_argument, 0, OPT_TIME},
+		{"x0",       required_argument, 0, OPT_X0},
+		{"y0",       required_argument, 0, OPT_Y0},
+		{"x1",       required_argument, 0, OPT_X1},
+		{"y1",       required_argument, 0, OPT_Y1},
+		{0, 0, 0, 0}//sentinel, needed!
+	};
+
+	got_histpath=got_time=got_X0=got_Y0=got_X1=got_Y1=0;
+
+	int bail = 0;
+	if (argc == 1)
+	{
+		fprintf(stderr,
+		"Usage: %s --histpath=[histpath] --x0=[X0] --y0=[Y0] --x1=[X1] --y1=[Y1] --time=[time]\n",argv[0]);
+		exit(0);
+	}
+
+	while (1)
+	{
+		int r;
+		int option_index = 0;
+		r = getopt_long_only (argc, argv,"",long_options,&option_index);
+		if (r == -1) break;
+
+		switch(r)
+		{
+			case OPT_HISTPATH:
+				strcpy(cmd->histpath,optarg);
+				got_histpath=1;
+				break;
+			case OPT_TIME:
+				cmd->time = atof(optarg);
+//				printf("cmd->time = %s %12.6f\n",optarg,cmd->time);exit(0);
+				got_time=1;
+				break;
+			case OPT_X0:
+				gd->X0 = atoi(optarg);
+				got_X0=1;
+				cmd->optcount++;
+				break;
+			case OPT_Y0:
+				gd->Y0 = atoi(optarg);
+				got_Y0=1;
+				cmd->optcount++;
+				break;
+			case OPT_X1:
+				gd->X1 = atoi(optarg);
+				got_X1=1;
+				cmd->optcount++;
+				break;
+			case OPT_Y1:
+				gd->Y1 = atoi(optarg);
+				got_Y1=1;
+				cmd->optcount++;
+				break;
+			case '?':
+				fprintf(stderr,"Exiting: unknown command line option.\n");
+				exit(0);
+				break;
+		}
+	}
+	if (cmd->debug==1)cmd->verbose=1; //show everything
+
+	if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
+	if (!got_time)     { fprintf(stderr,"--time not specified\n");     bail = 1; }
+	if (!got_X0)     { fprintf(stderr,"--x0 not specified\n");     bail = 1; }
+	if (!got_Y0)     { fprintf(stderr,"--y0 not specified\n");     bail = 1; }
+	if (!got_X1)     { fprintf(stderr,"--x1 not specified\n");     bail = 1; }
+	if (!got_Y1)     { fprintf(stderr,"--y1 not specified\n");     bail = 1; }
+
+	if (bail)   { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
+}
