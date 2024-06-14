@@ -985,8 +985,31 @@ void set_nc_meta_name_units_compression(double zfpacc_netcdf,cmdline cmd, int nc
 
 	else if (do_sperr)
 	{
-		unsigned int cd_values = H5Z_SPERR_make_cd_values(1, 6.4, 0);
-		nc_def_var_filter(ncid, v3d->varnameid, 32028, 1, &cd_values);
+		v3d->zfpacc_netcdf = zfpacc_netcdf; // This is the value we set in this code, not what was saved in LOFS
+
+		sprintf(attstr,"sperracc_netcdf_%s",long_name);
+		printf("%30s = %14.7f",attstr,zfpacc_netcdf);
+		if(flag_adjust) printf(" **** ADJUSTED UPWARDS TO LOFS VALUE (from %f to %f)\n",zfpacc_netcdf_old,zfpacc_netcdf); else printf("\n");
+
+		status = nc_put_att_double(ncid,v3d->varnameid, "sperr_accuracy_netcdf",NC_DOUBLE,1,&zfpacc_netcdf);
+		if (status != NC_NOERR) ERROR_STOP("nc_put_att_double failed");
+
+		set_zfp_accuracy_cdata(zfpacc_netcdf,cdata);
+		if (!H5Zfilter_avail(32028))
+		{
+			char *hdf5_plugin_path;
+			printf("SPERR filter not available!\n");
+			hdf5_plugin_path = getenv("HDF5_PLUGIN_PATH");
+			printf("Check your HDF5_PLUGIN_PATH; it is currently %s\n",hdf5_plugin_path);
+			ERROR_STOP("SPERR filter not available");
+		}
+
+		unsigned int cd_values = H5Z_SPERR_make_cd_values(3, zfpacc_netcdf, 1); //ORF 2024-06-08
+		status=nc_def_var_filter(ncid, v3d->varnameid, 32028, 1, &cd_values);
+		if(status != NC_NOERR)
+		{
+			ERROR_STOP("nc_def_var_filter failed");
+		}
 	}
 
 /* BitGroom, Granular BitRound, and Bit Round
@@ -1599,14 +1622,23 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 			//However, you may wish to choose your own frigging HDF chunking parameters bud!
 			int xchunk,ychunk,zchunk;
 
-			xchunk=gd.NX/4;
-			ychunk=gd.NY/4;
-			zchunk=gd.NZ/2;
+			if(cmd->zfp)
+			{
+				xchunk=gd.NX/4;
+				ychunk=gd.NY/4;
+				zchunk=gd.NZ/4; //ORF changed from 2 to 4 2024-06-06
+			}
+			else if (cmd->sperr) //SPERR likes big chunks, it cannot lie
+			{
+				xchunk=gd.NX;
+				ychunk=gd.NY;
+				zchunk=gd.NZ;
+			}
 
 			size_t chunkdims[4] = {1,zchunk,ychunk,xchunk}; 
 
 			status = nc_def_var (nc->ncid, nc->var3d[ivar].varname, NC_FLOAT, 4, nc->dims, &(nc->var3d[ivar].varnameid));
-			if (cmd->zfp==1) status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
+			if (cmd->zfp||cmd->sperr) status = nc_def_var_chunking(nc->ncid,nc->var3d[ivar].varnameid,NC_CHUNKED,chunkdims);
 		}
 
 		if (status != NC_NOERR) 

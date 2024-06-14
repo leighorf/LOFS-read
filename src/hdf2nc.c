@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 		printf("Original: gd.Y0=%5i gd.Y1=%5i gd.NY=%5i\n",gd.Y0,gd.Y1,gd.Y1-gd.Y0+1);
 		printf("Original: gd.Z0=%5i gd.Z1=%5i gd.NZ=%5i\n",gd.Z0,gd.Z1,gd.Z1-gd.Z0+1);
 	}
-	if(cmd.zfp)
+	if(cmd.zfp||cmd.sperr)
 	{
 		int x1a,y1a,z1a,nxa,nya,nza;
 		x1a=gd.X1;
