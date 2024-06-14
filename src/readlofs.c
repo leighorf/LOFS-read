@@ -302,7 +302,7 @@ void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
 
 	if (is_not_between_int (0, hm.nx - 1, rc.X0)) ERROR_STOP("Chosen x data out of range");
 	if (is_not_between_int (0, hm.ny - 1, rc.Y0)) ERROR_STOP("Chosen y data out of range");
-	if (is_not_between_int (0, hm.nz - 1, rc.Z0)) ERROR_STOP("Chosen z data out of range");
+//	if (is_not_between_int (0, hm.nz - 1, rc.Z0)) ERROR_STOP("Chosen z data out of range");
 
 	if (is_not_between_int (0, hm.nx - 1, rc.X1)) ERROR_STOP("Chosen x data out of range");
 	if (is_not_between_int (0, hm.ny - 1, rc.Y1)) ERROR_STOP("Chosen y data out of range");
@@ -330,7 +330,7 @@ void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
 	{
 		if (hdf[i]->myi < fx0 || hdf[i]->myi > fxf || hdf[i]->myj < fy0 || hdf[i]->myj > fyf)
 		{
-			printf("/bin/rm %s\n",nodefile[i])
+			printf("/bin/rm %s\n",nodefile[i]);
 		}
 	}
 

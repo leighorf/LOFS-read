@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 	readahead rh;
 	buffers b;
 	zfpacc zfpacc;
+	requested_cube rc;
 
 	hid_t hdf_file_id;
 
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
 
 	init_structs(&cmd,&dm,&gd,&nc,&rh,&hm,&zfpacc);
 
-	parse_cmdline_nukefiles(argc,argv,&cmd,&dm,&gd,&zfpacc);
+	parse_cmdline_nukefiles(argc,argv,&cmd,&dm,&gd);
 	
 	cmd.nvar_cmdline = argc - cmd.argc_hdf2nc_min - cmd.optcount;
 		
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
 	//These are written as global attributes to the netCDF file below.
 
 	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id,&zfpacc);
+	copy_grid_to_requested_cube(&rc,gd);
 	nuke_lofs_files(dm,hm,rc,cmd);
 
 	exit(0);
