@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
 	//These are written as global attributes to the netCDF file below.
 
 	get_hdf_metadata(dm,&hm,&cmd,&nc,argv,&hdf_file_id,&zfpacc);
+	set_span(&gd,hm,cmd);
 	copy_grid_to_requested_cube(&rc,gd);
 	nuke_lofs_files(dm,hm,rc,cmd);
 

@@ -735,7 +735,7 @@ void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd)
 {
 	int got_histpath,got_time,got_X0,got_Y0,got_X1,got_Y1;
-	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1 };
+	enum { OPT_HISTPATH = 1000, OPT_TIME, OPT_X0, OPT_Y0, OPT_X1, OPT_Y1, OPT_OFFSET };
 
 	static struct option long_options[] =
 	{
@@ -745,6 +745,7 @@ void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 		{"y0",       required_argument, 0, OPT_Y0},
 		{"x1",       required_argument, 0, OPT_X1},
 		{"y1",       required_argument, 0, OPT_Y1},
+		{"offset",   optional_argument, 0, OPT_OFFSET},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
 
@@ -794,6 +795,10 @@ void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 			case OPT_Y1:
 				gd->Y1 = atoi(optarg);
 				got_Y1=1;
+				cmd->optcount++;
+				break;
+			case OPT_OFFSET:
+				cmd->use_box_offset=1;
 				cmd->optcount++;
 				break;
 			case '?':
