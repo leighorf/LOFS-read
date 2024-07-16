@@ -741,10 +741,10 @@ void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 	{
 		{"histpath", required_argument, 0, OPT_HISTPATH},
 		{"time",     required_argument, 0, OPT_TIME},
-		{"x0",       required_argument, 0, OPT_X0},
-		{"y0",       required_argument, 0, OPT_Y0},
-		{"x1",       required_argument, 0, OPT_X1},
-		{"y1",       required_argument, 0, OPT_Y1},
+		{"x0",       optional_argument, 0, OPT_X0},
+		{"y0",       optional_argument, 0, OPT_Y0},
+		{"x1",       optional_argument, 0, OPT_X1},
+		{"y1",       optional_argument, 0, OPT_Y1},
 		{"offset",   optional_argument, 0, OPT_OFFSET},
 		{0, 0, 0, 0}//sentinel, needed!
 	};
@@ -811,10 +811,12 @@ void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 
 	if (!got_histpath) { fprintf(stderr,"--histpath not specified\n"); bail = 1; }
 	if (!got_time)     { fprintf(stderr,"--time not specified\n");     bail = 1; }
+	/*
 	if (!got_X0)     { fprintf(stderr,"--x0 not specified\n");     bail = 1; }
 	if (!got_Y0)     { fprintf(stderr,"--y0 not specified\n");     bail = 1; }
 	if (!got_X1)     { fprintf(stderr,"--x1 not specified\n");     bail = 1; }
 	if (!got_Y1)     { fprintf(stderr,"--y1 not specified\n");     bail = 1; }
+	*/
 
 	if (bail)   { fprintf(stderr,"Insufficient arguments to %s, exiting.\n",argv[0]); exit(-1); }
 }

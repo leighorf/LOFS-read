@@ -330,7 +330,7 @@ void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd)
 	{
 		if (hdf[i]->myi < fx0 || hdf[i]->myi > fxf || hdf[i]->myj < fy0 || hdf[i]->myj > fyf)
 		{
-			printf("/bin/rm %s\n",nodefile[i]);
+			printf("/bin/rm -f %s\n",nodefile[i]);
 		}
 	}
 
