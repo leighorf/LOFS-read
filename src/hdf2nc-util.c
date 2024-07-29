@@ -191,6 +191,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->tempC =          1.0e-1;
 	zfpacc->netcdf->hdiv =           1.0e-3;
 	zfpacc->netcdf->liutexmag =      1.0e-3;
+	zfpacc->netcdf->liutex_x =      1.0e-3;
+	zfpacc->netcdf->liutex_y =      1.0e-3;
+	zfpacc->netcdf->liutex_z =      1.0e-3;
 
 	/* These are read only in the sense that we read them from LOFS attributes. These
 	 * are the zfp accuracy values that were written with CM1-LOFS. Initialize
@@ -1706,6 +1709,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"tempC"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->tempC,           *cmd,nid,hm,v3did,"long_name",var,"degC");
 		else if(same(var,"hdiv"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->hdiv,            *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"liutexmag"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutexmag,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"liutex_x"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_x,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"liutex_y"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_y,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"liutex_z"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_z,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 
 	} // End of big ivar loop
 
@@ -1879,6 +1885,9 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"qgqhqr")) {rh->qgqhqr=1;}
 		if(same(var,"tempC")) {rh->tempC=1;}
 		if(same(var,"liutexmag")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"liutex_x")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"liutex_y")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"liutex_z")) {rh->u=1;rh->v=1;rh->w=1;}
 	}
 	//free(var);
 }

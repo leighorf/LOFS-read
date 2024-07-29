@@ -1304,70 +1304,134 @@ void do_zvort_stretch(buffers *b, grid gd, mesh msh, cmdline cmd)
 
 }
 
-#define LIUTEXMAG BUFp
-void do_liutexmag(buffers *b, grid gd, mesh msh, cmdline cmd)
+#define LIUTEX BUFp
+void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 {
 	int i,j,k,ni,nj,nk,nx,ny,nz;
 	float dx, dy, dz;
 	float dwdx,dwdy,dwdxc[4],dwdyc[4],xvort,yvort,zvort_tilt;
 	float dudx,dvdy,dwdz,dudyc[4],dudzc[4],dudy,dudz,dvdxc[4],dvdzc[4],dvdx,dvdz;
-	double velocity_gradient_tensor[3][3],liutexvec[3];
+	float velocity_gradient_tensor[3][3],liutexvec[3];
+	float zvort,vortmag;
 
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
+#undef CENTERED_LIUTEX
+#ifdef CENTERED_LIUTEX
+// This routine needs to be called last
+// We overwrite u,v,w with their interpolated values
+// This was a test of doing a simple centered difference on the
+// interpolated velocity variables. No longer needed.
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		UAp(i,j,k) = 0.5*(UAp(i,j,k)+UAp(i+1,j,k));
 
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		VAp(i,j,k) = 0.5*(VAp(i,j,k)+VAp(i,j+1,k));
+
+	for(k=0;k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		WAp(i,j,k) = 0.5*(WAp(i,j,k)+WAp(i,j,k+1));
+
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		dx = 2./(msh.rdx * UF(i));
+		dy = 2./(msh.rdy * VF(j));
+		dz = 2./(msh.rdz * MF(k));
+
+		dudx = (UAp(i+1,j,k)-UAp(i-1,j,k))/dx;
+		dudy = (UAp(i,j+1,k)-UAp(i,j-1,k))/dy;
+		dudz = (UAp(i,j,k+1)-UAp(i,j,k-1))/dz;
+		dvdx = (VAp(i+1,j,k)-VAp(i-1,j,k))/dx;
+		dvdy = (VAp(i,j+1,k)-VAp(i,j-1,k))/dy;
+		dvdz = (VAp(i,j,k+1)-VAp(i,j,k-1))/dz;
+		dwdx = (WAp(i+1,j,k)-WAp(i-1,j,k))/dx;
+		dwdy = (WAp(i,j+1,k)-WAp(i,j-1,k))/dy;
+		dwdz = (WAp(i,j,k+1)-WAp(i,j,k-1))/dz;
+
+		velocity_gradient_tensor[0][0] = dudx;
+		velocity_gradient_tensor[0][1] = dudy;
+		velocity_gradient_tensor[0][2] = dudz;
+		velocity_gradient_tensor[1][0] = dvdx;
+		velocity_gradient_tensor[1][1] = dvdy;
+		velocity_gradient_tensor[1][2] = dvdz;
+		velocity_gradient_tensor[2][0] = dwdx;
+		velocity_gradient_tensor[2][1] = dwdy;
+		velocity_gradient_tensor[2][2] = dwdz;
+
+		liutex(velocity_gradient_tensor,liutexvec);
+
+		if (same(component,"liutexmag")) LIUTEX(i,j,k) = (float)sqrt(liutexvec[0]*liutexvec[0]+liutexvec[1]*liutexvec[1]+liutexvec[2]*liutexvec[2]);
+		else if (same(component,"liutex_x")) LIUTEX(i,j,k) = (float)liutexvec[0];
+		else if (same(component,"liutex_y")) LIUTEX(i,j,k) = (float)liutexvec[1];
+		else if (same(component,"liutex_z")) LIUTEX(i,j,k) = (float)liutexvec[2];
+		else {printf("Bad liutex component %s, exiting\n",component);}
+	}
+	}
+	}
+#endif
+//CENTERED_LIUTEX
 #pragma omp parallel for private(i,j,k,dx,dy,dz,dudx,dudyc,dudy,dudzc,dudz,dvdxc,dvdx,dvdy,dvdzc,dvdz,dwdxc,dwdx,dwdyc,dwdy,dwdz,velocity_gradient_tensor,liutexvec) 
-	for (k=1; k<nk+1; k++) {
-	for (j=0; j<nj+1; j++) {
-	for (i=0; i<ni+1; i++) {
-		dx = 1./(msh.rdx * UH(i));
-		dy = 1./(msh.rdy * VH(j));
-		dz = 1./(msh.rdz * MH(k));
+	for (k=0; k<nk; k++) {
+	for (j=0; j<nj; j++) {
+	for (i=0; i<ni; i++) {
+		dx = 1./(msh.rdx * UF(i));
+		dy = 1./(msh.rdy * VF(j));
+		dz = 1./(msh.rdz * MF(k));
 
-		/*
-		dudx = (UAp(i+1,j,k)-UAp(i,j,k))*rdx*UH(i);
-		dvdy = (VAp(i,j+1,k)-VAp(i,j,k))*rdy*VH(j);
-		*/
+		/* ORF: Fudge free slip bc with the k!=0 check */
+		/* ORF: if your bc is partial slip you need to change how the
+		 * bottom boundary is handled */
 
-		dudx = (UAp(i,j,k)-UAp(i-1,j,k))/dx;
-		dvdy = (VAp(i,j,k)-VAp(i,j-1,k))/dy;
-		dwdz = (WAp(i,j,k)-WAp(i,j,k-1))/dz;
+		dudx = (UAp(i+1,j,k)-UAp(i,j,k))/dx;
+		dvdy = (VAp(i,j+1,k)-VAp(i,j,k))/dy;
+		dwdz = (WAp(i,j,k+1)-WAp(i,j,k))/dz;
 
-		dudyc[0] = ( UAp(i, j, k) - UAp(i, j-1, k) ) / dy;
-		dudyc[1] = ( UAp(i+1, j, k) - UAp(i+1, j-1, k) ) / dy;
-		dudyc[2] = ( UAp(i, j+1, k) - UAp(i, j, k) ) / dy;
-		dudyc[3] = ( UAp(i+1, j+1, k) - UAp(i+1, j, k) ) / dy;
+		dudyc[0] = ( UAp(i,   j,   k) - UAp(i,   j-1, k) ) / dy;
+		dudyc[1] = ( UAp(i+1, j,   k) - UAp(i+1, j-1, k) ) / dy;
+		dudyc[2] = ( UAp(i,   j+1, k) - UAp(i,   j,   k) ) / dy;
+		dudyc[3] = ( UAp(i+1, j+1, k) - UAp(i+1, j,   k) ) / dy;
 
-		dudzc[0] = ( UAp(i, j, k) - UAp(i, j, k-1) ) / dz;
-		dudzc[1] = ( UAp(i+1, j, k) - UAp(i+1, j, k-1) ) / dz;
-		dudzc[2] = ( UAp(i, j, k+1) - UAp(i, j, k) ) / dz;
-		dudzc[3] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
+		dudzc[0] = (k!=0)?( UAp(i, j, k) - UAp(i, j, k-1) )/dz:( UAp(i, j, k+1) - UAp(i, j, k) )/dz;
+		dudzc[1] = (k!=0)?( UAp(i+1, j, k) - UAp(i+1, j, k-1) ) / dz:( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
+
+		dudzc[0] = ( UAp(i,   j, k  ) - UAp(i,   j, k-1) ) / dz;
+		dudzc[1] = ( UAp(i+1, j, k  ) - UAp(i+1, j, k-1) ) / dz;
+		dudzc[2] = ( UAp(i,   j, k+1) - UAp(i,   j, k  ) ) / dz;
+		dudzc[3] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k  ) ) / dz;
 
 		dudy = 0.25*(dudyc[0]+dudyc[1]+dudyc[2]+dudyc[3]);
 		dudz = 0.25*(dudzc[0]+dudzc[1]+dudzc[2]+dudzc[3]);
 
-		dvdxc[0] = ( VAp(i, j, k) - VAp(i-1, j, k) ) / dx;
-		dvdxc[1] = ( VAp(i+1, j, k) - VAp(i, j, k) ) / dx;
-		dvdxc[2] = ( VAp(i, j+1, k) - VAp(i-1, j+1, k) ) / dx;
-		dvdxc[3] = ( VAp(i+1, j+1, k) - VAp(i, j+1, k) ) / dx;
+		dvdxc[0] = ( VAp(i,   j,   k) - VAp(i-1, j,   k) ) / dx;
+		dvdxc[1] = ( VAp(i+1, j,   k) - VAp(i,   j,   k) ) / dx;
+		dvdxc[2] = ( VAp(i,   j+1, k) - VAp(i-1, j+1, k) ) / dx;
+		dvdxc[3] = ( VAp(i+1, j+1, k) - VAp(i,   j+1, k) ) / dx;
 
-		dvdzc[0] = ( VAp(i, j, k) - VAp(i, j, k-1) ) / dz;
-		dvdzc[1] = ( VAp(i, j+1, k) - VAp(i, j+1, k-1) ) / dz;
-		dvdzc[2] = ( VAp(i, j, k+1) - VAp(i, j, k) ) / dz;
-		dvdzc[3] = ( VAp(i, j+1, k+1) - VAp(i, j+1, k) ) / dz;
+		dvdzc[0] = (k!=0)?( VAp(i, j, k) - VAp(i, j, k-1) ) / dz:( VAp(i, j, k+1) - VAp(i, j, k) ) / dz;
+		dvdzc[1] = (k!=0)?( VAp(i, j+1, k) - VAp(i, j+1, k-1) ) / dz:( VAp(i, j+1, k+1) - VAp(i, j+1, k) ) / dz;
+		dvdzc[0] = ( VAp(i, j,   k  ) - VAp(i, j,   k-1) ) / dz;
+		dvdzc[1] = ( VAp(i, j+1, k  ) - VAp(i, j+1, k-1) ) / dz;
+		dvdzc[2] = ( VAp(i, j,   k+1) - VAp(i, j,   k  ) ) / dz;
+		dvdzc[3] = ( VAp(i, j+1, k+1) - VAp(i, j+1, k  ) ) / dz;
 
 		dvdx = 0.25*(dvdxc[0]+dvdxc[1]+dvdxc[2]+dvdxc[3]);
 		dvdz = 0.25*(dvdzc[0]+dvdzc[1]+dvdzc[2]+dvdzc[3]);
 
-		dwdxc[0] = ( WAp(i, j, k) - WAp(i-1, j, k) ) / dx;
-		dwdxc[1] = ( WAp(i+1, j, k) - WAp(i, j, k) ) / dx;
-		dwdxc[2] = ( WAp(i, j+1, k) - WAp(i-1, j+1, k) ) / dx;
-		dwdxc[3] = ( WAp(i+1, j+1, k) - WAp(i, j+1, k) ) / dx;
+		dwdxc[0] = ( WAp(i,   j,   k) - WAp(i-1, j,   k) ) / dx;
+		dwdxc[1] = ( WAp(i+1, j,   k) - WAp(i,   j,   k) ) / dx;
+		dwdxc[2] = ( WAp(i,   j+1, k) - WAp(i-1, j+1, k) ) / dx;
+		dwdxc[3] = ( WAp(i+1, j+1, k) - WAp(i,   j+1, k) ) / dx;
 
-		dwdyc[0] = ( WAp(i, j, k) - WAp(i, j-1, k) ) / dy;
-		dwdyc[1] = ( WAp(i, j+1, k) - WAp(i, j, k) ) / dy;
-		dwdyc[2] = ( WAp(i, j, k+1) - WAp(i, j-1, k+1) ) / dy;
-		dwdyc[3] = ( WAp(i, j+1, k+1) - WAp(i, j, k+1) ) / dy;
+		dwdyc[0] = ( WAp(i, j,   k  ) - WAp(i, j-1, k  ) ) / dy;
+		dwdyc[1] = ( WAp(i, j+1, k  ) - WAp(i, j,   k  ) ) / dy;
+		dwdyc[2] = ( WAp(i, j,   k+1) - WAp(i, j-1, k+1) ) / dy;
+		dwdyc[3] = ( WAp(i, j+1, k+1) - WAp(i, j,   k+1) ) / dy;
 
 		dwdx = 0.25*(dwdxc[0]+dwdxc[1]+dwdxc[2]+dwdxc[3]);
 		dwdy = 0.25*(dwdyc[0]+dwdyc[1]+dwdyc[2]+dwdyc[3]);
@@ -1382,22 +1446,28 @@ void do_liutexmag(buffers *b, grid gd, mesh msh, cmdline cmd)
 		velocity_gradient_tensor[2][1] = dwdy;
 		velocity_gradient_tensor[2][2] = dwdz;
 
-//		printf("dudx=%f dudy=%f dudz=%f dvdx=%f dvdy=%f dvdz=%f dwdx=%f dwdy=%f dwdz=%f\n",dudx,dudy,dudz,dvdx,dvdy,dvdz,dwdx,dwdy,dwdz);
-
 		liutex(velocity_gradient_tensor,liutexvec);
 
-//		printf("%f %f %f\n",liutexvec[0],liutexvec[1],liutexvec[3]);
+		if (same(component,"liutexmag")) LIUTEX(i,j,k) = (float)sqrt(liutexvec[0]*liutexvec[0]+liutexvec[1]*liutexvec[1]+liutexvec[2]*liutexvec[2]);
+		else if (same(component,"liutex_x")) LIUTEX(i,j,k) = (float)liutexvec[0];
+		else if (same(component,"liutex_y")) LIUTEX(i,j,k) = (float)liutexvec[1];
+		else if (same(component,"liutex_z")) LIUTEX(i,j,k) = (float)liutexvec[2];
+		else {printf("Bad liutex component %s, exiting\n",component);}
+/*
+		xvort=dwdy-dvdz;
+		yvort=dudz-dwdx;
+		zvort=dvdx-dudy;
+		vortmag=sqrt(xvort*xvort+yvort*yvort+zvort*zvort);
+		if (same(component,"liutexmag")) LIUTEX(i,j,k) = vortmag;
+		else if (same(component,"liutex_x")) LIUTEX(i,j,k) = xvort;
+		else if (same(component,"liutex_y")) LIUTEX(i,j,k) = yvort;
+		else if (same(component,"liutex_z")) LIUTEX(i,j,k) = zvort;
+		else {printf("Bad liutex component %s, exiting\n",component);}
+*/
+	}
+	}
+	}
 
-		LIUTEXMAG(i,j,k) = (float)sqrt(liutexvec[0]*liutexvec[0]+liutexvec[1]*liutexvec[1]+liutexvec[2]*liutexvec[2]);
-	}
-	}
-	}
-//This is dependent upon our current free slip bc, see CM1 for other decisions
-	for(j=0; j<nj+1; j++)
-	for(i=0; i<ni+1; i++)
-	{
-		LIUTEXMAG(i,j,0)=LIUTEXMAG(i,j,1);
-	}
 }
 /*******************************************************************************/
 
@@ -2233,7 +2303,10 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"kmv_interp"))	   {CL;calc_kmv_interp(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"khh_interp"))	   {CL;calc_khh_interp(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"khv_interp"))	   {CL;calc_khv_interp(b,gd,msh,cmd,dm,hm,rc);}
-		else if(same(var,"liutexmag"))	   {CL;do_liutexmag(b,gd,msh,cmd);}
+		else if(same(var,"liutexmag"))	   {CL;do_liutex(b,gd,msh,cmd,"liutexmag");}
+		else if(same(var,"liutex_x"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_x");}
+		else if(same(var,"liutex_y"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_y");}
+		else if(same(var,"liutex_z"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_z");}
 //void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 //			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
 		else

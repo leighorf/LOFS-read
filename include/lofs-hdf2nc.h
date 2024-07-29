@@ -92,7 +92,7 @@ typedef struct netcdf_zfp
 	float xvort_solenoid,yvort_solenoid,zvort_solenoid;
 	float hvort,streamvort,qiqvpert,qtot,qcqi,qgqhqr,tempC;
 	float hdiv;
-	float liutexmag;
+	float liutexmag,liutex_x,liutex_y,liutex_z;
 } netcdf;
 
 typedef struct zfp_acc
@@ -162,6 +162,6 @@ void parse_cmdline_grabpoint(int argc, char *argv[], cmdline *cmd, dir_meta *dm,
 float grabpoint(grid *gd,hdf_meta hm,dir_meta dm, cmdline cmd,mesh msh, char *varname);
 void parse_cmdline_nukefiles(int argc, char *argv[], cmdline *cmd, dir_meta *dm, grid *gd);
 void nuke_lofs_files(dir_meta dm, hdf_meta hm, requested_cube rc, cmdline cmd);
-void liutex(double velocity_gradient_tensor[3][3],double liutexvec[3]);
+void liutex(float velocity_gradient_tensor[3][3],float liutexvec[3]);
 
 #endif
