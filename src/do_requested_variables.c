@@ -1376,7 +1376,7 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 	}
 #endif
 //CENTERED_LIUTEX
-#pragma omp parallel for private(i,j,k,dx,dy,dz,dudx,dudyc,dudy,dudzc,dudz,dvdxc,dvdx,dvdy,dvdzc,dvdz,dwdxc,dwdx,dwdyc,dwdy,dwdz,velocity_gradient_tensor,liutexvec) 
+//#pragma omp parallel for private(i,j,k,dx,dy,dz,dudx,dudyc,dudy,dudzc,dudz,dvdxc,dvdx,dvdy,dvdzc,dvdz,dwdxc,dwdx,dwdyc,dwdy,dwdz,velocity_gradient_tensor,liutexvec) 
 	for (k=0; k<nk; k++) {
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
@@ -1397,11 +1397,11 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 		dudyc[2] = ( UAp(i,   j+1, k) - UAp(i,   j,   k) ) / dy;
 		dudyc[3] = ( UAp(i+1, j+1, k) - UAp(i+1, j,   k) ) / dy;
 
+//		dudzc[0] = ( UAp(i,   j, k  ) - UAp(i,   j, k-1) ) / dz;
+//		dudzc[1] = ( UAp(i+1, j, k  ) - UAp(i+1, j, k-1) ) / dz;
+//		free slip bottom boundary
 		dudzc[0] = (k!=0)?( UAp(i, j, k) - UAp(i, j, k-1) )/dz:( UAp(i, j, k+1) - UAp(i, j, k) )/dz;
 		dudzc[1] = (k!=0)?( UAp(i+1, j, k) - UAp(i+1, j, k-1) ) / dz:( UAp(i+1, j, k+1) - UAp(i+1, j, k) ) / dz;
-
-		dudzc[0] = ( UAp(i,   j, k  ) - UAp(i,   j, k-1) ) / dz;
-		dudzc[1] = ( UAp(i+1, j, k  ) - UAp(i+1, j, k-1) ) / dz;
 		dudzc[2] = ( UAp(i,   j, k+1) - UAp(i,   j, k  ) ) / dz;
 		dudzc[3] = ( UAp(i+1, j, k+1) - UAp(i+1, j, k  ) ) / dz;
 
@@ -1413,10 +1413,11 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 		dvdxc[2] = ( VAp(i,   j+1, k) - VAp(i-1, j+1, k) ) / dx;
 		dvdxc[3] = ( VAp(i+1, j+1, k) - VAp(i,   j+1, k) ) / dx;
 
+//		dvdzc[0] = ( VAp(i, j,   k  ) - VAp(i, j,   k-1) ) / dz;
+//		dvdzc[1] = ( VAp(i, j+1, k  ) - VAp(i, j+1, k-1) ) / dz;
+//		free slip bottom boundary
 		dvdzc[0] = (k!=0)?( VAp(i, j, k) - VAp(i, j, k-1) ) / dz:( VAp(i, j, k+1) - VAp(i, j, k) ) / dz;
 		dvdzc[1] = (k!=0)?( VAp(i, j+1, k) - VAp(i, j+1, k-1) ) / dz:( VAp(i, j+1, k+1) - VAp(i, j+1, k) ) / dz;
-		dvdzc[0] = ( VAp(i, j,   k  ) - VAp(i, j,   k-1) ) / dz;
-		dvdzc[1] = ( VAp(i, j+1, k  ) - VAp(i, j+1, k-1) ) / dz;
 		dvdzc[2] = ( VAp(i, j,   k+1) - VAp(i, j,   k  ) ) / dz;
 		dvdzc[3] = ( VAp(i, j+1, k+1) - VAp(i, j+1, k  ) ) / dz;
 
