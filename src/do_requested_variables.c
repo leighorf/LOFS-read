@@ -1375,8 +1375,9 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 	}
 	}
 #endif
-//CENTERED_LIUTEX
-//#pragma omp parallel for private(i,j,k,dx,dy,dz,dudx,dudyc,dudy,dudzc,dudz,dvdxc,dvdx,dvdy,dvdzc,dvdz,dwdxc,dwdx,dwdyc,dwdy,dwdz,velocity_gradient_tensor,liutexvec) 
+//CENTERED_LIUTEX endif
+
+#pragma omp parallel for private(i,j,k,dx,dy,dz,dudx,dudyc,dudy,dudzc,dudz,dvdxc,dvdx,dvdy,dvdzc,dvdz,dwdxc,dwdx,dwdyc,dwdy,dwdz,velocity_gradient_tensor,liutexvec) 
 	for (k=0; k<nk; k++) {
 	for (j=0; j<nj; j++) {
 	for (i=0; i<ni; i++) {
@@ -1388,9 +1389,13 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 		/* ORF: if your bc is partial slip you need to change how the
 		 * bottom boundary is handled */
 
+
 		dudx = (UAp(i+1,j,k)-UAp(i,j,k))/dx;
 		dvdy = (VAp(i,j+1,k)-VAp(i,j,k))/dy;
 		dwdz = (WAp(i,j,k+1)-WAp(i,j,k))/dz;
+
+/* calculate derivatives on the native staggered mesh, and average to
+ * the scalar point */
 
 		dudyc[0] = ( UAp(i,   j,   k) - UAp(i,   j-1, k) ) / dy;
 		dudyc[1] = ( UAp(i+1, j,   k) - UAp(i+1, j-1, k) ) / dy;
@@ -1449,10 +1454,10 @@ void do_liutex(buffers *b, grid gd, mesh msh, cmdline cmd, char *component)
 
 		liutex(velocity_gradient_tensor,liutexvec);
 
-		if (same(component,"liutexmag")) LIUTEX(i,j,k) = (float)sqrt(liutexvec[0]*liutexvec[0]+liutexvec[1]*liutexvec[1]+liutexvec[2]*liutexvec[2]);
-		else if (same(component,"liutex_x")) LIUTEX(i,j,k) = (float)liutexvec[0];
-		else if (same(component,"liutex_y")) LIUTEX(i,j,k) = (float)liutexvec[1];
-		else if (same(component,"liutex_z")) LIUTEX(i,j,k) = (float)liutexvec[2];
+		if (same(component,"liutexmag")) LIUTEX(i,j,k) = sqrt(liutexvec[0]*liutexvec[0]+liutexvec[1]*liutexvec[1]+liutexvec[2]*liutexvec[2]);
+		else if (same(component,"liutex_x")) LIUTEX(i,j,k) = liutexvec[0];
+		else if (same(component,"liutex_y")) LIUTEX(i,j,k) = liutexvec[1];
+		else if (same(component,"liutex_z")) LIUTEX(i,j,k) = liutexvec[2];
 		else {printf("Bad liutex component %s, exiting\n",component);}
 /*
 		xvort=dwdy-dvdz;
