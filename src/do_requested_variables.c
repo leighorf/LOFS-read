@@ -817,42 +817,42 @@ void do_rho_hydro(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // Q->BUFp b->buf0, qc+qv
+		Q(i,j,k) += TEM1p(i,j,k); // Q->BUFp b->buf0, qc+qv
 
-	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd); //buf0->BUFp
+	read_lofs_buffer(b->dum1,"qi",dm,hm,rc,cmd); //buf0->BUFp
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi
+		Q(i,j,k) += TEM1p(i,j,k); // qc+qv+qi
 
-	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd); //buf0->BUFp
+	read_lofs_buffer(b->dum1,"qr",dm,hm,rc,cmd); //buf0->BUFp
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr
+		Q(i,j,k) += TEM1p(i,j,k); // qc+qv+qi+qr
 
-	read_lofs_buffer(b->buf0,"qs",dm,hm,rc,cmd); //buf0->BUFp
+	read_lofs_buffer(b->dum1,"qs",dm,hm,rc,cmd); //buf0->BUFp
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs
+		Q(i,j,k) += TEM1p(i,j,k); // qc+qv+qi+qr+qs
 
-	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd); //buf0->BUFp
+	read_lofs_buffer(b->dum1,"qg",dm,hm,rc,cmd); //buf0->BUFp
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs+qg
+		Q(i,j,k) += TEM1p(i,j,k); // qc+qv+qi+qr+qs+qg
 
-	read_lofs_buffer(b->buf0,"qhl",dm,hm,rc,cmd); //buf0->BUFp
+	read_lofs_buffer(b->dum1,"qhl",dm,hm,rc,cmd); //buf0->BUFp
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs+qg+qhl
+		Q(i,j,k) += TEM1p(i,j,k); // qc+qv+qi+qr+qs+qg+qhl
 
 if (same(which,"rho_hydro"))
 {
@@ -860,13 +860,27 @@ if (same(which,"rho_hydro"))
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 		RHO_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k));
+
+	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
+
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + (TEM1p(i,j,k)/0.622));
 }
 else if (same(which, "rhopert_hydro"))
 {
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		RHOPERT_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k)) - snd->rho0[k];
+		RHO_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k));
+
+	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
+
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + (TEM1p(i,j,k)/0.622)) - snd->rho0[k];
 }
 }
 
