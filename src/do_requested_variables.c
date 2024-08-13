@@ -788,6 +788,88 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 
 }
 
+#define RHO_HYDRO BUFp
+#define RHOPERT_HYDRO BUFp
+#define RHO_DRYAIR TEMp
+#define Q BUFp
+
+void do_rho_hydro(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc, sounding *snd,char *which)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+// First read density of dry air into buf0
+
+	read_lofs_buffer(b->dum0,"rho",dm,hm,rc,cmd); //dum0->TEMp
+
+// Now read all the hydrometeors and add them up
+
+	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
+
+	read_lofs_buffer(b->buf0,"qc",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // Q->BUFp b->buf0, qc+qv
+
+	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi
+
+	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr
+
+	read_lofs_buffer(b->buf0,"qs",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs
+
+	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs+qg
+
+	read_lofs_buffer(b->buf0,"qhl",dm,hm,rc,cmd); //buf0->BUFp
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		Q(i,j,k) += TEMp(i,j,k); // qc+qv+qi+qr+qs+qg+qhl
+
+if (same(which,"rho_hydro"))
+{
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		RHO_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k));
+}
+else if (same(which, "rhopert_hydro"))
+{
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		RHOPERT_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k)) - snd->rho0[k];
+}
+}
+
 #define QV BUFp
 
 void calc_qv(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
@@ -2313,6 +2395,9 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"liutex_x"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_x");}
 		else if(same(var,"liutex_y"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_y");}
 		else if(same(var,"liutex_z"))	   {CL;do_liutex(b,gd,msh,cmd,"liutex_z");}
+		else if(same(var,"rho_hydro"))	   {CL;do_rho_hydro(b,gd,msh,cmd,dm,hm,rc,snd,"rho_hydro");}
+		else if(same(var,"rhopert_hydro")) {CL;do_rho_hydro(b,gd,msh,cmd,dm,hm,rc,snd,"rhopert_hydro");}
+//void do_rho_hydro(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc, sounding *snd,char *which)
 //void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding *snd, readahead rh,dir_meta dm,hdf_meta hm,cmdline cmd)
 //			read_lofs_buffer(b->buf,nc.var3d[ivar].varname,dm,hm,rc,cmd);
 		else

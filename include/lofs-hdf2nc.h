@@ -93,6 +93,7 @@ typedef struct netcdf_zfp
 	float hvort,streamvort,qiqvpert,qtot,qcqi,qgqhqr,tempC;
 	float hdiv;
 	float liutexmag,liutex_x,liutex_y,liutex_z;
+	float rho_hydro, rhopert_hydro;
 } netcdf;
 
 typedef struct zfp_acc
@@ -116,7 +117,7 @@ typedef struct buffers
 
 typedef struct readahead
 {
-	int u,v,w,ppert,thrhopert;
+	int u,v,w,ppert,thrhopert,rhopert_hydro,rho_hydro;
 	int vortmag,hvort;
 	int streamvort,qiqvpert,qtot,qcqi,qgqhqr;
 	int tempC;

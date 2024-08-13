@@ -83,6 +83,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->hvort=0;
 	rh->streamvort=0;
 	rh->interp=0;
+	rh->rhopert_hydro=0;
+	rh->rho_hydro=0;
 
 //Block of text that will be saved as metadata to netCDF file - contains
 //all LOFS variable zfp accuracy parameters
@@ -194,6 +196,8 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->liutex_x =      1.0e-3;
 	zfpacc->netcdf->liutex_y =      1.0e-3;
 	zfpacc->netcdf->liutex_z =      1.0e-3;
+	zfpacc->netcdf->rho_hydro =      1.0e-6;
+	zfpacc->netcdf->rhopert_hydro =      1.0e-6;
 
 	/* These are read only in the sense that we read them from LOFS attributes. These
 	 * are the zfp accuracy values that were written with CM1-LOFS. Initialize
@@ -1712,6 +1716,8 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"liutex_x"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_x,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"liutex_y"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_y,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"liutex_z"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_z,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
+		else if(same(var,"rho_hydro"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->rho_hydro,       *cmd,nid,hm,v3did,"long_name",var,"kg/m^3");
+		else if(same(var,"rhopert_hydro"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->rhopert_hydro,       *cmd,nid,hm,v3did,"long_name",var,"kg/m^3");
 
 	} // End of big ivar loop
 
@@ -1888,6 +1894,8 @@ void set_readahead(readahead *rh,ncstruct nc, cmdline cmd)
 		if(same(var,"liutex_x")) {rh->u=1;rh->v=1;rh->w=1;}
 		if(same(var,"liutex_y")) {rh->u=1;rh->v=1;rh->w=1;}
 		if(same(var,"liutex_z")) {rh->u=1;rh->v=1;rh->w=1;}
+		if(same(var,"rho_hydro")) {rh->rho_hydro=1;}
+		if(same(var,"rhopert_hydro")) {rh->rhopert_hydro=1;}
 	}
 	//free(var);
 }
@@ -1962,7 +1970,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			totbufsize+=bufsize;
 			ibuf++;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rhopert_hydro||rh.rho_hydro)//Not really readahead, but if we calculated these we need another array
 		{
 			if(cmd.verbose)printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -1970,7 +1978,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			totbufsize+=bufsize;
 			ibuf++;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.tempC)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.tempC||rh.rhopert_hydro||rh.rho_hydro)//Not really readahead, but if we calculated these we need another array
 		{
 			if(cmd.verbose)printf("b->dum1: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum1 = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -1993,8 +2001,8 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC) free(b->dum0);
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.tempC) free(b->dum1);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rho_hydro||rh.rhopert_hydro) free(b->dum0);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.tempC||rh.rhopert_hydro||rh.rho_hydro) free(b->dum1);
 		//TODO more checks required here.  We want to be absolutely
 		//sure to free all memory before doing external compression,
 		//should we choose the --gzip option
