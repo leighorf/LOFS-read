@@ -806,7 +806,7 @@ void do_rho_hydro(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 
 // First read density of dry air into buf0
 
-	read_lofs_buffer(b->dum0,"rho",dm,hm,rc,cmd); //dum0->TEMp
+	read_lofs_buffer(b->dum0,"rhopert",dm,hm,rc,cmd); //dum0->TEMp
 
 // Now read all the hydrometeors and add them up
 
@@ -859,28 +859,28 @@ if (same(which,"rho_hydro"))
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		RHO_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k));
+		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + (TEM1p(i,j,k)/0.622));
+		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + 0.001*(TEM1p(i,j,k)/0.622));
 }
 else if (same(which, "rhopert_hydro"))
 {
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		RHO_HYDRO(i,j,k) = RHO_DRYAIR(i,j,k) * (1.0 + Q(i,j,k));
+		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + (TEM1p(i,j,k)/0.622)) - snd->rho0[k];
+		RHO_HYDRO(i,j,k) = RHO_HYDRO(i,j,k) / (1.0 + 0.001*(TEM1p(i,j,k)/0.622)) - snd->rho0[k];
 }
 }
 
