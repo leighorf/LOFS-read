@@ -24,7 +24,7 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 	OPT_WB_BUOY_ZFPACC, OPT_UB_PGRAD_ZFPACC, OPT_VB_PGRAD_ZFPACC, OPT_WB_PGRAD_ZFPACC, OPT_XVORT_STRETCH_ZFPACC,
 	OPT_YVORT_STRETCH_ZFPACC, OPT_ZVORT_STRETCH_ZFPACC, OPT_XVORT_BARO_ZFPACC, OPT_YVORT_BARO_ZFPACC, OPT_XVORT_SOLENOID_ZFPACC,
 	OPT_YVORT_SOLENOID_ZFPACC, OPT_ZVORT_SOLENOID_ZFPACC, OPT_HVORT_ZFPACC, OPT_STREAMVORT_ZFPACC, OPT_QIQVPERT_ZFPACC,
-	OPT_QTOT_ZFPACC, OPT_QCQI_ZFPACC, OPT_QGQHQR_ZFPACC, OPT_TEMPC_ZFPACC, OPT_HDIV_ZFPACC, OPT_WB_BUOY_INTERP_ZFPACC, OPT_UB_PGRAD_INTERP_ZFPACC, 
+	OPT_QTOT_ZFPACC, OPT_QCOND_ZFPACC, OPT_QCQI_ZFPACC, OPT_QGQHQR_ZFPACC, OPT_TEMPC_ZFPACC, OPT_PRES_ZFPACC, OPT_HDIV_ZFPACC, OPT_WB_BUOY_INTERP_ZFPACC, OPT_UB_PGRAD_INTERP_ZFPACC, 
 	OPT_VB_PGRAD_INTERP_ZFPACC, OPT_WB_PGRAD_INTERP_ZFPACC
     };
 
@@ -139,9 +139,11 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 		{"streamvort_acc",optional_argument, 0,        OPT_STREAMVORT_ZFPACC},
 		{"qiqvpert_acc",optional_argument, 0,          OPT_QIQVPERT_ZFPACC},
 		{"qtot_acc",optional_argument, 0,              OPT_QTOT_ZFPACC},
+		{"qcond_acc",optional_argument, 0,              OPT_QCOND_ZFPACC},
 		{"qcqi_acc",optional_argument, 0,          OPT_QCQI_ZFPACC},
 		{"qgqhqr_acc",optional_argument, 0,          OPT_QGQHQR_ZFPACC},
 		{"tempC_acc",optional_argument, 0,             OPT_TEMPC_ZFPACC},
+		{"pres_acc",optional_argument, 0,             OPT_PRES_ZFPACC},
 		{"hdiv_acc",optional_argument, 0,              OPT_HDIV_ZFPACC},
 
 		{0, 0, 0, 0}//sentinel, needed!
@@ -614,6 +616,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				zfpacc->netcdf->qtot = atof(optarg);
 				cmd->optcount++;
 				break;
+			case OPT_QCOND_ZFPACC:
+				zfpacc->netcdf->qcond = atof(optarg);
+				cmd->optcount++;
+				break;
 			case OPT_QCQI_ZFPACC:
 				zfpacc->netcdf->qcqi = atof(optarg);
 				cmd->optcount++;
@@ -624,6 +630,10 @@ void parse_cmdline_hdf2nc(int argc, char *argv[], cmdline *cmd, dir_meta *dm, gr
 				break;
 			case OPT_TEMPC_ZFPACC:
 				zfpacc->netcdf->tempC = atof(optarg);
+				cmd->optcount++;
+				break;
+			case OPT_PRES_ZFPACC:
+				zfpacc->netcdf->pres = atof(optarg);
 				cmd->optcount++;
 				break;
 			case OPT_HDIV_ZFPACC:

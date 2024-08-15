@@ -77,6 +77,7 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	rh->qcqi=0;
 	rh->qgqhqr=0;
 	rh->qtot=0;
+	rh->qcond=0;
 	rh->tempC=0;
 	rh->budgets=0;
 	rh->vortmag=0;
@@ -190,7 +191,9 @@ void init_structs(cmdline *cmd,dir_meta *dm, grid *gd,ncstruct *nc, readahead *r
 	zfpacc->netcdf->qcqi =           1.0e-4;
 	zfpacc->netcdf->qgqhqr =         1.0e-4;
 	zfpacc->netcdf->qtot =           1.0e-4;
+	zfpacc->netcdf->qcond =          1.0e-4;
 	zfpacc->netcdf->tempC =          1.0e-1;
+	zfpacc->netcdf->pres =          1.0e-3;
 	zfpacc->netcdf->hdiv =           1.0e-3;
 	zfpacc->netcdf->liutexmag =      1.0e-3;
 	zfpacc->netcdf->liutex_x =      1.0e-3;
@@ -1710,7 +1713,9 @@ void set_netcdf_attributes(ncstruct *nc, grid gd, cmdline *cmd, buffers *b, hdf_
 		else if(same(var,"qcqi"))	    set_nc_meta_name_units_compression(zfpacc->netcdf->qcqi,        *cmd,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"qgqhqr"))	    set_nc_meta_name_units_compression(zfpacc->netcdf->qgqhqr,        *cmd,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"qtot"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->qtot,            *cmd,nid,hm,v3did,"long_name",var,"g/kg");
+		else if(same(var,"qcond"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->qcond,            *cmd,nid,hm,v3did,"long_name",var,"g/kg");
 		else if(same(var,"tempC"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->tempC,           *cmd,nid,hm,v3did,"long_name",var,"degC");
+		else if(same(var,"pres"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->pres,           *cmd,nid,hm,v3did,"long_name",var,"hPa");
 		else if(same(var,"hdiv"))	    	set_nc_meta_name_units_compression(zfpacc->netcdf->hdiv,            *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"liutexmag"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutexmag,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
 		else if(same(var,"liutex_x"))	   	set_nc_meta_name_units_compression(zfpacc->netcdf->liutex_x,       *cmd,nid,hm,v3did,"long_name",var,"s^-1");
@@ -1970,7 +1975,7 @@ void malloc_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 			totbufsize+=bufsize;
 			ibuf++;
 		}
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rhopert_hydro||rh.rho_hydro)//Not really readahead, but if we calculated these we need another array
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcond||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rhopert_hydro||rh.rho_hydro)//Not really readahead, but if we calculated these we need another array
 		{
 			if(cmd.verbose)printf("b->dum0: Attempting to allocate %6.2f GB of memory...\n",1.0e-9*bufsize);
 			if ((b->dum0 = (float *) malloc ((size_t)bufsize)) == NULL)
@@ -2001,7 +2006,7 @@ void free_3D_arrays (buffers *b, grid gd, readahead rh,cmdline cmd)
 		if (rh.u) free (b->ustag);
 		if (rh.v) free (b->vstag);
 		if (rh.w) free (b->wstag);
-		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rho_hydro||rh.rhopert_hydro) free(b->dum0);
+		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.qiqvpert||rh.qtot||rh.qcond||rh.qcqi||rh.qgqhqr||rh.tempC||rh.rho_hydro||rh.rhopert_hydro) free(b->dum0);
 		if (rh.vortmag||rh.hvort||rh.streamvort||rh.budgets||rh.tempC||rh.rhopert_hydro||rh.rho_hydro) free(b->dum1);
 		//TODO more checks required here.  We want to be absolutely
 		//sure to free all memory before doing external compression,

@@ -708,6 +708,75 @@ void calc_qcqi(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta h
 		QCQI(i,j,k) += TEMp(i,j,k);
 }
 
+#define QCOND BUFp
+void calc_qcond(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+	rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+	rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+	rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+//Add up all condensed water
+
+	read_lofs_buffer(b->buf0,"qc",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) = BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qi",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qr",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qs",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qg",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+	read_lofs_buffer(b->buf0,"qhl",dm,hm,rc,cmd);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		TEMp(i,j,k) += BUFp(i,j,k);
+
+#pragma omp parallel for private(i,j,k)
+	for(k=0; k<nk; k++)
+	for(j=0; j<nj; j++)
+	for(i=0; i<ni; i++)
+		QCOND(i,j,k) = TEMp(i,j,k);
+}
+
 #define QGQHQR BUFp
 void calc_qgqhqr(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm,requested_cube rc)
 {
@@ -744,7 +813,7 @@ void calc_qgqhqr(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
-		TEMp(i,j,k) += TEMp(i,j,k);
+		TEMp(i,j,k) += BUFp(i,j,k);
 
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk; k++)
@@ -777,7 +846,12 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 //	}
 //	}
 
+
+//ORF temporary, accidentally saved rhopert as rho in muons paper
+//
 	read_lofs_buffer(b->buf0,"rhopert",dm,hm,rc,cmd);
+#undef MUONFUCKED
+#ifndef MUONFUCKED
 #pragma omp parallel for private(i,j,k)
 	for(k=0; k<nk+1; k++)
 	for(j=-1; j<nj+1; j++)
@@ -785,7 +859,7 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 	{
 		RHO(i,j,k) = BUFp(i,j,k) + snd->rho0[k];
 	}
-
+#endif
 }
 
 #define RHO_HYDRO BUFp
@@ -859,7 +933,9 @@ if (same(which,"rho_hydro"))
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
+// Accidentally saved rhopert as rho (MUONFUCKED)
 		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
+//	RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
@@ -873,7 +949,9 @@ else if (same(which, "rhopert_hydro"))
 	for(k=0; k<nk; k++)
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
+// Accidentally saved rhopert as rho (MUONFUCKED)
 		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
+//		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
@@ -918,9 +996,6 @@ void calc_pres_nd(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 	float usr,vsr;
 	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
 	nx=ni; ny=nj; nz=nk;
-	float pi;
-	float foo;
-	int ifoo;
 
 rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
 rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
@@ -933,6 +1008,28 @@ rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
 	for(i=-1; i<ni+1; i++)
 	{
 		PRESSURE_ND(i,j,k) = (BUFp(i,j,k) + snd->pres0[k])/snd->pres0[k];
+	}
+}
+
+#define PRESSURE BUFp
+void calc_pres(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_meta hm, sounding *snd, requested_cube rc)
+{
+	int i,j,k,ni,nj,nk,nx,ny,nz;
+	float usr,vsr;
+	ni=gd.NX;nj=gd.NY;nk=gd.NZ;
+	nx=ni; ny=nj; nz=nk;
+
+rc.X0=gd.X0-1; rc.Y0=gd.Y0-1; rc.Z0=gd.Z0;
+rc.X1=gd.X1+1; rc.Y1=gd.Y1+1; rc.Z1=gd.Z1;
+rc.NX=gd.X1-gd.X0+1; rc.NY=gd.Y1-gd.Y0+1; rc.NZ=gd.Z1-gd.Z0+1;
+
+	read_lofs_buffer(b->buf0,"prespert",dm,hm,rc,cmd);
+
+	for(k=0; k<nk+1; k++)
+	for(j=-1; j<nj+1; j++)
+	for(i=-1; i<ni+1; i++)
+	{
+		PRESSURE(i,j,k) = (BUFp(i,j,k) + 0.01*snd->pres0[k]);
 	}
 }
 
@@ -2397,8 +2494,10 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"qcqi"))	   {CL;calc_qcqi(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qgqhqr"))	   {CL;calc_qgqhqr(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"qtot"))	   {CL;calc_qtot(b,gd,msh,cmd,dm,hm,rc);}
+		else if(same(var,"qcond"))	   {CL;calc_qcond(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"pres_nd"))	  {CL;calc_pres_nd(b,gd,msh,cmd,dm,hm,snd,rc);}
+		else if(same(var,"pres"))	  {CL;calc_pres(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"qv"))	   {CL;calc_qv(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"kmh_interp"))	   {CL;calc_kmh_interp(b,gd,msh,cmd,dm,hm,rc);}

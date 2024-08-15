@@ -90,8 +90,8 @@ typedef struct netcdf_zfp
 	float xvort_tilt,yvort_tilt,zvort_tilt;
 	float xvort_baro,yvort_baro;
 	float xvort_solenoid,yvort_solenoid,zvort_solenoid;
-	float hvort,streamvort,qiqvpert,qtot,qcqi,qgqhqr,tempC;
-	float hdiv;
+	float hvort,streamvort,qiqvpert,qtot,qcond,qcqi,qgqhqr,tempC;
+	float pres,hdiv;
 	float liutexmag,liutex_x,liutex_y,liutex_z;
 	float rho_hydro, rhopert_hydro;
 } netcdf;
@@ -119,7 +119,7 @@ typedef struct readahead
 {
 	int u,v,w,ppert,thrhopert,rhopert_hydro,rho_hydro;
 	int vortmag,hvort;
-	int streamvort,qiqvpert,qtot,qcqi,qgqhqr;
+	int streamvort,qiqvpert,qtot,qcond,qcqi,qgqhqr;
 	int tempC;
 	int budgets;
 	int interp; /* For when we just need to interp to the C mesh */
