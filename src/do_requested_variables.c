@@ -880,7 +880,8 @@ void do_rho_hydro(buffers *b, grid gd, mesh msh, cmdline cmd,dir_meta dm,hdf_met
 
 // First read density of dry air into buf0
 
-	read_lofs_buffer(b->dum0,"rhopert",dm,hm,rc,cmd); //dum0->TEMp
+//	read_lofs_buffer(b->dum0,"rhopert",dm,hm,rc,cmd); //dum0->TEMp
+	read_lofs_buffer(b->dum0,"rho",dm,hm,rc,cmd); //dum0->TEMp
 
 // Now read all the hydrometeors and add them up
 
@@ -934,8 +935,8 @@ if (same(which,"rho_hydro"))
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 // Accidentally saved rhopert as rho (MUONFUCKED)
-		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
-//	RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
+//		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
+	RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
@@ -950,8 +951,8 @@ else if (same(which, "rhopert_hydro"))
 	for(j=0; j<nj; j++)
 	for(i=0; i<ni; i++)
 // Accidentally saved rhopert as rho (MUONFUCKED)
-		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
-//		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
+//		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)+snd->rho0[k]) * (1.0 + 0.001*Q(i,j,k));
+		RHO_HYDRO(i,j,k) = (RHO_DRYAIR(i,j,k)) * (1.0 + 0.001*Q(i,j,k));
 
 	read_lofs_buffer(b->dum1,"qv",dm,hm,rc,cmd); //dum1->TEM1p
 
@@ -2498,7 +2499,7 @@ void do_requested_variables(buffers *b, ncstruct nc, grid gd, mesh msh, sounding
 		else if(same(var,"tempC"))	   {CL;calc_tempC(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"pres_nd"))	  {CL;calc_pres_nd(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"pres"))	  {CL;calc_pres(b,gd,msh,cmd,dm,hm,snd,rc);}
-		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
+//		else if(same(var,"rho"))	   {CL;calc_rho(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"qv"))	   {CL;calc_qv(b,gd,msh,cmd,dm,hm,snd,rc);}
 		else if(same(var,"kmh_interp"))	   {CL;calc_kmh_interp(b,gd,msh,cmd,dm,hm,rc);}
 		else if(same(var,"kmv_interp"))	   {CL;calc_kmv_interp(b,gd,msh,cmd,dm,hm,rc);}
